@@ -1,0 +1,129 @@
+.gameboard {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-areas:
+    "trump"
+    "scores"
+    "opposite"
+    "sides"
+    "prompt"
+    "hand";
+  background: var(--color-felt);
+  overflow: hidden;
+  padding: 0.5rem;
+  gap: 0.4rem;
+}
+
+/* Responsive layout */
+@media (min-height: 700px) {
+  .gameboard {
+    grid-template-rows: auto auto auto 1fr auto auto;
+  }
+}
+
+.gameboard__scores {
+  grid-area: scores;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.5rem;
+}
+
+.gameboard__round {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.score-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.3);
+  min-width: 80px;
+}
+
+.score-chip__label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-muted);
+}
+
+.score-chip__pts {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.score-chip__rounds {
+  font-size: 0.7rem;
+  color: var(--color-gold);
+  letter-spacing: 1px;
+}
+
+.gameboard__opposite {
+  grid-area: opposite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gameboard__opp-cards {
+  display: flex;
+  gap: -4px;
+}
+
+.gameboard__opp-cards .card {
+  margin-left: -12px;
+}
+
+.gameboard__opp-cards .card:first-child {
+  margin-left: 0;
+}
+
+.gameboard__sides {
+  grid-area: sides;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  flex: 1;
+}
+
+.gameboard__left,
+.gameboard__right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gameboard__prompt {
+  grid-area: prompt;
+  text-align: center;
+  padding: 0.3rem;
+  min-height: 2.5rem;
+}
+
+.prompt-text {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.kitty-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.kitty-actions .btn-primary {
+  padding: 0.4rem 1rem;
+  font-size: 0.875rem;
+}

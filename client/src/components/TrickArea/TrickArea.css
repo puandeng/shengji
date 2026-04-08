@@ -1,0 +1,36 @@
+.trick-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 280px;
+  min-width: 200px;
+}
+
+.trick-area__slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trick-area__middle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.trick-area__centre {
+  width: 68px;
+  height: 96px;
+}
+
+.trick-area__placeholder {
+  width: 68px;
+  height: 96px;
+  border: 2px dashed rgba(255,255,255,0.12);
+  border-radius: 6px;
+}

@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# Build output
+client/dist/
+client/build/
+
+# Environment files (keep .env.example, ignore actual .env)
+.env
+server/.env
+client/.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

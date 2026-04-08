@@ -1,0 +1,22 @@
+.notification {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 24px;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.9rem;
+  color: var(--color-gold);
+  z-index: 50;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  animation: slideDown 0.3s ease;
+  pointer-events: none;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

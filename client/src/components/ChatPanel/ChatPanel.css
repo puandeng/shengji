@@ -1,0 +1,113 @@
+.chat-panel {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 40;
+}
+
+.chat-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  position: relative;
+  padding: 0;
+}
+
+.chat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-window {
+  position: absolute;
+  bottom: 52px;
+  right: 0;
+  width: 280px;
+  background: rgba(20, 30, 20, 0.97);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chat-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.chat-message {
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.chat-message--mine {
+  background: rgba(76, 175, 80, 0.12);
+  align-self: flex-end;
+  text-align: right;
+}
+
+.chat-message__name {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--color-gold);
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.chat-message__text {
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.chat-input {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.chat-input input {
+  flex: 1;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.chat-send {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+}

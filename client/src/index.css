@@ -1,0 +1,90 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg:         #1a2a1a;
+  --color-felt:       #2d5a27;
+  --color-felt-dark:  #1e3d1a;
+  --color-card-bg:    #fefefe;
+  --color-card-border:#d0c8b8;
+  --color-red:        #c0392b;
+  --color-black:      #1a1a1a;
+  --color-gold:       #f0c040;
+  --color-highlight:  #4caf50;
+  --color-team0:      #3498db;
+  --color-team1:      #e74c3c;
+  --color-text:       #f0f0f0;
+  --color-text-muted: #aaa;
+  --radius:           8px;
+  --shadow:           0 4px 12px rgba(0,0,0,0.4);
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.6rem 1.4rem;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+input {
+  font-family: inherit;
+  font-size: 1rem;
+  border-radius: var(--radius);
+  border: 2px solid #444;
+  background: #2a2a2a;
+  color: var(--color-text);
+  padding: 0.5rem 0.8rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+input:focus {
+  border-color: var(--color-highlight);
+}
+
+.btn-primary {
+  background: var(--color-highlight);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-secondary {
+  background: #444;
+  color: var(--color-text);
+}
+
+.btn-danger {
+  background: var(--color-red);
+  color: #fff;
+}
+
+.error-text {
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  margin-top: 0.4rem;
+}

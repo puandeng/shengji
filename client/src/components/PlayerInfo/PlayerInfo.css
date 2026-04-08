@@ -1,0 +1,77 @@
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: box-shadow 0.2s;
+  min-width: 100px;
+}
+
+.player-info--active {
+  box-shadow: 0 0 0 2px var(--team-color, #4caf50);
+}
+
+.player-info--vertical {
+  flex-direction: column;
+  text-align: center;
+  min-width: 64px;
+  padding: 0.4rem 0.4rem;
+}
+
+.player-info--empty {
+  opacity: 0.5;
+}
+
+.player-info__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.player-info__details {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.player-info__name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-info__meta {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.player-info__trump {
+  opacity: 0.7;
+}
+
+.player-info__turn-indicator {
+  color: var(--color-gold);
+  font-size: 0.6rem;
+  animation: pulse 1s ease-in-out infinite;
+  margin-left: auto;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

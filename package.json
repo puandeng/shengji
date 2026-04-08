@@ -1,0 +1,19 @@
+{
+  "name": "200-card-game",
+  "version": "1.0.0",
+  "description": "Multiplayer 200 card game (Sheng Ji variant) - React + Node.js + Socket.io",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "install:all": "npm install && npm install --workspace=server && npm install --workspace=client",
+    "build": "npm run build --workspace=client",
+    "start": "npm run start --workspace=server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,117 @@
+.home-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: radial-gradient(ellipse at center, #2d5a27 0%, #1a2a1a 70%);
+}
+
+.home-card {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+}
+
+.home-title {
+  font-size: 3.5rem;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--color-gold);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.home-subtitle {
+  text-align: center;
+  color: var(--color-text-muted);
+  margin-bottom: 1.8rem;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.home-disconnected {
+  background: rgba(255, 150, 0, 0.15);
+  border: 1px solid rgba(255, 150, 0, 0.4);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #ffab40;
+  margin-bottom: 1rem;
+}
+
+.home-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: var(--radius);
+  padding: 4px;
+}
+
+.home-tabs .tab {
+  flex: 1;
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.home-tabs .tab.active {
+  background: var(--color-highlight);
+  color: #fff;
+  font-weight: 600;
+}
+
+.home-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.home-form label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 0.4rem;
+}
+
+.home-form input {
+  width: 100%;
+}
+
+.home-form button {
+  margin-top: 0.8rem;
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+.home-rules {
+  margin-top: 2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.home-rules h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-gold);
+  margin-bottom: 0.5rem;
+}
+
+.home-rules p {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}

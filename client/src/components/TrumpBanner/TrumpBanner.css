@@ -1,0 +1,47 @@
+.trump-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.3rem 1rem;
+  background: rgba(0,0,0,0.5);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  width: fit-content;
+  margin: 0 auto;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.trump-banner--waiting {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.trump-banner__label {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+}
+
+.trump-banner__suit {
+  font-weight: 700;
+  color: var(--color-black);
+  background: var(--color-card-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.trump-banner__suit--red {
+  color: var(--color-red);
+}
+
+.trump-banner__divider {
+  color: rgba(255,255,255,0.2);
+}
+
+.trump-banner__attacking {
+  color: var(--color-gold);
+  font-size: 0.75rem;
+}
