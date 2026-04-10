@@ -6,7 +6,8 @@ const {
   PLAYERS_PER_ROOM,
   CARDS_PER_PLAYER,
   KITTY_SIZE,
-  WINNING_THRESHOLD,
+  STARTING_LEVEL,
+  LEVEL_THRESHOLDS,
   TRUMP_DECLARATION_TIMEOUT,
 } = require('./constants');
 
@@ -20,14 +21,17 @@ const {
  *
  * Trick-taking rules:
  *  1. Lead player plays any card.
- *  2. Others must follow lead suit if they have it.
- *  3. Trump beats non-trump; higher rank beats lower within same group.
+ *  2. Others must follow lead suit if they have it; must follow trump if lead is trump.
+ *  3. Trump beats non-trump; big joker > small joker > all other trump > non-trump.
  *  4. Trick winner leads the next trick.
  *
  * Scoring:
- *  - 5 = 5 pts, 10 = 10 pts, K = 10 pts
- *  - 200 total points across 2 decks
- *  - Attacking team wins round if they collect ≥ WINNING_THRESHOLD
+ *  - 5 = 5 pts, 10 = 10 pts, K = 10 pts (200 total across 2 decks)
+ *  - Only the attacking team's captures count. Defending team never accumulates points.
+ *  - Attacking team wins the round if they collect ≥ LEVEL_THRESHOLDS[trumpRank].
+ *  - Kitty belongs to whoever wins the last trick. If attackers win the last trick,
+ *    kitty points × 2 (×cards in the winning play once multi-card plays are added)
+ *    are added to their score. If defenders win, attackers get nothing from the kitty.
  */
 class GameState {
   constructor(roomId) {
@@ -37,14 +41,15 @@ class GameState {
     this.hands          = {};      // { socketId: Card[] }
     this.kitty          = [];      // Card[] — held until kitty phase
     this.trumpSuit      = null;    // Declared trump suit ('S','H','D','C')
+    this.trumpRank      = STARTING_LEVEL; // Current trump rank/level ('2'..'A')
     this.trumpDeclarer  = null;    // socketId of trump declarer
     this.attackingTeam  = 0;       // Team 0 attacks first
     this.currentTrick   = [];      // [{ socketId, card }]
-    this.tricks         = [];      // Completed tricks [{winner, cards}]
+    this.tricks         = [];      // Completed tricks [{winner, cards, points}]
     this.leadSeat       = 0;       // Seat index of current lead player
     this.currentSeat    = 0;       // Seat index whose turn it is
-    this.scores         = { 0: 0, 1: 0 }; // Points collected per team this round
-    this.roundScores    = { 0: 0, 1: 0 }; // Cumulative scores across rounds
+    this.scores         = { 0: 0, 1: 0 }; // Only attackingTeam's entry is ever non-zero
+    this.roundScores    = { 0: 0, 1: 0 }; // Round-wins per team
     this.winner         = null;    // null | 0 | 1
     this.trumpTimer     = null;    // Timeout handle for trump selection
     this.roundNumber    = 1;
@@ -100,12 +105,12 @@ class GameState {
       this.hands[player.socketId] = hands[i];
     });
 
-    this.phase        = GAME_PHASES.TRUMP_SELECTION;
-    this.trumpSuit    = null;
+    this.phase         = GAME_PHASES.TRUMP_SELECTION;
+    this.trumpSuit     = null;
     this.trumpDeclarer = null;
-    this.currentTrick = [];
-    this.tricks       = [];
-    this.scores       = { 0: 0, 1: 0 };
+    this.currentTrick  = [];
+    this.tricks        = [];
+    this.scores        = { 0: 0, 1: 0 };
 
     return { success: true };
   }
@@ -173,8 +178,8 @@ class GameState {
   }
 
   /**
-   * Declarer discards 4 cards back into the kitty.
-   * These will be claimed by whoever wins the last trick.
+   * Declarer discards KITTY_SIZE cards back into the kitty.
+   * These are claimed by whoever wins the last trick.
    */
   discardToKitty(socketId, cardIds) {
     if (socketId !== this.trumpDeclarer) return { error: 'Only the trump declarer can discard' };
@@ -191,7 +196,7 @@ class GameState {
 
     this.kitty = discarded;
 
-    // Start playing — trump declarer's team leads first
+    // Start playing — trump declarer leads first
     const declarer = this.getPlayer(socketId);
     this.leadSeat    = declarer.seatIndex;
     this.currentSeat = declarer.seatIndex;
@@ -224,13 +229,24 @@ class GameState {
 
     const card = hand[cardIdx];
 
-    // Validate follow-suit rule (when not leading)
+    // Validate follow-suit / follow-trump rule (when not leading)
     if (this.currentTrick.length > 0) {
-      const leadCard  = this.currentTrick[0].card;
-      const leadSuit  = leadCard.suit;
-      const hasSuit   = hand.some(c => c.suit === leadSuit && c.id !== cardId);
-      if (hasSuit && card.suit !== leadSuit) {
-        return { error: `Must follow ${leadSuit} suit` };
+      const leadCard     = this.currentTrick[0].card;
+      const leadIsTrump  = leadCard.isTrump(this.trumpSuit);
+
+      if (leadIsTrump) {
+        // Must follow trump (including jokers) if possible
+        const hasTrump = hand.some(c => c.isTrump(this.trumpSuit) && c.id !== cardId);
+        if (hasTrump && !card.isTrump(this.trumpSuit)) {
+          return { error: 'Must follow trump suit' };
+        }
+      } else {
+        // Must follow lead suit if possible
+        const leadSuit = leadCard.suit;
+        const hasSuit  = hand.some(c => c.suit === leadSuit && c.id !== cardId);
+        if (hasSuit && card.suit !== leadSuit) {
+          return { error: `Must follow ${leadSuit} suit` };
+        }
       }
     }
 
@@ -266,23 +282,33 @@ class GameState {
     }
 
     const winnerPlayer = this.getPlayer(winnerEntry.socketId);
+    const isLastTrick  = this.players.every(p => this.hands[p.socketId].length === 0);
 
-    // Tally points from this trick
-    let trickPoints = this.currentTrick.reduce((sum, e) => sum + e.card.points, 0);
+    // Raw point cards in this trick
+    const trickPoints = this.currentTrick.reduce((sum, e) => sum + e.card.points, 0);
 
-    // If this is the last trick, add kitty points (×2 as is traditional)
-    const isLastTrick = this.players.every(p => this.hands[p.socketId].length === 0);
-    if (isLastTrick) {
-      const kittyPoints = this.kitty.reduce((sum, c) => sum + c.points, 0);
-      trickPoints += kittyPoints * 2; // Traditional Sheng Ji rule: kitty points doubled
+    // Only the attacking team accumulates points.
+    // If defenders win the trick, the point cards in it are blocked — nobody scores them.
+    let pointsScored = 0;
+    if (winnerPlayer.teamIndex === this.attackingTeam) {
+      pointsScored = trickPoints;
+
+      if (isLastTrick) {
+        // Attackers win the last trick → they collect the kitty.
+        // Multiplier = 2 × cards in the winning play.
+        // Multi-card plays not yet implemented, so last play is always 1 card → ×2.
+        const kittyPoints = this.kitty.reduce((sum, c) => sum + c.points, 0);
+        pointsScored += kittyPoints * 2;
+      }
+
+      this.scores[this.attackingTeam] += pointsScored;
     }
-
-    this.scores[winnerPlayer.teamIndex] += trickPoints;
+    // If defenders win the last trick, attackers get no kitty bonus.
 
     const completedTrick = {
-      cards:   this.currentTrick.map(e => ({ socketId: e.socketId, card: e.card.toJSON() })),
-      winner:  winnerEntry.socketId,
-      points:  trickPoints,
+      cards:  this.currentTrick.map(e => ({ socketId: e.socketId, card: e.card.toJSON() })),
+      winner: winnerEntry.socketId,
+      points: pointsScored, // points credited to attackers (0 if defenders won)
     };
     this.tricks.push(completedTrick);
 
@@ -291,7 +317,6 @@ class GameState {
     this.leadSeat     = winnerPlayer.seatIndex;
     this.currentSeat  = winnerPlayer.seatIndex;
 
-    // Check if round is over (all hands empty)
     if (isLastTrick) {
       return { ...this._finishRound(), trickComplete: true, completedTrick };
     }
@@ -306,12 +331,12 @@ class GameState {
   _finishRound() {
     this.phase = GAME_PHASES.SCORING;
 
-    const attackingScore  = this.scores[this.attackingTeam];
-    const defendingTeam   = this.attackingTeam === 0 ? 1 : 0;
+    const attackingScore = this.scores[this.attackingTeam];
+    const defendingTeam  = this.attackingTeam === 0 ? 1 : 0;
+    const threshold      = LEVEL_THRESHOLDS[this.trumpRank];
+    const attackingWon   = attackingScore >= threshold;
 
-    const attackingWon = attackingScore >= WINNING_THRESHOLD;
-
-    // Accumulate round scores
+    // Accumulate round-wins
     if (attackingWon) {
       this.roundScores[this.attackingTeam] += 1;
     } else {
@@ -321,8 +346,8 @@ class GameState {
     // Check for overall winner (first to 3 rounds)
     let gameOver = false;
     if (this.roundScores[0] >= 3 || this.roundScores[1] >= 3) {
-      gameOver   = true;
-      this.phase = GAME_PHASES.GAME_OVER;
+      gameOver    = true;
+      this.phase  = GAME_PHASES.GAME_OVER;
       this.winner = this.roundScores[0] >= 3 ? 0 : 1;
     }
 
@@ -332,6 +357,7 @@ class GameState {
       gameOver,
       attackingTeam: this.attackingTeam,
       attackingWon,
+      threshold,
       scores:        this.scores,
       roundScores:   this.roundScores,
       winner:        this.winner,
@@ -352,6 +378,7 @@ class GameState {
         Object.entries(this.hands).map(([id, cards]) => [id, cards.map(c => c.toJSON())])
       ),
       trumpSuit:     this.trumpSuit,
+      trumpRank:     this.trumpRank,
       trumpDeclarer: this.trumpDeclarer,
       attackingTeam: this.attackingTeam,
       currentTrick:  this.currentTrick.map(e => ({ socketId: e.socketId, card: e.card.toJSON() })),
@@ -361,13 +388,13 @@ class GameState {
       roundScores:   this.roundScores,
       winner:        this.winner,
       roundNumber:   this.roundNumber,
+      threshold:     LEVEL_THRESHOLDS[this.trumpRank],
     };
   }
 
   /** Per-player state snapshot — omits other players' hands */
   toPlayerJSON(socketId) {
     const full = this.toFullJSON();
-    // Replace all hands with only this player's hand
     full.myHand = (this.hands[socketId] || []).map(c => c.toJSON());
     full.handCounts = Object.fromEntries(
       Object.entries(this.hands).map(([id, cards]) => [id, cards.length])
