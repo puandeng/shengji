@@ -7,13 +7,14 @@ const RED_SUITS    = new Set(['H', 'D']);
 /**
  * Card component
  * Props:
- *   card        — card object { id, suit, rank, points }
- *   selected    — bool, whether card is selected (for multi-select)
+ *   card        — card object { id, suit, rank, points, isJoker, isSmallJoker, isBigJoker }
+ *   selected    — bool
  *   onClick     — handler
  *   disabled    — bool
- *   faceDown    — bool, show card back
- *   size        — 'sm' | 'md' | 'lg' (default 'md')
- *   highlight   — bool, glow effect (e.g. when it's a point card)
+ *   faceDown    — bool
+ *   size        — 'sm' | 'md' | 'lg'
+ *   highlight   — bool (point card glow)
+ *   isTrump     — bool (trump border indicator)
  */
 export default function Card({
   card,
@@ -23,20 +24,29 @@ export default function Card({
   faceDown  = false,
   size      = 'md',
   highlight = false,
+  isTrump   = false,
 }) {
   if (!card) return null;
 
-  const isRed  = RED_SUITS.has(card.suit);
-  const symbol = SUIT_SYMBOLS[card.suit] || '?';
+  const isJoker  = card.isJoker || card.suit === 'JOKER';
+  const isBig    = card.isBigJoker   || card.rank === 'BJ';
+  const isSmall  = card.isSmallJoker || card.rank === 'SJ';
+  const isRed    = !isJoker && RED_SUITS.has(card.suit);
+  const symbol   = SUIT_SYMBOLS[card.suit] || '';
+
+  const label    = isBig ? 'BJ' : isSmall ? 'SJ' : card.rank;
+  const centerSym = isBig ? '★' : isSmall ? '☆' : symbol;
 
   const classes = [
     'card',
     `card--${size}`,
-    isRed    ? 'card--red'       : 'card--black',
-    selected  ? 'card--selected'  : '',
-    disabled  ? 'card--disabled'  : '',
-    highlight ? 'card--highlight' : '',
-    faceDown  ? 'card--facedown'  : '',
+    isJoker              ? (isBig ? 'card--joker-big' : 'card--joker-small') : '',
+    !isJoker && isRed    ? 'card--red'       : (!isJoker ? 'card--black' : ''),
+    selected             ? 'card--selected'  : '',
+    disabled             ? 'card--disabled'  : '',
+    highlight            ? 'card--highlight' : '',
+    isTrump && !selected ? 'card--trump'     : '',
+    faceDown             ? 'card--facedown'  : '',
     onClick && !disabled ? 'card--clickable' : '',
   ].filter(Boolean).join(' ');
 
@@ -48,20 +58,24 @@ export default function Card({
     );
   }
 
+  const titleStr = isJoker
+    ? (isBig ? 'Big Joker' : 'Small Joker')
+    : `${card.rank}${symbol}${card.points ? ` (${card.points}pts)` : ''}`;
+
   return (
     <div
       className={classes}
       onClick={disabled ? undefined : onClick}
-      title={`${card.rank}${symbol}${card.points ? ` (${card.points}pts)` : ''}`}
+      title={titleStr}
     >
       <div className="card__corner card__corner--top-left">
-        <span className="card__rank">{card.rank}</span>
-        <span className="card__suit">{symbol}</span>
+        <span className="card__rank">{label}</span>
+        {!isJoker && <span className="card__suit">{symbol}</span>}
       </div>
-      <div className="card__center">{symbol}</div>
+      <div className="card__center">{centerSym}</div>
       <div className="card__corner card__corner--bottom-right">
-        <span className="card__rank">{card.rank}</span>
-        <span className="card__suit">{symbol}</span>
+        <span className="card__rank">{label}</span>
+        {!isJoker && <span className="card__suit">{symbol}</span>}
       </div>
       {card.points > 0 && (
         <div className="card__points-badge">{card.points}</div>

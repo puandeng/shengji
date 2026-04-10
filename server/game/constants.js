@@ -32,6 +32,9 @@ const SUIT_SYMBOLS = {
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
+// Ordered level progression — index 0 = starting level, index 12 = highest
+const LEVEL_ORDER = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
 // Joker ranks — suit is always 'JOKER'
 const JOKER_RANKS = {
   SMALL: 'SJ',
@@ -115,6 +118,7 @@ module.exports = {
   SUIT_NAMES,
   SUIT_SYMBOLS,
   RANKS,
+  LEVEL_ORDER,
   JOKER_RANKS,
   POINT_VALUES,
   RANK_ORDER,

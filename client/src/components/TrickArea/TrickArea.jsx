@@ -3,49 +3,54 @@ import Card from '../Card/Card';
 import './TrickArea.css';
 
 /**
- * TrickArea shows the 4 cards currently played in the trick,
- * positioned relative to the current player's perspective.
- * Props: mySeat, oppositeSeat, leftSeat, rightSeat are the actual seat indices.
+ * TrickArea shows the cards played in the current trick.
+ * Each player position shows all cards they played (supporting multi-card plays).
  */
 export default function TrickArea({ trick = [], players = [], mySeat = 0, oppositeSeat = 2, leftSeat = 3, rightSeat = 1 }) {
-  // Map socketId → card
-  const cardBySocket = {};
-  trick.forEach(({ socketId, card }) => { cardBySocket[socketId] = card; });
+  // Map socketId → cards[] (multi-card support)
+  const cardsBySocket = {};
+  trick.forEach(({ socketId, cards, card }) => {
+    // Support both new `cards` array and legacy `card` single
+    cardsBySocket[socketId] = cards || (card ? [card] : []);
+  });
 
-  const getCardForSeat = (seat) => {
+  const getCardsForSeat = (seat) => {
     const player = players.find(p => p.seatIndex === seat);
-    return player ? cardBySocket[player.socketId] : null;
+    return player ? (cardsBySocket[player.socketId] || []) : [];
   };
 
   return (
     <div className="trick-area">
-      {/* Top: player opposite */}
       <div className="trick-area__slot trick-area__top">
-        <TrickCard card={getCardForSeat(oppositeSeat)} />
+        <TrickSlot cards={getCardsForSeat(oppositeSeat)} />
       </div>
 
-      {/* Middle row: left player, centre, right player */}
       <div className="trick-area__middle">
         <div className="trick-area__slot trick-area__left">
-          <TrickCard card={getCardForSeat(leftSeat)} />
+          <TrickSlot cards={getCardsForSeat(leftSeat)} />
         </div>
         <div className="trick-area__centre" />
         <div className="trick-area__slot trick-area__right">
-          <TrickCard card={getCardForSeat(rightSeat)} />
+          <TrickSlot cards={getCardsForSeat(rightSeat)} />
         </div>
       </div>
 
-      {/* Bottom: me */}
       <div className="trick-area__slot trick-area__bottom">
-        <TrickCard card={getCardForSeat(mySeat)} />
+        <TrickSlot cards={getCardsForSeat(mySeat)} />
       </div>
     </div>
   );
 }
 
-function TrickCard({ card }) {
-  if (!card) {
+function TrickSlot({ cards }) {
+  if (!cards || cards.length === 0) {
     return <div className="trick-area__placeholder" />;
   }
-  return <Card card={card} size="md" />;
+  return (
+    <div className="trick-area__combo">
+      {cards.map((card, i) => (
+        <Card key={card?.id ?? i} card={card} size="md" />
+      ))}
+    </div>
+  );
 }
