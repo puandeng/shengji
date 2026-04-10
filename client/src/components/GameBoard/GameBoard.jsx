@@ -48,12 +48,12 @@ export default function GameBoard() {
     setSelectedCards(prev =>
       prev.includes(card.id)
         ? prev.filter(id => id !== card.id)
-        : prev.length < 4 ? [...prev, card.id] : prev
+        : prev.length < 8 ? [...prev, card.id] : prev
     );
   }
 
   function handleDiscardKitty() {
-    if (selectedCards.length !== 4) return;
+    if (selectedCards.length !== 8) return;
     discardKitty(selectedCards).then(() => setSelectedCards([])).catch(() => {});
   }
 
@@ -135,8 +135,8 @@ export default function GameBoard() {
         )}
         {isKittyPhase && isKittyDeclarer && (
           <div className="kitty-actions">
-            <p className="prompt-text">Select 4 cards to discard to the kitty ({selectedCards.length}/4 selected)</p>
-            <button className="btn-primary" onClick={handleDiscardKitty} disabled={selectedCards.length !== 4}>
+            <p className="prompt-text">Select 8 cards to discard to the kitty ({selectedCards.length}/8 selected)</p>
+            <button className="btn-primary" onClick={handleDiscardKitty} disabled={selectedCards.length !== 8}>
               Discard Selected
             </button>
           </div>

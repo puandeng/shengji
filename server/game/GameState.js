@@ -67,7 +67,7 @@ class GameState {
     const seatIndex = this.players.length;
     const teamIndex = TEAM_ASSIGNMENTS[seatIndex];
 
-    const player = { socketId, name, seatIndex, teamIndex };
+    const player = { socketId, name, seatIndex, teamIndex, connected: true };
     this.players.push(player);
     return { player };
   }
@@ -75,8 +75,51 @@ class GameState {
   removePlayer(socketId) {
     const idx = this.players.findIndex(p => p.socketId === socketId);
     if (idx === -1) return;
+
+    // During an active game, mark as disconnected instead of removing
+    if (this.phase !== GAME_PHASES.WAITING) {
+      this.players[idx].connected = false;
+      return;
+    }
+
     this.players.splice(idx, 1);
     delete this.hands[socketId];
+  }
+
+  /**
+   * Reconnect a player by swapping their old socketId for a new one.
+   * Preserves seat, team, and hand.
+   */
+  reconnectPlayer(oldSocketId, newSocketId) {
+    const player = this.getPlayer(oldSocketId);
+    if (!player) return { error: 'Player not found' };
+
+    // Update socketId in player object
+    player.socketId = newSocketId;
+    player.connected = true;
+
+    // Move hand to new socketId
+    if (this.hands[oldSocketId]) {
+      this.hands[newSocketId] = this.hands[oldSocketId];
+      delete this.hands[oldSocketId];
+    }
+
+    // Update trumpDeclarer if it was this player
+    if (this.trumpDeclarer === oldSocketId) {
+      this.trumpDeclarer = newSocketId;
+    }
+
+    // Update currentTrick entries
+    this.currentTrick.forEach(entry => {
+      if (entry.socketId === oldSocketId) entry.socketId = newSocketId;
+    });
+
+    return { player };
+  }
+
+  /** Find a disconnected player by name */
+  getDisconnectedPlayer(name) {
+    return this.players.find(p => p.connected === false && p.name === name);
   }
 
   getPlayer(socketId) {

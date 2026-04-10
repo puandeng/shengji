@@ -32,7 +32,7 @@ function handleDisconnect(io, socket, registry) {
     roomState: room.toLobbyJSON(),
   });
 
-  // Clean up empty rooms
+  // Clean up empty rooms (all players gone or disconnected)
   if (room.isEmpty) {
     registry.delete(room.code);
     console.log(`[Room] Deleted empty room ${room.code}`);

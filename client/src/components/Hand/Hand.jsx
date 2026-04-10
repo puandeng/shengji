@@ -19,10 +19,16 @@ export default function Hand({ cards = [], selectedCards = [], onCardClick, isMy
 
   const sorted = useMemo(() => {
     return [...cards].sort((a, b) => {
-      // Trump cards go to the right
-      const aTrump = trumpSuit && a.suit === trumpSuit ? 1 : 0;
-      const bTrump = trumpSuit && b.suit === trumpSuit ? 1 : 0;
+      // Trump cards (including jokers) go to the right
+      const aTrump = (trumpSuit && a.suit === trumpSuit) || a.isJoker ? 1 : 0;
+      const bTrump = (trumpSuit && b.suit === trumpSuit) || b.isJoker ? 1 : 0;
       if (aTrump !== bTrump) return aTrump - bTrump;
+      // Within trump group, jokers sort to the end (highest)
+      if (aTrump && bTrump) {
+        if (a.isJoker && !b.isJoker) return 1;
+        if (!a.isJoker && b.isJoker) return -1;
+        if (a.isJoker && b.isJoker) return a.isBigJoker ? 1 : -1;
+      }
       const suitDiff = (SUIT_ORDER[a.suit] ?? 99) - (SUIT_ORDER[b.suit] ?? 99);
       if (suitDiff !== 0) return suitDiff;
       return (RANK_ORDER[a.rank] ?? 0) - (RANK_ORDER[b.rank] ?? 0);
@@ -37,7 +43,7 @@ export default function Hand({ cards = [], selectedCards = [], onCardClick, isMy
         {sorted.map((card) => {
           const isSelected   = selectedCards.includes(card.id);
           const isHighlighted = card.points > 0;
-          const isTrump      = trumpSuit && card.suit === trumpSuit;
+          const isTrump      = card.isJoker || (trumpSuit && card.suit === trumpSuit);
 
           return (
             <Card

@@ -6,13 +6,14 @@ export default function ScoringModal() {
   const { gameState, myPlayer, startNewRound } = useGame();
   if (!gameState) return null;
 
-  const { phase, scores, roundScores, attackingTeam, winner } = gameState;
+  const { phase, scores, roundScores, attackingTeam, winner, threshold } = gameState;
   const isGameOver = phase === 'GAME_OVER';
 
   const attacking = attackingTeam ?? 0;
   const defending = attacking === 0 ? 1 : 0;
   const attackingScore = scores?.[attacking] ?? 0;
-  const attackingWon   = attackingScore >= 100;
+  const roundThreshold = threshold ?? 80;
+  const attackingWon   = attackingScore >= roundThreshold;
 
   const isHost = myPlayer?.seatIndex === 0;
 
@@ -38,8 +39,8 @@ export default function ScoringModal() {
         )}
 
         <div className="scoring-points">
-          <ScoreRow label="Team 1 points" value={scores?.[0] ?? 0} />
-          <ScoreRow label="Team 2 points" value={scores?.[1] ?? 0} />
+          <ScoreRow label={`Attacking (Team ${attacking + 1}) points`} value={attackingScore} />
+          <ScoreRow label="Threshold to win round" value={roundThreshold} />
         </div>
 
         <div className="scoring-rounds">

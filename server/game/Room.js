@@ -35,6 +35,15 @@ class Room {
 
   removePlayer(socketId) {
     this.game.removePlayer(socketId);
+
+    // If the disconnected player's turn is now, auto-play for them
+    if (this.game.phase === GAME_PHASES.PLAYING && this.game.currentPlayerSocketId === socketId) {
+      this.scheduleBotPlay();
+    }
+  }
+
+  reconnectPlayer(oldSocketId, newSocketId) {
+    return this.game.reconnectPlayer(oldSocketId, newSocketId);
   }
 
   get playerCount() {
@@ -46,7 +55,8 @@ class Room {
   }
 
   get isEmpty() {
-    return this.playerCount === 0;
+    // Only truly empty if all players are gone (not just disconnected)
+    return this.game.players.every(p => p.connected === false) || this.game.players.length === 0;
   }
 
   // ─────────────────────────────────────────────
@@ -119,16 +129,22 @@ class Room {
   }
 
   // ─────────────────────────────────────────────
-  // Bot orchestration (DEV_MODE only)
+  // Bot / disconnected player auto-play
   // ─────────────────────────────────────────────
 
-  /** If the current player is a bot, schedule their move after a short delay. */
+  /** Whether a player should be auto-played (bot or disconnected human). */
+  _shouldAutoPlay(socketId) {
+    if (BotPlayer.isBot(socketId)) return true;
+    const player = this.game.getPlayer(socketId);
+    return player && player.connected === false;
+  }
+
+  /** If the current player needs auto-play, schedule their move after a short delay. */
   scheduleBotPlay() {
-    if (!this.devMode) return;
     if (this.game.phase !== GAME_PHASES.PLAYING) return;
 
     const currentSocketId = this.game.currentPlayerSocketId;
-    if (!BotPlayer.isBot(currentSocketId)) return;
+    if (!this._shouldAutoPlay(currentSocketId)) return;
 
     const timer = setTimeout(() => {
       this._executeBotTurn();
@@ -140,7 +156,7 @@ class Room {
     if (this.game.phase !== GAME_PHASES.PLAYING) return;
 
     const socketId = this.game.currentPlayerSocketId;
-    if (!BotPlayer.isBot(socketId)) return;
+    if (!this._shouldAutoPlay(socketId)) return;
 
     const hand = this.game.hands[socketId];
     const cardId = BotPlayer.chooseLegalCard(hand, this.game.currentTrick, this.game.trumpSuit);
@@ -193,10 +209,9 @@ class Room {
     }
   }
 
-  /** If the trump declarer is a bot, auto-discard kitty cards. */
+  /** If the trump declarer is a bot or disconnected, auto-discard kitty cards. */
   scheduleBotKittyDiscard() {
-    if (!this.devMode) return;
-    if (!BotPlayer.isBot(this.game.trumpDeclarer)) return;
+    if (!this._shouldAutoPlay(this.game.trumpDeclarer)) return;
 
     const timer = setTimeout(() => {
       const hand = this.game.hands[this.game.trumpDeclarer];
