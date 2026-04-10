@@ -32,10 +32,11 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
   Update `Card.beats()` and probably introduce a `compareCards(a, b, trumpSuit, trumpRank)` helper.
 - [ ] **Trump level progression.** Each team has a "level" starting at 2. Winning a round advances your team's level by an amount based on margin of victory (e.g., +1, +2, +3). The trump *rank* for the next round is the attacking team's current level. Match is won when a team levels past A. Replaces the current "first to 3 rounds" win condition.
 - [ ] **Draw / dynamic trump calling mechanic.** Replace the timed `TRUMP_SELECTION` phase with the real bidding mechanic:
-  - Cards are dealt one at a time (or in chunks); during dealing any player holding a card matching the current trump *rank* may "call" by revealing it, setting that suit as trump.
-  - A later player holding a *pair* of the trump rank can override.
-  - A player holding the matching jokers can override anything.
-  - If nobody calls by the end of the deal, the kitty's first card determines trump (or the dealer is forced to call — pick one rule and document it).
+  - Cards are dealt **one at a time** to each player in turn order. During dealing, any player (not just the host) may declare trump by revealing one or more cards matching the current trump *rank*.
+  - A declaration must show more trump-rank cards than the current standing declaration. E.g., if player A declared with 1 card, player B can only override by declaring with 2 cards of a (possibly different) suit.
+  - The player whose declaration stands at the end of dealing wins the bid — their team becomes the attacking team and that player picks up the kitty.
+  - If nobody declares by the end of the deal, fall back to a forced call (e.g., dealer must declare, or the kitty's first card determines trump — pick one rule and document it).
+  - **Current bug:** only the host (seat 0) can declare trump, and the timer-based `TRUMP_SELECTION` phase doesn't deal cards one at a time. Both need to be replaced.
 - [ ] **Point collection pile in the middle.** When the attacking team wins a trick that contains point cards (5/10/K), animate those point cards moving to a shared pile in the center of the board. This makes it visually clear that:
   - Only attacking-team captures count
   - The running point total is visible to everyone
@@ -59,6 +60,10 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 
 ## Dev experience
 - [ ] **Single-player dev mode.** Testing currently requires 4 browser tabs. Add a `DEV_MODE` env var (server) that lets `Room.startGame()` proceed with <4 players, filling empty seats with stub/bot players that auto-play legal moves. Make it obvious in the UI when dev mode is active.
+
+## UI polish
+- [ ] **Joker card visuals.** Replace the current "BJ"/"SJ" text labels with proper joker imagery. Big joker should display a **colored** joker image; small joker should display a **black-and-white** joker image. This makes them instantly distinguishable at a glance.
+- [ ] **Larger card sizes.** Increase card dimensions so they fill more of the screen, reducing the amount of empty green background. Cards should feel prominent and easy to interact with.
 
 ## Cleanup / follow-ups noticed while reviewing the code
 - [ ] `Room.startNewRound()` hardcodes `>= 100` instead of using the constant — moot once the threshold logic is rewritten, but flag it.
