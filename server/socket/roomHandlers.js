@@ -18,6 +18,7 @@ function setupRoomHandlers(io, socket, registry) {
       }
 
       const room   = registry.create();
+      room.setIO(io);
       const result = room.addPlayer(socket.id, name.trim().slice(0, 20));
 
       if (result.error) return callback?.({ error: result.error });
@@ -99,6 +100,7 @@ function setupRoomHandlers(io, socket, registry) {
             ...stateForPlayer,
           });
         });
+        room.scheduleBotKittyDiscard();
       });
 
       console.log(`[Room] Game started in room ${room.code}`);
@@ -133,6 +135,7 @@ function setupRoomHandlers(io, socket, registry) {
             ...room.toGameStateFor(p.socketId),
           });
         });
+        room.scheduleBotKittyDiscard();
       });
 
       callback?.({ success: true });

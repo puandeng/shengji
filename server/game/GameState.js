@@ -36,6 +36,7 @@ const {
 class GameState {
   constructor(roomId) {
     this.roomId         = roomId;
+    this.devMode        = false;
     this.phase          = GAME_PHASES.WAITING;
     this.players        = [];      // Array of player objects { socketId, name, seatIndex, teamIndex }
     this.hands          = {};      // { socketId: Card[] }
@@ -87,6 +88,7 @@ class GameState {
   }
 
   isReady() {
+    if (this.devMode) return this.players.length >= 1 && this.players.length <= PLAYERS_PER_ROOM;
     return this.players.length === PLAYERS_PER_ROOM;
   }
 

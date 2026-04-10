@@ -22,6 +22,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: '200 Card Game Server running' });
 });
 
+// Client config (exposes DEV_MODE flag so the UI can adapt)
+app.get('/config', (req, res) => {
+  res.json({ devMode: !!process.env.DEV_MODE });
+});
+
 // Set up all socket handlers
 setupSocketHandlers(io);
 

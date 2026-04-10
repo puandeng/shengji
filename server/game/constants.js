@@ -110,6 +110,9 @@ const LEVEL_THRESHOLDS = {
 // Trump declaration time limit (seconds)
 const TRUMP_DECLARATION_TIMEOUT = 30;
 
+// Delay before a bot auto-plays (ms) — gives humans time to follow the action
+const BOT_PLAY_DELAY_MS = 500;
+
 module.exports = {
   SUITS,
   SUIT_NAMES,
@@ -127,4 +130,5 @@ module.exports = {
   STARTING_LEVEL,
   LEVEL_THRESHOLDS,
   TRUMP_DECLARATION_TIMEOUT,
+  BOT_PLAY_DELAY_MS,
 };

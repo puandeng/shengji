@@ -28,3 +28,18 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.dev-mode-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #ff9800;
+  color: #000;
+  text-align: center;
+  padding: 4px;
+  font-weight: bold;
+  font-size: 12px;
+  z-index: 1000;
+  letter-spacing: 2px;
+}

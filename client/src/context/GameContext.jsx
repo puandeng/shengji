@@ -3,6 +3,8 @@ import { useSocket } from './SocketContext';
 
 const GameContext = createContext(null);
 
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+
 const INITIAL_STATE = {
   screen:        'home',   // 'home' | 'lobby' | 'game'
   myPlayer:      null,     // { socketId, name, seatIndex, teamIndex }
@@ -11,6 +13,7 @@ const INITIAL_STATE = {
   error:         null,
   notification:  null,
   chatMessages:  [],
+  devMode:       false,
 };
 
 function reducer(state, action) {
@@ -68,6 +71,9 @@ function reducer(state, action) {
     case 'ADD_CHAT':
       return { ...state, chatMessages: [...state.chatMessages.slice(-99), action.payload] };
 
+    case 'SET_DEV_MODE':
+      return { ...state, devMode: action.payload };
+
     case 'RESET':
       return { ...INITIAL_STATE };
 
@@ -79,6 +85,14 @@ function reducer(state, action) {
 export function GameProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const { socket }        = useSocket();
+
+  // ── Fetch server config (dev mode flag) ──────────────────────────────────
+  useEffect(() => {
+    fetch(`${SERVER_URL}/config`)
+      .then(res => res.json())
+      .then(data => dispatch({ type: 'SET_DEV_MODE', payload: !!data.devMode }))
+      .catch(() => {}); // non-critical — default to false
+  }, []);
 
   // ── Socket event listeners ──────────────────────────────────────────────
   useEffect(() => {
