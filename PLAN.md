@@ -60,6 +60,15 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 ## Dev experience
 - [x] **Single-player dev mode.** Testing currently requires 4 browser tabs. Add a `DEV_MODE` env var (server) that lets `Room.startGame()` proceed with <4 players, filling empty seats with stub/bot players that auto-play legal moves. Make it obvious in the UI when dev mode is active.
 
+## Bug fixes
+- [ ] **Kitty discard UI hardcodes 4 instead of 8.** `GameBoard.jsx` limits card selection to 4 (`prev.length < 4`) and requires exactly 4 to discard (`selectedCards.length !== 4`). The prompt text also says "4 cards". But `KITTY_SIZE` is 8. The declarer picks up 8 kitty cards and must discard 8 back.
+- [ ] **ScoringModal hardcodes `>= 100` threshold.** `ScoringModal.jsx:15` uses `attackingScore >= 100` to determine the round winner, but the actual threshold varies by trump rank (80 for levels 2–K, 120 for A). The server already sends `threshold` in the game state — use it instead.
+- [ ] **Hand sorting doesn't group jokers with trump.** In `Hand.jsx`, the trump sort check is `a.suit === trumpSuit`, but jokers have `suit: 'JOKER'`, so they fall through to the `SUIT_ORDER` lookup (getting 99) and sort to the far end, separated from other trump cards. Jokers should be grouped with the trump suit.
+- [ ] **Disconnect mid-game breaks the room.** `handleDisconnect` in `server/socket/index.js` calls `room.removePlayer()` which splices the player from the array and deletes their hand. This breaks trick completion (expects 4 plays), seat advancement, and the `currentPlayerSocketId` getter. The game becomes unplayable for remaining players with no error message or recovery.
+- [ ] **No reconnection support.** If a player refreshes, they get a new socket ID and lose their seat. The `room:state` handler only works if the original socket ID is still tracked. There's no mechanism to rejoin a game in progress (e.g., by name + room code).
+- [ ] **Dev mode banner overlaps trump/team info.** The fixed-position "DEV MODE" indicator bar at the top of the game screen (`Game.css .dev-mode-indicator`) sits on top of the `TrumpBanner` component, hiding the trump suit and attacking team info. Needs either a top margin/padding on the game board when dev mode is active, or the banner should be positioned within the layout flow instead of `position: fixed`.
+- [ ] **Scores display shows both teams' points but only attackers score.** `ScoringModal.jsx` shows "Team 1 points" and "Team 2 points" side by side, but the defending team's score is always 0 by design. This is confusing — should show attacker score vs. threshold instead, or at minimum label which team is attacking/defending.
+
 ## Cleanup / follow-ups noticed while reviewing the code
 - [ ] `Room.startNewRound()` hardcodes `>= 100` instead of using the constant — moot once the threshold logic is rewritten, but flag it.
 - [ ] `constants.js` comment vs. old SETUP.md disagreed on team seat numbering (0-indexed vs 1-indexed). CLAUDE.md now uses 0-indexed; double-check the client UI labels match.
