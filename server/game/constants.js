@@ -3,10 +3,10 @@
  *
  * Game Overview:
  * - 4 players split into 2 teams (Team 0: seats 0&2, Team 1: seats 1&3)
- * - Uses 2 standard 52-card decks (104 cards total)
+ * - Uses 2 standard 52-card decks + 4 jokers (108 cards total)
  * - Point cards: 5=5pts, 10=10pts, K=10pts → 200 total points in play
  * - Attacking team tries to collect points; defending team tries to block
- * - Attacking team wins if they score >= 200 points (or threshold)
+ * - Only the attacking team's captured points count toward the round threshold
  */
 
 const SUITS = {
@@ -31,6 +31,12 @@ const SUIT_SYMBOLS = {
 };
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+// Joker ranks — suit is always 'JOKER'
+const JOKER_RANKS = {
+  SMALL: 'SJ',
+  BIG:   'BJ',
+};
 
 // Point values for scoring cards
 const POINT_VALUES = {
@@ -75,11 +81,31 @@ const TEAM_ASSIGNMENTS = {
   3: 1,
 };
 
-const PLAYERS_PER_ROOM  = 4;
-const CARDS_PER_PLAYER  = 25; // 4 players × 25 = 100, leaving 4 for kitty
-const KITTY_SIZE        = 4;
-const TOTAL_POINTS      = 200; // Total point cards in 2 decks
-const WINNING_THRESHOLD = 100; // Attacking team needs ≥ 100 to win a round
+const PLAYERS_PER_ROOM = 4;
+const CARDS_PER_PLAYER = 25;  // 4 players × 25 = 100, leaving 8 for kitty
+const KITTY_SIZE       = 8;   // 108 cards − (4 × 25) = 8
+const TOTAL_POINTS     = 200; // Total point cards across 2 decks
+
+// Trump rank/level starts at '2' and advances toward 'A' as teams win rounds.
+const STARTING_LEVEL = '2';
+
+// Points the attacking team must reach to win the round, keyed by current trump rank.
+// Defending team never accumulates points — they only deny the attackers.
+const LEVEL_THRESHOLDS = {
+  '2':  80,
+  '3':  80,
+  '4':  80,
+  '5':  80,
+  '6':  80,
+  '7':  80,
+  '8':  80,
+  '9':  80,
+  '10': 80,
+  'J':  80,
+  'Q':  80,
+  'K':  80,
+  'A':  120,
+};
 
 // Trump declaration time limit (seconds)
 const TRUMP_DECLARATION_TIMEOUT = 30;
@@ -89,6 +115,7 @@ module.exports = {
   SUIT_NAMES,
   SUIT_SYMBOLS,
   RANKS,
+  JOKER_RANKS,
   POINT_VALUES,
   RANK_ORDER,
   GAME_PHASES,
@@ -97,6 +124,7 @@ module.exports = {
   CARDS_PER_PLAYER,
   KITTY_SIZE,
   TOTAL_POINTS,
-  WINNING_THRESHOLD,
+  STARTING_LEVEL,
+  LEVEL_THRESHOLDS,
   TRUMP_DECLARATION_TIMEOUT,
 };

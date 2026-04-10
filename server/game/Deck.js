@@ -1,5 +1,5 @@
 const Card  = require('./Card');
-const { SUITS, RANKS } = require('./constants');
+const { SUITS, RANKS, JOKER_RANKS } = require('./constants');
 
 class Deck {
   constructor() {
@@ -7,7 +7,7 @@ class Deck {
     this._build();
   }
 
-  /** Build 2 standard 52-card decks (104 cards total) */
+  /** Build 2 standard 52-card decks + 2 small jokers + 2 big jokers = 108 cards */
   _build() {
     this.cards = [];
     for (let deckIndex = 0; deckIndex < 2; deckIndex++) {
@@ -16,6 +16,9 @@ class Deck {
           this.cards.push(new Card(suit, rank, deckIndex));
         }
       }
+      // One small joker and one big joker per deck
+      this.cards.push(new Card('JOKER', JOKER_RANKS.SMALL, deckIndex));
+      this.cards.push(new Card('JOKER', JOKER_RANKS.BIG,   deckIndex));
     }
   }
 

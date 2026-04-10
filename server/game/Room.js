@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const GameState = require('./GameState');
-const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT } = require('./constants');
+const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS } = require('./constants');
 
 /**
  * Room encapsulates a single game lobby + game session.
@@ -93,7 +93,8 @@ class Room {
     this.game.roundNumber++;
     // Loser of previous round attacks next
     const prevAttacking = this.game.attackingTeam;
-    const prevWon       = this.game.scores[prevAttacking] >= 100;
+    const threshold     = LEVEL_THRESHOLDS[this.game.trumpRank];
+    const prevWon       = this.game.scores[prevAttacking] >= threshold;
     if (!prevWon) {
       this.game.attackingTeam = prevAttacking === 0 ? 1 : 0;
     }
