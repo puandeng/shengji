@@ -69,6 +69,11 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [x] **Dev mode banner overlaps trump/team info.** The fixed-position "DEV MODE" indicator bar at the top of the game screen (`Game.css .dev-mode-indicator`) sits on top of the `TrumpBanner` component, hiding the trump suit and attacking team info. Needs either a top margin/padding on the game board when dev mode is active, or the banner should be positioned within the layout flow instead of `position: fixed`.
 - [x] **Scores display shows both teams' points but only attackers score.** `ScoringModal.jsx` shows "Team 1 points" and "Team 2 points" side by side, but the defending team's score is always 0 by design. This is confusing — should show attacker score vs. threshold instead, or at minimum label which team is attacking/defending.
 
+## TODO
+- [ ] **Display current trump rank per team instead of match points.** Replace the round-win stars (★/☆) in the score UI with each team's current trump card rank (e.g., "Team 1: Level 5", "Team 2: Level 3"). This reflects the real Sheng Ji progression system where teams advance their level rather than accumulating match points.
+- [ ] **Increase bot play delay to 0.7s.** Change `BOT_PLAY_DELAY_MS` from 500 to 700 so there's more time to follow the action in dev mode.
+- [ ] **Show bot's last played card before starting next turn.** When a bot plays a card, ensure the card is visually displayed in the trick area for the full delay duration before the next bot takes its turn. Currently bot plays may chain too fast for the client to render each card individually.
+
 ## Cleanup / follow-ups noticed while reviewing the code
 - [ ] `Room.startNewRound()` hardcodes `>= 100` instead of using the constant — moot once the threshold logic is rewritten, but flag it.
 - [ ] `constants.js` comment vs. old SETUP.md disagreed on team seat numbering (0-indexed vs 1-indexed). CLAUDE.md now uses 0-indexed; double-check the client UI labels match.
