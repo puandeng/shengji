@@ -50,6 +50,10 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 ## Dev experience
 - [ ] **Single-player dev mode.** Testing currently requires 4 browser tabs. Add a `DEV_MODE` env var (server) that lets `Room.startGame()` proceed with <4 players, filling empty seats with stub/bot players that auto-play legal moves. Make it obvious in the UI when dev mode is active.
 
+## UI polish
+- [ ] **Joker card visuals.** Replace the current "BJ"/"SJ" text labels with proper joker imagery. Big joker should display a **colored** joker image; small joker should display a **black-and-white** joker image. This makes them instantly distinguishable at a glance.
+- [ ] **Larger card sizes.** Increase card dimensions so they fill more of the screen, reducing the amount of empty green background. Cards should feel prominent and easy to interact with.
+
 ## Cleanup / follow-ups noticed while reviewing the code
 - [ ] `Room.startNewRound()` hardcodes `>= 100` instead of using the constant — moot once the threshold logic is rewritten, but flag it.
 - [ ] `constants.js` comment vs. old SETUP.md disagreed on team seat numbering (0-indexed vs 1-indexed). CLAUDE.md now uses 0-indexed; double-check the client UI labels match.
