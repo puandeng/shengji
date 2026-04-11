@@ -6,14 +6,13 @@ export default function ScoringModal() {
   const { gameState, myPlayer, startNewRound } = useGame();
   if (!gameState) return null;
 
-  const { phase, scores, roundScores, attackingTeam, winner, threshold } = gameState;
+  const { phase, scores, teamLevels, roundScores, attackingTeam, winner, threshold } = gameState;
   const isGameOver = phase === 'GAME_OVER';
 
-  const attacking = attackingTeam ?? 0;
-  const defending = attacking === 0 ? 1 : 0;
+  const attacking      = attackingTeam ?? 0;
+  const defending      = attacking === 0 ? 1 : 0;
   const attackingScore = scores?.[attacking] ?? 0;
-  const roundThreshold = threshold ?? 80;
-  const attackingWon   = attackingScore >= roundThreshold;
+  const attackingWon   = attackingScore >= (threshold ?? 80);
 
   const isHost = myPlayer?.seatIndex === 0;
 
@@ -21,7 +20,7 @@ export default function ScoringModal() {
     <div className="scoring-overlay">
       <div className="scoring-modal">
         <h2 className="scoring-title">
-          {isGameOver ? '🏆 Game Over!' : '📊 Round Results'}
+          {isGameOver ? 'Game Over!' : 'Round Results'}
         </h2>
 
         {isGameOver ? (
@@ -39,20 +38,17 @@ export default function ScoringModal() {
         )}
 
         <div className="scoring-points">
-          <ScoreRow label={`Attacking (Team ${attacking + 1}) points`} value={attackingScore} />
-          <ScoreRow label="Threshold to win round" value={roundThreshold} />
+          <ScoreRow label={`Team 1 captured`} value={`${scores?.[0] ?? 0} pts`} />
+          <ScoreRow label={`Team 2 captured`} value={`${scores?.[1] ?? 0} pts`} />
+          {threshold != null && (
+            <ScoreRow label="Threshold" value={`${threshold} pts`} highlight />
+          )}
         </div>
 
         <div className="scoring-rounds">
-          <h3>Match Score (rounds won)</h3>
-          <div className="scoring-rounds__row">
-            <span>Team 1</span>
-            <span className="scoring-rounds__stars">{renderStars(roundScores?.[0] ?? 0)}</span>
-          </div>
-          <div className="scoring-rounds__row">
-            <span>Team 2</span>
-            <span className="scoring-rounds__stars">{renderStars(roundScores?.[1] ?? 0)}</span>
-          </div>
+          <h3>Team Levels</h3>
+          <LevelRow team="Team 1" level={teamLevels?.[0] ?? '2'} isWinner={winner === 0} />
+          <LevelRow team="Team 2" level={teamLevels?.[1] ?? '2'} isWinner={winner === 1} />
         </div>
 
         {!isGameOver && isHost && (
@@ -73,16 +69,34 @@ export default function ScoringModal() {
   );
 }
 
-function ScoreRow({ label, value }) {
+function ScoreRow({ label, value, highlight }) {
   return (
-    <div className="score-row">
+    <div className={`score-row${highlight ? ' score-row--highlight' : ''}`}>
       <span>{label}</span>
-      <span className="score-row__value">{value} pts</span>
+      <span className="score-row__value">{value}</span>
     </div>
   );
 }
 
-function renderStars(count) {
-  const total = 3;
-  return '★'.repeat(count) + '☆'.repeat(Math.max(0, total - count));
+const LEVEL_ORDER = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+
+function LevelRow({ team, level, isWinner }) {
+  const idx   = LEVEL_ORDER.indexOf(level);
+  const total = LEVEL_ORDER.length;
+
+  return (
+    <div className="level-row">
+      <span className="level-row__team">{team}{isWinner ? ' 🏆' : ''}</span>
+      <span className="level-row__level">Level {level}</span>
+      <div className="level-row__bar">
+        {LEVEL_ORDER.map((l, i) => (
+          <div
+            key={l}
+            className={`level-row__pip ${i <= idx ? 'level-row__pip--filled' : ''}`}
+            title={l}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }

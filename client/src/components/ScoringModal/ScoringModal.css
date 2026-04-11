@@ -85,20 +85,48 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--color-text-muted);
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.8rem;
 }
 
-.scoring-rounds__row {
+.level-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0.3rem 0;
-  font-size: 0.9rem;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
 }
 
-.scoring-rounds__stars {
+.level-row__team {
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.level-row__level {
+  width: 48px;
   color: var(--color-gold);
-  letter-spacing: 2px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.level-row__bar {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.level-row__pip {
+  flex: 1;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.12);
+}
+
+.level-row__pip--filled {
+  background: var(--color-gold);
+}
+
+.score-row--highlight .score-row__value {
+  color: #81c784;
 }
 
 .scoring-btn {

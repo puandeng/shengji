@@ -23,6 +23,11 @@
 .card--selected  { transform: translateY(-14px); box-shadow: 0 0 0 2px var(--color-gold), 0 10px 24px rgba(0,0,0,0.5); }
 .card--disabled  { opacity: 0.5; cursor: not-allowed; }
 .card--highlight { box-shadow: 0 0 8px 2px rgba(240,192,64,0.6); }
+.card--trump     { border-color: rgba(240,192,64,0.5); }
+
+/* Jokers */
+.card--joker-big   { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #f0c040; }
+.card--joker-small { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #b0b0c0; }
 
 /* Face-down */
 .card--facedown { background: #2c3e50; border-color: #1a2a3a; }

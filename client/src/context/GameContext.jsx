@@ -107,6 +107,12 @@ export function GameProvider({ children }) {
     // Game events
     on('game:started',        (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
     on('game:newRound',       (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
+    on('game:trumpCalled',    (gameState)        => {
+      dispatch({ type: 'GAME_STATE', payload: gameState });
+      const strengthLabel = gameState.strength === 3 ? 'joker pair' : gameState.strength === 2 ? 'pair' : 'single';
+      dispatch({ type: 'SET_NOTIFICATION', payload: `${gameState.declarerName} called ${gameState.trumpSuit} with a ${strengthLabel}` });
+      setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
+    });
     on('game:trumpSelected',  (gameState)        => {
       dispatch({ type: 'GAME_STATE', payload: gameState });
       const msg = gameState.auto
@@ -117,13 +123,17 @@ export function GameProvider({ children }) {
     });
     on('game:kittyDiscarded', (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
     on('game:cardPlayed',     (data)             => dispatch({ type: 'CARD_PLAYED', payload: data }));
+    on('game:cardsPlayed',    (data)             => dispatch({ type: 'CARD_PLAYED', payload: data }));
     on('game:trickComplete',  (gameState)        => {
       dispatch({ type: 'GAME_STATE', payload: gameState });
       if (gameState.gameOver) {
         const teamName = `Team ${gameState.winnerTeam + 1}`;
-        dispatch({ type: 'SET_NOTIFICATION', payload: `🏆 ${teamName} wins the game!` });
+        dispatch({ type: 'SET_NOTIFICATION', payload: `Team ${gameState.winnerTeam + 1} wins the game!` });
       } else if (gameState.roundOver) {
-        const msg = gameState.attackingWon ? 'Attacking team wins this round!' : 'Defending team wins this round!';
+        const adv = gameState.levelsAdvanced > 1 ? ` (+${gameState.levelsAdvanced} levels)` : '';
+        const msg = gameState.attackingWon
+          ? `Attacking team wins this round!${adv}`
+          : `Defending team wins this round!${adv}`;
         dispatch({ type: 'SET_NOTIFICATION', payload: msg });
         setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 5000);
       }
@@ -137,9 +147,11 @@ export function GameProvider({ children }) {
       socket.off('player:left');
       socket.off('game:started');
       socket.off('game:newRound');
+      socket.off('game:trumpCalled');
       socket.off('game:trumpSelected');
       socket.off('game:kittyDiscarded');
       socket.off('game:cardPlayed');
+      socket.off('game:cardsPlayed');
       socket.off('game:trickComplete');
       socket.off('room:chatMessage');
     };
@@ -198,6 +210,17 @@ export function GameProvider({ children }) {
     });
   }, [socket]);
 
+  const callTrump = useCallback((cardIds) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('game:callTrump', { cardIds }, (res) => {
+        if (res?.error) {
+          dispatch({ type: 'SET_ERROR', payload: res.error });
+          reject(res.error);
+        } else resolve(res);
+      });
+    });
+  }, [socket]);
+
   const discardKitty = useCallback((cardIds) => {
     return new Promise((resolve, reject) => {
       socket.emit('game:discardKitty', { cardIds }, (res) => {
@@ -211,7 +234,18 @@ export function GameProvider({ children }) {
 
   const playCard = useCallback((cardId) => {
     return new Promise((resolve, reject) => {
-      socket.emit('game:playCard', { cardId }, (res) => {
+      socket.emit('game:playCards', { cardIds: [cardId] }, (res) => {
+        if (res?.error) {
+          dispatch({ type: 'SET_ERROR', payload: res.error });
+          reject(res.error);
+        } else resolve(res);
+      });
+    });
+  }, [socket]);
+
+  const playCards = useCallback((cardIds) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('game:playCards', { cardIds }, (res) => {
         if (res?.error) {
           dispatch({ type: 'SET_ERROR', payload: res.error });
           reject(res.error);
@@ -237,8 +271,10 @@ export function GameProvider({ children }) {
       joinRoom,
       startGame,
       declareTrump,
+      callTrump,
       discardKitty,
       playCard,
+      playCards,
       sendChat,
       startNewRound,
       clearError,

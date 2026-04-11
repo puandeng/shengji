@@ -96,8 +96,19 @@ class Room {
     }
   }
 
+  /**
+   * A player calls trump during the TRUMP_SELECTION phase.
+   * Higher-strength calls (pair > single, joker pair > pair) override weaker ones.
+   * Does NOT immediately move to the kitty phase — the timer continues so others
+   * can attempt to override. Call finishTrumpSelection() when the timer fires.
+   */
+  callTrump(socketId, cardIds) {
+    return this.game.callTrump(socketId, cardIds);
+  }
+
   declareTrump(socketId, cardId) {
-    const result = this.game.declareTrump(socketId, cardId);
+    // Legacy single-card declare — delegate to callTrump
+    const result = this.game.callTrump(socketId, [cardId]);
     if (result.success) {
       this._clearTrumpTimer();
       this.game.finishTrumpSelection();
@@ -111,13 +122,15 @@ class Room {
     return this.game.discardToKitty(socketId, cardIds);
   }
 
-  playCard(socketId, cardId) {
-    return this.game.playCard(socketId, cardId);
+  /** Play one or more cards (single / pair / tractor / throw). */
+  playCards(socketId, cardIds) {
+    return this.game.playCards(socketId, cardIds);
   }
 
   startNewRound() {
     if (this.game.phase !== GAME_PHASES.SCORING) return { error: 'Not in scoring phase' };
     this.game.roundNumber++;
+
     // Loser of previous round attacks next
     const prevAttacking = this.game.attackingTeam;
     const threshold     = LEVEL_THRESHOLDS[this.game.trumpRank];
@@ -125,6 +138,10 @@ class Room {
     if (!prevWon) {
       this.game.attackingTeam = prevAttacking === 0 ? 1 : 0;
     }
+
+    // Trump rank for next round = attacking team's current level
+    this.game.trumpRank = this.game.teamLevels[this.game.attackingTeam];
+
     return this.game.deal();
   }
 
