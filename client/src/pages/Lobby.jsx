@@ -6,17 +6,20 @@ const TEAM_COLORS = ['#3498db', '#e74c3c'];
 const SEAT_LABELS = ['Seat 1', 'Seat 2', 'Seat 3', 'Seat 4'];
 
 export default function Lobby() {
-  const { room, myPlayer, startGame, error } = useGame();
+  const { room, myPlayer, startGame, error, devMode } = useGame();
 
   if (!room) return null;
 
   const isHost       = myPlayer?.seatIndex === 0;
-  const canStart     = room.playerCount === 4;
+  const canStart     = devMode ? room.playerCount >= 1 : room.playerCount === 4;
   const emptySeats   = 4 - room.playerCount;
 
   return (
     <div className="lobby-container">
       <div className="lobby-card">
+        {devMode && (
+          <div className="dev-mode-banner">DEV MODE -- Bots will fill empty seats</div>
+        )}
         <h2 className="lobby-title">Game Lobby</h2>
 
         <div className="lobby-code-section">
@@ -45,8 +48,10 @@ export default function Lobby() {
 
         <div className="lobby-status">
           {canStart
-            ? '✅ All players ready!'
-            : `⏳ Waiting for ${emptySeats} more player${emptySeats > 1 ? 's' : ''}…`}
+            ? (devMode && emptySeats > 0
+              ? `Ready! ${emptySeats} bot${emptySeats > 1 ? 's' : ''} will fill empty seats`
+              : 'All players ready!')
+            : `Waiting for ${emptySeats} more player${emptySeats > 1 ? 's' : ''}…`}
         </div>
 
         {error && <p className="error-text">{error}</p>}

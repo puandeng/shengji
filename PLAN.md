@@ -48,7 +48,21 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [ ] **Kitty draw animation.** After dealing finishes and the declarer receives the kitty, animate the kitty cards being drawn into the player's hand before sorting them into position.
 
 ## Dev experience
-- [ ] **Single-player dev mode.** Testing currently requires 4 browser tabs. Add a `DEV_MODE` env var (server) that lets `Room.startGame()` proceed with <4 players, filling empty seats with stub/bot players that auto-play legal moves. Make it obvious in the UI when dev mode is active.
+- [x] **Single-player dev mode.** Testing currently requires 4 browser tabs. Add a `DEV_MODE` env var (server) that lets `Room.startGame()` proceed with <4 players, filling empty seats with stub/bot players that auto-play legal moves. Make it obvious in the UI when dev mode is active.
+
+## Bug fixes
+- [x] **Kitty discard UI hardcodes 4 instead of 8.** `GameBoard.jsx` limits card selection to 4 (`prev.length < 4`) and requires exactly 4 to discard (`selectedCards.length !== 4`). The prompt text also says "4 cards". But `KITTY_SIZE` is 8. The declarer picks up 8 kitty cards and must discard 8 back.
+- [x] **ScoringModal hardcodes `>= 100` threshold.** `ScoringModal.jsx:15` uses `attackingScore >= 100` to determine the round winner, but the actual threshold varies by trump rank (80 for levels 2–K, 120 for A). The server already sends `threshold` in the game state — use it instead.
+- [x] **Hand sorting doesn't group jokers with trump.** In `Hand.jsx`, the trump sort check is `a.suit === trumpSuit`, but jokers have `suit: 'JOKER'`, so they fall through to the `SUIT_ORDER` lookup (getting 99) and sort to the far end, separated from other trump cards. Jokers should be grouped with the trump suit.
+- [x] **Disconnect mid-game breaks the room.** `handleDisconnect` in `server/socket/index.js` calls `room.removePlayer()` which splices the player from the array and deletes their hand. This breaks trick completion (expects 4 plays), seat advancement, and the `currentPlayerSocketId` getter. The game becomes unplayable for remaining players with no error message or recovery.
+- [x] **No reconnection support.** If a player refreshes, they get a new socket ID and lose their seat. The `room:state` handler only works if the original socket ID is still tracked. There's no mechanism to rejoin a game in progress (e.g., by name + room code).
+- [x] **Dev mode banner overlaps trump/team info.** The fixed-position "DEV MODE" indicator bar at the top of the game screen (`Game.css .dev-mode-indicator`) sits on top of the `TrumpBanner` component, hiding the trump suit and attacking team info. Needs either a top margin/padding on the game board when dev mode is active, or the banner should be positioned within the layout flow instead of `position: fixed`.
+- [x] **Scores display shows both teams' points but only attackers score.** `ScoringModal.jsx` shows "Team 1 points" and "Team 2 points" side by side, but the defending team's score is always 0 by design. This is confusing — should show attacker score vs. threshold instead, or at minimum label which team is attacking/defending.
+
+## TODO
+- [ ] **Display current trump rank per team instead of match points.** Replace the round-win stars (★/☆) in the score UI with each team's current trump card rank (e.g., "Team 1: Level 5", "Team 2: Level 3"). This reflects the real Sheng Ji progression system where teams advance their level rather than accumulating match points.
+- [ ] **Increase bot play delay to 0.7s.** Change `BOT_PLAY_DELAY_MS` from 500 to 700 so there's more time to follow the action in dev mode.
+- [ ] **Show bot's last played card before starting next turn.** When a bot plays a card, ensure the card is visually displayed in the trick area for the full delay duration before the next bot takes its turn. Currently bot plays may chain too fast for the client to render each card individually.
 
 ## UI polish
 - [ ] **Joker card visuals.** Replace the current "BJ"/"SJ" text labels with proper joker imagery. Big joker should display a **colored** joker image; small joker should display a **black-and-white** joker image. This makes them instantly distinguishable at a glance.

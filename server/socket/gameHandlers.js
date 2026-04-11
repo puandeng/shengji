@@ -58,6 +58,7 @@ function setupGameHandlers(io, socket, registry) {
         });
       });
 
+      room.scheduleBotKittyDiscard();
       callback?.({ success: true });
 
     } catch (err) {
@@ -79,6 +80,7 @@ function setupGameHandlers(io, socket, registry) {
         io.to(p.socketId).emit('game:kittyDiscarded', room.toGameStateFor(p.socketId));
       });
 
+      room.scheduleBotPlay();
       callback?.({ success: true });
 
     } catch (err) {
@@ -175,6 +177,7 @@ function setupGameHandlers(io, socket, registry) {
         });
       }
 
+      room.scheduleBotPlay();
       callback?.({ success: true });
 
     } catch (err) {

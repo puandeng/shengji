@@ -18,6 +18,7 @@ function setupRoomHandlers(io, socket, registry) {
       }
 
       const room   = registry.create();
+      room.setIO(io);
       const result = room.addPlayer(socket.id, name.trim().slice(0, 20));
 
       if (result.error) return callback?.({ error: result.error });
@@ -41,12 +42,40 @@ function setupRoomHandlers(io, socket, registry) {
 
       const room = registry.get(code);
       if (!room) return callback?.({ error: `Room "${code.toUpperCase()}" not found` });
-      if (room.isFull) return callback?.({ error: 'Room is full' });
+
+      const trimmedName = name.trim().slice(0, 20);
+
+      // Reconnection: if game is in progress and a disconnected player has this name, rejoin
       if (room.game.phase !== GAME_PHASES.WAITING) {
-        return callback?.({ error: 'Game already in progress' });
+        const disconnected = room.game.getDisconnectedPlayer(trimmedName);
+        if (!disconnected) {
+          return callback?.({ error: 'Game already in progress' });
+        }
+
+        const oldSocketId = disconnected.socketId;
+        const result = room.reconnectPlayer(oldSocketId, socket.id);
+        if (result.error) return callback?.({ error: result.error });
+
+        socket.join(room.code);
+        registry.trackPlayer(socket.id, room.code);
+
+        // Send reconnected player the current game state
+        const gameState = room.toGameStateFor(socket.id);
+        socket.emit('game:started', gameState);
+
+        // Notify others
+        socket.to(room.code).emit('player:joined', {
+          player:    result.player,
+          roomState: room.toLobbyJSON(),
+        });
+
+        console.log(`[Room] ${trimmedName} reconnected to room ${room.code}`);
+        return callback?.({ success: true, room: room.toLobbyJSON(), player: result.player, reconnected: true });
       }
 
-      const result = room.addPlayer(socket.id, name.trim().slice(0, 20));
+      if (room.isFull) return callback?.({ error: 'Room is full' });
+
+      const result = room.addPlayer(socket.id, trimmedName);
       if (result.error) return callback?.({ error: result.error });
 
       socket.join(room.code);
@@ -58,7 +87,7 @@ function setupRoomHandlers(io, socket, registry) {
         roomState: room.toLobbyJSON(),
       });
 
-      console.log(`[Room] ${name} joined room ${room.code}`);
+      console.log(`[Room] ${trimmedName} joined room ${room.code}`);
       callback?.({ success: true, room: room.toLobbyJSON(), player: result.player });
 
     } catch (err) {
@@ -99,6 +128,7 @@ function setupRoomHandlers(io, socket, registry) {
             ...stateForPlayer,
           });
         });
+        room.scheduleBotKittyDiscard();
       });
 
       console.log(`[Room] Game started in room ${room.code}`);
@@ -133,6 +163,7 @@ function setupRoomHandlers(io, socket, registry) {
             ...room.toGameStateFor(p.socketId),
           });
         });
+        room.scheduleBotKittyDiscard();
       });
 
       callback?.({ success: true });

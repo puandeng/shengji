@@ -38,6 +38,12 @@ export default function Hand({
       const aTrump = isCardTrump(a, trumpSuit, trumpRank) ? 1 : 0;
       const bTrump = isCardTrump(b, trumpSuit, trumpRank) ? 1 : 0;
       if (aTrump !== bTrump) return aTrump - bTrump;
+      // Within trump group, jokers sort to the end (highest)
+      if (aTrump && bTrump) {
+        if (a.isJoker && !b.isJoker) return 1;
+        if (!a.isJoker && b.isJoker) return -1;
+        if (a.isJoker && b.isJoker) return a.isBigJoker ? 1 : -1;
+      }
       const suitDiff = (SUIT_ORDER[a.suit] ?? 99) - (SUIT_ORDER[b.suit] ?? 99);
       if (suitDiff !== 0) return suitDiff;
       return (RANK_ORDER[a.rank] ?? 0) - (RANK_ORDER[b.rank] ?? 0);

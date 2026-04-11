@@ -7,7 +7,7 @@ import ChatPanel from '../components/ChatPanel/ChatPanel';
 import './Game.css';
 
 export default function Game() {
-  const { gameState, notification } = useGame();
+  const { gameState, notification, devMode } = useGame();
 
   if (!gameState) {
     return (
@@ -23,6 +23,7 @@ export default function Game() {
 
   return (
     <div className="game-root">
+      {devMode && <div className="dev-mode-indicator">DEV MODE</div>}
       {notification && <Notification message={notification} />}
 
       <GameBoard />
