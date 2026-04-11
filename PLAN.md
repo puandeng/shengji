@@ -16,6 +16,10 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [x] **Only the attacking team's points count.** Defending team never accumulates points — they only deny. Current `_resolveTrick()` adds points to whichever team won the trick; should only credit attackers when *defenders* win a trick containing point cards (because attackers lose those points to the kitty multiplier at end), and credit attackers directly when they capture point cards. Re-derive the scoring logic from the real rules before coding.
 - [x] **Kitty multiplier depends on the last trick winner *and* the lead card count**, not a flat ×2. Standard rule: kitty points × 2× the number of cards in the last winning play (so a single = ×2, a pair = ×4, a tractor of 3 pairs = ×12). Tied to the multi-card-play feature below. *(multiplier wired up; defaults to ×2 until multi-card plays are implemented)*
 
+## Rule corrections (trump declaration with jokers)
+
+- [ ] **Joker trump declarations.** During trump calling, players may also declare using a pair of the *same* joker (two small or two big) — single jokers and mixed small+big joker pairs are **not** allowed. A joker pair overrides even a pair of trump-rank cards (the strongest non-joker call). When a joker pair wins the declaration, there is **no trump suit** for that round — only trump-rank cards and jokers count as trump.
+
 ## Core gameplay features missing
 
 - [x] **Multi-card plays.** `playCards(socketId, cardIds[])` replaces `playCard`. Shape detection (single/pair/tractor/throw), follow-suit enforcement for combos, and trick resolution all updated. Socket event `game:playCards`. Legacy `game:playCard` still works (wraps to `playCards`).
@@ -37,6 +41,11 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [x] Trump calling UI in `GameBoard` — click to call, pair auto-submits
 - [x] Point pile progress bar in `GameBoard` centre column
 - [x] `ScoringModal` shows team levels (2→A) with progress pip bar
+
+## UI improvements
+- [ ] **Hand sorting after trump declaration.** When the trump suit has been declared, reorder cards in each player's hand so that trump suit cards, trump rank cards, and jokers are on the rightmost side of the hand.
+
+- [ ] **Kitty draw animation.** After dealing finishes and the declarer receives the kitty, animate the kitty cards being drawn into the player's hand before sorting them into position.
 
 ## Dev experience
 - [ ] **Single-player dev mode.** Testing currently requires 4 browser tabs. Add a `DEV_MODE` env var (server) that lets `Room.startGame()` proceed with <4 players, filling empty seats with stub/bot players that auto-play legal moves. Make it obvious in the UI when dev mode is active.
