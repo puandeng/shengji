@@ -61,10 +61,10 @@
   font-weight: 700;
 }
 
-.score-chip__rounds {
+.score-chip__level {
   font-size: 0.7rem;
   color: var(--color-gold);
-  letter-spacing: 1px;
+  font-weight: 600;
 }
 
 .gameboard__opposite {
@@ -102,6 +102,60 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.gameboard__centre-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+/* Attacker point pile */
+.gameboard__point-pile {
+  width: 100%;
+  max-width: 220px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+}
+
+.point-pile__header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.3rem;
+}
+
+.point-pile__total {
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.point-pile__total--won {
+  color: #81c784;
+}
+
+.point-pile__bar {
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.point-pile__fill {
+  height: 100%;
+  background: var(--color-gold);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.hand__play-btn-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.5rem;
 }
 
 .gameboard__prompt {
