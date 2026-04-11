@@ -6,6 +6,12 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 
 ---
 
+## Setup tasks (mostly done)
+- [x] Rename `SETUP.md` → `CLAUDE.md`
+- [x] Add objective/architecture/conventions to `CLAUDE.md`
+- [x] Add collaboration rules for multi-session work
+- [x] Create `PLAN.md`
+
 ## Rule corrections (current implementation is wrong)
 
 The current code in `server/game/` implements an oversimplified variant. Real Sheng Ji rules require:
@@ -15,10 +21,6 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [x] **Winning point threshold is wrong.** Defending team needs to *prevent* the attackers from reaching a threshold that depends on the current trump level (e.g., level 2 → attackers need 80, level A → 120+). The hardcoded `WINNING_THRESHOLD = 100` and `>= 100` check in `Room.startNewRound()` must go.
 - [x] **Only the attacking team's points count.** Defending team never accumulates points — they only deny. Current `_resolveTrick()` adds points to whichever team won the trick; should only credit attackers when *defenders* win a trick containing point cards (because attackers lose those points to the kitty multiplier at end), and credit attackers directly when they capture point cards. Re-derive the scoring logic from the real rules before coding.
 - [x] **Kitty multiplier depends on the last trick winner *and* the lead card count**, not a flat ×2. Standard rule: kitty points × 2× the number of cards in the last winning play (so a single = ×2, a pair = ×4, a tractor of 3 pairs = ×12). Tied to the multi-card-play feature below. *(multiplier wired up; defaults to ×2 until multi-card plays are implemented)*
-
-## Rule corrections (trump declaration with jokers)
-
-- [ ] **Joker trump declarations.** During trump calling, players may also declare using a pair of the *same* joker (two small or two big) — single jokers and mixed small+big joker pairs are **not** allowed. A joker pair overrides even a pair of trump-rank cards (the strongest non-joker call). When a joker pair wins the declaration, there is **no trump suit** for that round — only trump-rank cards and jokers count as trump.
 
 ## Core gameplay features missing
 
@@ -42,6 +44,10 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [x] Point pile progress bar in `GameBoard` centre column
 - [x] `ScoringModal` shows team levels (2→A) with progress pip bar
 
+## Rule corrections (trump declaration with jokers)
+
+- [ ] **Joker trump declarations.** During trump calling, players may also declare using a pair of the *same* joker (two small or two big) — single jokers and mixed small+big joker pairs are **not** allowed. A joker pair overrides even a pair of trump-rank cards (the strongest non-joker call). When a joker pair wins the declaration, there is **no trump suit** for that round — only trump-rank cards and jokers count as trump.
+
 ## UI improvements
 - [ ] **Hand sorting after trump declaration.** When the trump suit has been declared, reorder cards in each player's hand so that trump suit cards, trump rank cards, and jokers are on the rightmost side of the hand.
 
@@ -54,9 +60,3 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [ ] `Room.startNewRound()` hardcodes `>= 100` instead of using the constant — moot once the threshold logic is rewritten, but flag it.
 - [ ] `constants.js` comment vs. old SETUP.md disagreed on team seat numbering (0-indexed vs 1-indexed). CLAUDE.md now uses 0-indexed; double-check the client UI labels match.
 - [ ] No tests anywhere. Once trick/scoring rules are rewritten, add unit tests for `Card.beats()`, follow-suit validation, and shape matching — these are the highest-leverage things to lock down.
-
-## Setup tasks (mostly done)
-- [x] Rename `SETUP.md` → `CLAUDE.md`
-- [x] Add objective/architecture/conventions to `CLAUDE.md`
-- [x] Add collaboration rules for multi-session work
-- [x] Create `PLAN.md`
