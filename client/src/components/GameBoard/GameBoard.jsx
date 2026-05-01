@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
 import Card from '../Card/Card';
 import Hand from '../Hand/Hand';
@@ -10,8 +10,9 @@ import './GameBoard.css';
 const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
 export default function GameBoard() {
-  const { gameState, myPlayer, declareTrump, callTrump, discardKitty, playCards, error } = useGame();
+  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
+  const [hasPassed, setHasPassed] = useState(false);
 
   if (!gameState || !myPlayer) return null;
 
@@ -20,6 +21,12 @@ export default function GameBoard() {
     myHand, currentTrick, handCounts, attackingTeam, attackerPointPile,
     scores, threshold,
   } = gameState;
+
+  // Clear selected cards and pass state when game phase changes
+  useEffect(() => {
+    setSelectedCards([]);
+    setHasPassed(false);
+  }, [phase]);
 
   const mySeat       = myPlayer.seatIndex;
   const oppositeSeat = (mySeat + 2) % 4;
@@ -119,15 +126,15 @@ export default function GameBoard() {
       <div className="gameboard__scores">
         <ScoreChip
           label="Team 1"
-          score={scores?.[0]}
-          level={gameState.teamLevels?.[0]}
+          level={gameState.teamLevels?.[0] ?? '2'}
+          isAttacking={attackingTeam === 0}
           teamIdx={0}
         />
         <span className="gameboard__round">Round {gameState.roundNumber || 1}</span>
         <ScoreChip
           label="Team 2"
-          score={scores?.[1]}
-          level={gameState.teamLevels?.[1]}
+          level={gameState.teamLevels?.[1] ?? '2'}
+          isAttacking={attackingTeam === 1}
           teamIdx={1}
         />
       </div>
@@ -203,15 +210,24 @@ export default function GameBoard() {
       {/* Action prompt */}
       <div className="gameboard__prompt">
         {error && <p className="error-text">{error}</p>}
-        {isTrumpPhase && !trumpSuit && (
-          <p className="prompt-text">
-            Click a <strong>{trumpRank}</strong> to call trump, or a pair for a stronger call
-          </p>
+        {isTrumpPhase && !hasPassed && (
+          <div className="trump-actions">
+            <p className="prompt-text">
+              {trumpSuit
+                ? <>{SUIT_SYMBOLS[trumpSuit]} {trumpSuit} called — click a stronger combo to override, or pass</>
+                : <>Click a <strong>{trumpRank}</strong> to call trump, or a pair for a stronger call</>
+              }
+            </p>
+            <button
+              className="btn-secondary"
+              onClick={() => { passTrump().then(() => setHasPassed(true)).catch(() => {}); }}
+            >
+              Pass
+            </button>
+          </div>
         )}
-        {isTrumpPhase && trumpSuit && (
-          <p className="prompt-text">
-            {SUIT_SYMBOLS[trumpSuit]} {trumpSuit} called — click a stronger combo to override, or wait
-          </p>
+        {isTrumpPhase && hasPassed && (
+          <p className="prompt-text">You passed — waiting for other players…</p>
         )}
         {isKittyPhase && isKittyDeclarer && (
           <div className="kitty-actions">
@@ -246,18 +262,19 @@ export default function GameBoard() {
         selectionMode={handSelectionMode}
         maxSelection={handMaxSel}
         onPlaySelected={phase === 'PLAYING' && isMyTurn ? handlePlaySelected : undefined}
+        newCardIds={newCardIds}
       />
     </div>
   );
 }
 
-function ScoreChip({ label, score = 0, level, teamIdx }) {
+function ScoreChip({ label, level = '2', isAttacking, teamIdx }) {
   const colors = ['var(--color-team0)', 'var(--color-team1)'];
   return (
     <div className="score-chip" style={{ borderColor: colors[teamIdx] }}>
       <span className="score-chip__label">{label}</span>
-      <span className="score-chip__pts" style={{ color: colors[teamIdx] }}>{score}pts</span>
-      {level && <span className="score-chip__level">Lv {level}</span>}
+      <span className="score-chip__level-display" style={{ color: colors[teamIdx] }}>Level {level}</span>
+      {isAttacking && <span className="score-chip__role">Attacking</span>}
     </div>
   );
 }

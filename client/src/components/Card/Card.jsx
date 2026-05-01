@@ -34,8 +34,8 @@ export default function Card({
   const isRed    = !isJoker && RED_SUITS.has(card.suit);
   const symbol   = SUIT_SYMBOLS[card.suit] || '';
 
-  const label    = isBig ? 'BJ' : isSmall ? 'SJ' : card.rank;
-  const centerSym = isBig ? '★' : isSmall ? '☆' : symbol;
+  const label    = isBig ? '🃏' : isSmall ? '🃏' : card.rank;
+  const centerSym = isBig ? '🃏' : isSmall ? '🃏' : symbol;
 
   const classes = [
     'card',

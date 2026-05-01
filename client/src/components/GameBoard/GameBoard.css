@@ -56,15 +56,17 @@
   color: var(--color-text-muted);
 }
 
-.score-chip__pts {
+.score-chip__level-display {
   font-size: 1.1rem;
   font-weight: 700;
 }
 
-.score-chip__level {
-  font-size: 0.7rem;
-  color: var(--color-gold);
+.score-chip__role {
+  font-size: 0.6rem;
+  color: #ef5350;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .gameboard__opposite {
@@ -168,6 +170,18 @@
 .prompt-text {
   font-size: 0.875rem;
   color: var(--color-text-muted);
+}
+
+.trump-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.trump-actions .btn-secondary {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
 }
 
 .kitty-actions {

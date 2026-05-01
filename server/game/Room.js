@@ -106,6 +106,10 @@ class Room {
     return this.game.callTrump(socketId, cardIds);
   }
 
+  passTrump(socketId) {
+    return this.game.passTrump(socketId);
+  }
+
   declareTrump(socketId, cardId) {
     // Legacy single-card declare — delegate to callTrump
     const result = this.game.callTrump(socketId, [cardId]);
@@ -149,6 +153,63 @@ class Room {
   // Bot / disconnected player auto-play
   // ─────────────────────────────────────────────
 
+  /** Schedule bot trump calls shortly after dealing. */
+  scheduleBotTrumpCall() {
+    if (this.game.phase !== GAME_PHASES.TRUMP_SELECTION) return;
+
+    // Stagger bot calls with a short delay so it feels natural
+    const botPlayers = this.game.players.filter(p => BotPlayer.isBot(p.socketId));
+    botPlayers.forEach((bot, i) => {
+      const timer = setTimeout(() => {
+        if (this.game.phase !== GAME_PHASES.TRUMP_SELECTION) return;
+
+        const hand = this.game.hands[bot.socketId];
+        if (!hand) return;
+
+        const cardIds = BotPlayer.chooseTrumpCall(hand, this.game.trumpRank, this.game.trumpCallStrength);
+        if (!cardIds) {
+          // Bot can't call — pass instead
+          const passResult = this.game.passTrump(bot.socketId);
+          if (passResult.allPassed) {
+            this._clearTrumpTimer();
+            this.game.finishTrumpSelection();
+            this.game.giveKittyToDeclarer();
+            if (this._io) {
+              this.game.players.forEach(p => {
+                this._io.to(p.socketId).emit('game:trumpSelected', {
+                  trumpSuit:     this.game.trumpSuit,
+                  trumpDeclarer: this.game.trumpDeclarer,
+                  auto:          true,
+                  ...this.toGameStateFor(p.socketId),
+                });
+              });
+            }
+            this.scheduleBotKittyDiscard();
+          }
+          return;
+        }
+
+        const result = this.game.callTrump(bot.socketId, cardIds);
+        if (result.error) return;
+
+        // Broadcast the call
+        if (this._io) {
+          this.game.players.forEach(p => {
+            this._io.to(p.socketId).emit('game:trumpCalled', {
+              trumpSuit:     result.trumpSuit,
+              trumpRank:     result.trumpRank,
+              strength:      result.strength,
+              declarerName:  result.declarer,
+              callerCardIds: result.callerCardIds,
+              ...this.toGameStateFor(p.socketId),
+            });
+          });
+        }
+      }, BOT_PLAY_DELAY_MS * (i + 1)); // Stagger: 700ms, 1400ms, 2100ms
+      this._botTimers.push(timer);
+    });
+  }
+
   /** Whether a player should be auto-played (bot or disconnected human). */
   _shouldAutoPlay(socketId) {
     if (BotPlayer.isBot(socketId)) return true;
@@ -176,22 +237,24 @@ class Room {
     if (!this._shouldAutoPlay(socketId)) return;
 
     const hand = this.game.hands[socketId];
-    const cardId = BotPlayer.chooseLegalCard(hand, this.game.currentTrick, this.game.trumpSuit);
-    if (!cardId) return;
+    const cardIds = BotPlayer.chooseLegalCards(hand, this.game.currentTrick, this.game.trumpSuit, this.game.trumpRank);
+    if (!cardIds || cardIds.length === 0) return;
 
-    const result = this.game.playCard(socketId, cardId);
+    const result = this.game.playCards(socketId, cardIds);
     if (result.error) {
-      console.error(`[Bot] Error playing card: ${result.error}`);
+      console.error(`[Bot] Error playing cards: ${result.error}`);
       return;
     }
 
-    this._broadcastAfterPlay(result, socketId, cardId);
+    this._broadcastAfterPlay(result, socketId, cardIds[0]);
 
     // Chain to next bot if the game is still going
     if (!result.trickComplete) {
       this.scheduleBotPlay();
     } else if (!result.roundOver && !result.gameOver) {
-      this.scheduleBotPlay();
+      // Extra delay after trick completion so the client can display the winning card
+      const timer = setTimeout(() => this.scheduleBotPlay(), BOT_PLAY_DELAY_MS);
+      this._botTimers.push(timer);
     }
   }
 
@@ -219,7 +282,9 @@ class Room {
           currentSeat: this.game.currentSeat,
           trick: this.game.currentTrick.map(e => ({
             socketId: e.socketId,
-            card:     e.card.toJSON(),
+            cards:    e.cards.map(c => c.toJSON()),
+            card:     e.cards[0]?.toJSON(),
+            shape:    e.shape,
           })),
         });
       });

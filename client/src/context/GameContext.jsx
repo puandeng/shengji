@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from './SocketContext';
 
 const GameContext = createContext(null);
@@ -14,6 +14,7 @@ const INITIAL_STATE = {
   notification:  null,
   chatMessages:  [],
   devMode:       false,
+  newCardIds:    [],       // Card IDs that were just drawn (for animation)
 };
 
 function reducer(state, action) {
@@ -74,6 +75,12 @@ function reducer(state, action) {
     case 'SET_DEV_MODE':
       return { ...state, devMode: action.payload };
 
+    case 'SET_NEW_CARDS':
+      return { ...state, newCardIds: action.payload };
+
+    case 'CLEAR_NEW_CARDS':
+      return { ...state, newCardIds: [] };
+
     case 'RESET':
       return { ...INITIAL_STATE };
 
@@ -85,6 +92,8 @@ function reducer(state, action) {
 export function GameProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const { socket }        = useSocket();
+  const stateRef          = useRef(state);
+  stateRef.current        = state;
 
   // ── Fetch server config (dev mode flag) ──────────────────────────────────
   useEffect(() => {
@@ -93,6 +102,13 @@ export function GameProvider({ children }) {
       .then(data => dispatch({ type: 'SET_DEV_MODE', payload: !!data.devMode }))
       .catch(() => {}); // non-critical — default to false
   }, []);
+
+  // ── Auto-dismiss error messages after 5 seconds ─────────────────────────
+  useEffect(() => {
+    if (!state.error) return;
+    const timer = setTimeout(() => dispatch({ type: 'CLEAR_ERROR' }), 5000);
+    return () => clearTimeout(timer);
+  }, [state.error]);
 
   // ── Socket event listeners ──────────────────────────────────────────────
   useEffect(() => {
@@ -109,15 +125,29 @@ export function GameProvider({ children }) {
     on('game:newRound',       (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
     on('game:trumpCalled',    (gameState)        => {
       dispatch({ type: 'GAME_STATE', payload: gameState });
+      const suitLabel = gameState.trumpSuit || 'no-trump';
       const strengthLabel = gameState.strength === 3 ? 'joker pair' : gameState.strength === 2 ? 'pair' : 'single';
-      dispatch({ type: 'SET_NOTIFICATION', payload: `${gameState.declarerName} called ${gameState.trumpSuit} with a ${strengthLabel}` });
+      dispatch({ type: 'SET_NOTIFICATION', payload: `${gameState.declarerName} called ${suitLabel} with a ${strengthLabel}` });
       setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
     });
     on('game:trumpSelected',  (gameState)        => {
+      // Detect kitty cards newly added to my hand → animate them
+      const prevHand = stateRef.current.gameState?.myHand || [];
+      const newHand  = gameState.myHand || [];
+      const prevIds  = new Set(prevHand.map(c => c.id));
+      const addedIds = newHand.filter(c => !prevIds.has(c.id)).map(c => c.id);
+
       dispatch({ type: 'GAME_STATE', payload: gameState });
+
+      if (addedIds.length > 0) {
+        dispatch({ type: 'SET_NEW_CARDS', payload: addedIds });
+        setTimeout(() => dispatch({ type: 'CLEAR_NEW_CARDS' }), 1000);
+      }
+
+      const suitLabel = gameState.trumpSuit || 'no-trump';
       const msg = gameState.auto
-        ? `Trump auto-selected: ${gameState.trumpSuit}`
-        : `${gameState.declarerName} declared trump: ${gameState.trumpSuit}`;
+        ? `Trump auto-selected: ${suitLabel}`
+        : `${gameState.declarerName} declared trump: ${suitLabel}`;
       dispatch({ type: 'SET_NOTIFICATION', payload: msg });
       setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
     });
@@ -210,6 +240,17 @@ export function GameProvider({ children }) {
     });
   }, [socket]);
 
+  const passTrump = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      socket.emit('game:passTrump', {}, (res) => {
+        if (res?.error) {
+          dispatch({ type: 'SET_ERROR', payload: res.error });
+          reject(res.error);
+        } else resolve(res);
+      });
+    });
+  }, [socket]);
+
   const callTrump = useCallback((cardIds) => {
     return new Promise((resolve, reject) => {
       socket.emit('game:callTrump', { cardIds }, (res) => {
@@ -272,6 +313,7 @@ export function GameProvider({ children }) {
       startGame,
       declareTrump,
       callTrump,
+      passTrump,
       discardKitty,
       playCard,
       playCards,
