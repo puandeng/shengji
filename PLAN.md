@@ -46,12 +46,12 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 
 ## Rule corrections (trump declaration with jokers)
 
-- [ ] **Joker trump declarations.** During trump calling, players may also declare using a pair of the *same* joker (two small or two big) — single jokers and mixed small+big joker pairs are **not** allowed. A joker pair overrides even a pair of trump-rank cards (the strongest non-joker call). When a joker pair wins the declaration, there is **no trump suit** for that round — only trump-rank cards and jokers count as trump.
+- [x] **Joker trump declarations.** `callTrump()` now accepts same-type joker pairs (two small or two big); single jokers and mixed small+big pairs are rejected. When a joker pair wins, `trumpSuit` is set to `null` so only trump-rank cards and jokers count as trump for the round. `autoSelectTrump()`/`finishTrumpSelection()` use `trumpCallStrength > 0` as the signal instead of `trumpSuit` truthiness to respect no-trump-suit declarations.
 
 ## UI improvements
-- [ ] **Hand sorting after trump declaration.** When the trump suit has been declared, reorder cards in each player's hand so that trump suit cards, trump rank cards, and jokers are on the rightmost side of the hand.
+- [x] **Hand sorting after trump declaration.** `Hand.jsx` sorts using `isCardTrump(card, trumpSuit, trumpRank)` which groups trump-suit cards, off-suit trump-rank cards, and jokers on the right; jokers sort to the end (big > small).
 
-- [ ] **Kitty draw animation.** After dealing finishes and the declarer receives the kitty, animate the kitty cards being drawn into the player's hand before sorting them into position.
+- [x] **Kitty draw animation.** Client diffs `myHand` on `game:trumpSelected` to detect newly added cards; Hand applies a staggered slide-in keyframe animation (`hand-draw`, 650ms) to those card slots, exposed via `newCardIds` in GameContext.
 
 ## Dev experience
 - [x] **Single-player dev mode.** Testing currently requires 4 browser tabs. Add a `DEV_MODE` env var (server) that lets `Room.startGame()` proceed with <4 players, filling empty seats with stub/bot players that auto-play legal moves. Make it obvious in the UI when dev mode is active.
@@ -66,15 +66,32 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [x] **Scores display shows both teams' points but only attackers score.** `ScoringModal.jsx` shows "Team 1 points" and "Team 2 points" side by side, but the defending team's score is always 0 by design. This is confusing — should show attacker score vs. threshold instead, or at minimum label which team is attacking/defending.
 
 ## TODO
-- [ ] **Display current trump rank per team instead of match points.** Replace the round-win stars (★/☆) in the score UI with each team's current trump card rank (e.g., "Team 1: Level 5", "Team 2: Level 3"). This reflects the real Sheng Ji progression system where teams advance their level rather than accumulating match points.
-- [ ] **Increase bot play delay to 0.7s.** Change `BOT_PLAY_DELAY_MS` from 500 to 700 so there's more time to follow the action in dev mode.
-- [ ] **Show bot's last played card before starting next turn.** When a bot plays a card, ensure the card is visually displayed in the trick area for the full delay duration before the next bot takes its turn. Currently bot plays may chain too fast for the client to render each card individually.
+- [x] **Bots take too long to select initial trump.** Added `BotPlayer.chooseTrumpCall()` and `Room.scheduleBotTrumpCall()` — bots now attempt a trump call (single/pair/joker pair, strongest available) within ~700ms of dealing, staggered per bot.
+- [x] **Declared cards not re-sorted after trump declaration.** Added `useEffect` in `GameBoard` to clear `selectedCards` on phase change, ensuring cards re-sort correctly when trump suit/rank updates.
+- [x] **Display current trump rank per team instead of match points.** `ScoreChip` now shows "Level {rank}" and an "Attacking" badge instead of `{score}pts`. CSS updated accordingly.
+- [x] **Increase bot play delay to 0.7s.** `BOT_PLAY_DELAY_MS` changed from 500 to 700 in `constants.js`.
+- [x] **Show bot's last played card before starting next turn.** Added extra `BOT_PLAY_DELAY_MS` pause after trick completion before scheduling the next bot lead, giving the client time to display the completed trick.
 
 ## UI polish
-- [ ] **Joker card visuals.** Replace the current "BJ"/"SJ" text labels with proper joker imagery. Big joker should display a **colored** joker image; small joker should display a **black-and-white** joker image. This makes them instantly distinguishable at a glance.
-- [ ] **Larger card sizes.** Increase card dimensions so they fill more of the screen, reducing the amount of empty green background. Cards should feel prominent and easy to interact with.
+- [x] **Joker card visuals.** Replaced BJ/SJ text labels with joker emoji. Big joker renders in full color; small joker is grayscale via CSS `filter: grayscale(1)`. Center pip is larger and fully opaque for jokers.
+- [x] **Larger card sizes.** Card dimensions increased: sm 56×80, md 84×120, lg 110×154. Font sizes scaled up accordingly.
 
 ## Cleanup / follow-ups noticed while reviewing the code
-- [ ] `Room.startNewRound()` hardcodes `>= 100` instead of using the constant — moot once the threshold logic is rewritten, but flag it.
-- [ ] `constants.js` comment vs. old SETUP.md disagreed on team seat numbering (0-indexed vs 1-indexed). CLAUDE.md now uses 0-indexed; double-check the client UI labels match.
-- [ ] No tests anywhere. Once trick/scoring rules are rewritten, add unit tests for `Card.beats()`, follow-suit validation, and shape matching — these are the highest-leverage things to lock down.
+- [x] `Room.startNewRound()` hardcodes `>= 100` instead of using the constant — already fixed in a previous PR; code uses `LEVEL_THRESHOLDS[this.game.trumpRank]`.
+- [x] `constants.js` comment vs. old SETUP.md disagreed on team seat numbering (0-indexed vs 1-indexed). Verified: server uses 0-indexed internally, client displays 1-indexed labels ("Team 1"/"Team 2") — consistent and correct.
+- [x] No tests anywhere. Added `jest` to server, with 36 tests covering `Card` (constructor, `isTrump`, `effectiveSuit`, `trumpOrder`, `beats`, serialisation) and `GameState` (player management, `callTrump` bidding, follow-suit validation, shape classification, scoring).
+
+## TODO (new)
+- [x] **Pass option during trump calling.** Added `game:passTrump` socket event, `GameState.passTrump()` tracking, and "Pass" button in `GameBoard`. Bots auto-pass when they can't call. Once all 4 players pass, trump selection finalizes immediately (auto-select) instead of waiting for the 30s timer.
+- [x] **Two-row hand layout.** `Hand.jsx` now splits cards into two rows: top row = trump cards (trump-suit by rank, then off-suit trump-rank grouped by suit, then jokers rightmost), bottom row = non-trump cards grouped by suit. A vertical "Trump" label marks the top row. Overlap calculated independently per row.
+- [x] **Bots not playing cards.** Root cause: `BotPlayer.chooseLegalCard()` called `card.isTrump(trumpSuit)` with only one argument — missing `trumpRank`. This caused bots to misidentify trump cards, pick wrong follow-suit cards, and fail server validation. Fixed by passing `trumpRank` and using `effectiveSuit()` for lead-suit matching.
+- [x] **Auto-dismiss error messages after 5 seconds.** Added a `useEffect` in `GameProvider` that watches `state.error` and auto-dispatches `CLEAR_ERROR` after 5 seconds.
+- [x] **Bot paused indefinitely after human plays a card.** Root cause: the `game:playCards` socket handler in `gameHandlers.js` was missing the `room.scheduleBotPlay()` call after a successful play — only the legacy `game:playCard` handler had it. Added the missing call.
+- [x] **Pairs of different suits allowed as combos.** `classifyPlay()` now returns `'invalid'` for cross-suit combos and non-pair 2-card plays. `_validateLead()` rejects invalid shapes with an error message. All combos must share the same effective suit.
+- [x] **Bot pauses indefinitely on combo plays / follow-combo logic broken.** Replaced `chooseLegalCard` with `chooseLegalCards` in `BotPlayer.js` — bots now pick N cards matching the lead count, prioritizing lead-suit cards and matching pair shapes. `Room._executeBotTurn()` updated to use `chooseLegalCards`. Follow validation updated for throws (must include a pair from lead suit if available).
+- [x] **Clarify and enforce combo rules.** Implemented:
+  - **Single:** 1 card.
+  - **Pair:** 2 identical cards (same suit + rank). Cross-suit rejected.
+  - **Tractor:** consecutive pairs, same effective suit. `tractorValue()` rewritten so trump rank is adjacent to Aces (below) and small jokers (above), enabling A,A+trumpRank,trumpRank and trumpRank,trumpRank+SJ,SJ and SJ,SJ+BJ,BJ tractors.
+  - **Throw (single+pair):** 3 cards, same effective suit, 1 single + 1 pair. Beaten when opponent beats both components. **Penalty:** if throw is beaten by opponent, attacker team loses 30 pts (or gains 30 if defender led).
+  Added `isThrow()`, `splitThrowComponents()`, updated `beatsTrickEntry()` for throw comparison, and added throw penalty in `_resolveTrick()`. 3 new unit tests for combo validation.

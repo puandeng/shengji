@@ -114,7 +114,7 @@ const LEVEL_THRESHOLDS = {
 const TRUMP_DECLARATION_TIMEOUT = 30;
 
 // Delay before a bot auto-plays (ms) — gives humans time to follow the action
-const BOT_PLAY_DELAY_MS = 500;
+const BOT_PLAY_DELAY_MS = 700;
 
 module.exports = {
   SUITS,

@@ -9,9 +9,9 @@
 }
 
 /* Sizes */
-.card--sm  { width: 48px;  height: 68px;  border-radius: 4px; }
-.card--md  { width: 68px;  height: 96px;  border-radius: 6px; }
-.card--lg  { width: 90px;  height: 126px; border-radius: 8px; }
+.card--sm  { width: 56px;  height: 80px;  border-radius: 5px; }
+.card--md  { width: 84px;  height: 120px; border-radius: 7px; }
+.card--lg  { width: 110px; height: 154px; border-radius: 9px; }
 
 /* Colors */
 .card--red   { color: var(--color-red); }
@@ -28,6 +28,12 @@
 /* Jokers */
 .card--joker-big   { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #f0c040; }
 .card--joker-small { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #b0b0c0; }
+
+/* Joker emoji styling — big = full color, small = grayscale */
+.card--joker-big .card__rank,
+.card--joker-big .card__center { filter: none; }
+.card--joker-small .card__rank,
+.card--joker-small .card__center { filter: grayscale(1); }
 
 /* Face-down */
 .card--facedown { background: #2c3e50; border-color: #1a2a3a; }
@@ -78,6 +84,13 @@
   opacity: 0.15;
 }
 
+/* Joker center pip should be fully visible */
+.card--joker-big .card__center,
+.card--joker-small .card__center {
+  opacity: 0.9;
+  font-size: 2em;
+}
+
 /* Point badge */
 .card__points-badge {
   position: absolute;
@@ -97,7 +110,10 @@
 }
 
 /* Size adjustments for corners */
-.card--sm .card__rank { font-size: 0.7em; }
-.card--sm .card__center { font-size: 1.2em; }
-.card--lg .card__rank { font-size: 1em; }
-.card--lg .card__center { font-size: 2em; }
+.card--sm .card__rank { font-size: 0.75em; }
+.card--sm .card__center { font-size: 1.3em; }
+.card--md .card__rank { font-size: 0.9em; }
+.card--md .card__suit { font-size: 0.75em; }
+.card--md .card__center { font-size: 1.8em; }
+.card--lg .card__rank { font-size: 1.1em; }
+.card--lg .card__center { font-size: 2.2em; }

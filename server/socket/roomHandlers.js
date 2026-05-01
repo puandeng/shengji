@@ -116,6 +116,9 @@ function setupRoomHandlers(io, socket, registry) {
         io.to(p.socketId).emit('game:started', stateForPlayer);
       });
 
+      // Let bots attempt trump calls immediately
+      room.scheduleBotTrumpCall();
+
       // Start trump selection timer
       room.startTrumpTimer(({ kittyResult }) => {
         // Timer expired — auto-select trump and move to kitty phase
@@ -152,6 +155,9 @@ function setupRoomHandlers(io, socket, registry) {
       room.game.players.forEach(p => {
         io.to(p.socketId).emit('game:newRound', room.toGameStateFor(p.socketId));
       });
+
+      // Let bots attempt trump calls immediately
+      room.scheduleBotTrumpCall();
 
       // Restart trump timer
       room.startTrumpTimer(({ kittyResult }) => {

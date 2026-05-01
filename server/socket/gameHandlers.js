@@ -38,6 +38,40 @@ function setupGameHandlers(io, socket, registry) {
     }
   });
 
+  // ── Pass on trump calling ─────────────────────────────────────────────────
+  socket.on('game:passTrump', (_, callback) => {
+    try {
+      const room = registry.getRoomForSocket(socket.id);
+      if (!room) return callback?.({ error: 'Not in a room' });
+
+      const result = room.passTrump(socket.id);
+      if (result.error) return callback?.({ error: result.error });
+
+      if (result.allPassed) {
+        // Everyone passed — finalize trump selection immediately
+        room._clearTrumpTimer();
+        room.game.finishTrumpSelection();
+        const kittyResult = room.game.giveKittyToDeclarer();
+
+        room.game.players.forEach(p => {
+          io.to(p.socketId).emit('game:trumpSelected', {
+            trumpSuit:     room.game.trumpSuit,
+            trumpDeclarer: room.game.trumpDeclarer,
+            auto:          true,
+            ...room.toGameStateFor(p.socketId),
+          });
+        });
+        room.scheduleBotKittyDiscard();
+      }
+
+      callback?.({ success: true, allPassed: result.allPassed });
+
+    } catch (err) {
+      console.error('[game:passTrump]', err);
+      callback?.({ error: 'Server error' });
+    }
+  });
+
   // ── Declare trump (legacy — immediate: clears timer, moves to kitty phase) ──
   socket.on('game:declareTrump', ({ cardId }, callback) => {
     try {
@@ -129,6 +163,7 @@ function setupGameHandlers(io, socket, registry) {
         });
       }
 
+      room.scheduleBotPlay();
       callback?.({ success: true });
 
     } catch (err) {
