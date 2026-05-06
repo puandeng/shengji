@@ -10,7 +10,7 @@ import './GameBoard.css';
 const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
 export default function GameBoard() {
-  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds } = useGame();
+  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, trickWinner } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
   const [hasPassed, setHasPassed] = useState(false);
 
@@ -175,6 +175,7 @@ export default function GameBoard() {
             oppositeSeat={oppositeSeat}
             leftSeat={leftSeat}
             rightSeat={rightSeat}
+            winnerSocketId={trickWinner}
           />
 
           {/* Attacker point pile */}
@@ -250,6 +251,13 @@ export default function GameBoard() {
           <p className="prompt-text">Waiting for {getPlayer(currentSeat)?.name ?? '…'}…</p>
         )}
       </div>
+
+      {/* Team role badge */}
+      {phase !== 'TRUMP_SELECTION' && attackingTeam != null && (
+        <div className={`gameboard__team-role ${myPlayer.teamIndex === attackingTeam ? 'gameboard__team-role--attacking' : 'gameboard__team-role--defending'}`}>
+          {myPlayer.teamIndex === attackingTeam ? 'ATTACKING' : 'DEFENDING'}
+        </div>
+      )}
 
       {/* My hand */}
       <Hand

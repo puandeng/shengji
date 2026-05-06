@@ -110,6 +110,10 @@ const LEVEL_THRESHOLDS = {
   'A':  120,
 };
 
+// Mandatory stop ranks — a team cannot skip past these the FIRST time they reach them.
+// Once a team has been at the rank in a prior round, it can be skipped freely.
+const MANDATORY_STOP_RANKS = new Set(['5', '10', 'K', 'A']);
+
 // Trump declaration time limit (seconds)
 const TRUMP_DECLARATION_TIMEOUT = 30;
 
@@ -133,6 +137,7 @@ module.exports = {
   TOTAL_POINTS,
   STARTING_LEVEL,
   LEVEL_THRESHOLDS,
+  MANDATORY_STOP_RANKS,
   TRUMP_DECLARATION_TIMEOUT,
   BOT_PLAY_DELAY_MS,
 };

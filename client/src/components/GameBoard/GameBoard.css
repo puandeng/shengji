@@ -195,3 +195,28 @@
   padding: 0.4rem 1rem;
   font-size: 0.875rem;
 }
+
+/* Team role badge above hand */
+.gameboard__team-role {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 0.2rem 1rem;
+  border-radius: 4px;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.gameboard__team-role--attacking {
+  background: rgba(239, 83, 80, 0.2);
+  color: #ef5350;
+  border: 1px solid rgba(239, 83, 80, 0.4);
+}
+
+.gameboard__team-role--defending {
+  background: rgba(66, 165, 245, 0.2);
+  color: #42a5f5;
+  border: 1px solid rgba(66, 165, 245, 0.4);
+}

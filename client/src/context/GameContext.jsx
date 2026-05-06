@@ -15,6 +15,8 @@ const INITIAL_STATE = {
   chatMessages:  [],
   devMode:       false,
   newCardIds:    [],       // Card IDs that were just drawn (for animation)
+  completedTrick: null,    // Trick that just finished (shown for 1.5s before clearing)
+  trickWinner:    null,    // socketId of the trick winner (shown during 1.5s delay)
 };
 
 function reducer(state, action) {
@@ -49,12 +51,13 @@ function reducer(state, action) {
       };
 
     case 'CARD_PLAYED':
-      // Optimistic update for current trick display
+      // Optimistic update for current trick display; clear any lingering completed trick
       return {
         ...state,
         gameState: state.gameState
           ? { ...state.gameState, currentTrick: action.payload.trick, currentSeat: action.payload.currentSeat }
           : state.gameState,
+        completedTrick: null,
       };
 
     case 'SET_ERROR':
@@ -80,6 +83,25 @@ function reducer(state, action) {
 
     case 'CLEAR_NEW_CARDS':
       return { ...state, newCardIds: [] };
+
+    case 'TRICK_COMPLETE':
+      // Store the completed trick for display, update gameState but override currentTrick
+      return {
+        ...state,
+        screen: 'game',
+        gameState: { ...action.payload, currentTrick: action.meta.completedTrick },
+        completedTrick: action.meta.completedTrick,
+        trickWinner: action.meta.trickWinner,
+      };
+
+    case 'CLEAR_COMPLETED_TRICK':
+      // Now clear the trick display — set currentTrick to [] as server intended
+      return {
+        ...state,
+        gameState: state.gameState ? { ...state.gameState, currentTrick: [] } : state.gameState,
+        completedTrick: null,
+        trickWinner: null,
+      };
 
     case 'RESET':
       return { ...INITIAL_STATE };
@@ -155,9 +177,13 @@ export function GameProvider({ children }) {
     on('game:cardPlayed',     (data)             => dispatch({ type: 'CARD_PLAYED', payload: data }));
     on('game:cardsPlayed',    (data)             => dispatch({ type: 'CARD_PLAYED', payload: data }));
     on('game:trickComplete',  (gameState)        => {
-      dispatch({ type: 'GAME_STATE', payload: gameState });
+      // Keep the completed trick visible for 1.5s before clearing
+      const completedTrick = stateRef.current.gameState?.currentTrick || [];
+      const trickWinner = gameState.completedTrick?.winner || null;
+      dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner } });
+      setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), 1500);
+
       if (gameState.gameOver) {
-        const teamName = `Team ${gameState.winnerTeam + 1}`;
         dispatch({ type: 'SET_NOTIFICATION', payload: `Team ${gameState.winnerTeam + 1} wins the game!` });
       } else if (gameState.roundOver) {
         const adv = gameState.levelsAdvanced > 1 ? ` (+${gameState.levelsAdvanced} levels)` : '';
