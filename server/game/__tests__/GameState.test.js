@@ -10,15 +10,20 @@ function createReadyGame() {
   return game;
 }
 
-function createPlayingGame(trumpSuit = 'S', trumpRank = '2') {
+function createDealedGame() {
   const game = createReadyGame();
   game.deal();
+  game.finishDealing();
+  return game;
+}
+
+function createPlayingGame(trumpSuit = 'S', trumpRank = '2') {
+  const game = createDealedGame();
   game.trumpSuit = trumpSuit;
   game.trumpRank = trumpRank;
   game.trumpDeclarer = 'p0';
   game.trumpCallStrength = 1;
   game.finishTrumpSelection();
-  // Give kitty to declarer and discard first 8 cards
   game.giveKittyToDeclarer();
   const hand = game.hands['p0'];
   const discardIds = hand.slice(0, 8).map(c => c.id);
@@ -54,8 +59,7 @@ describe('GameState', () => {
 
   describe('callTrump', () => {
     it('accepts a single trump-rank card', () => {
-      const game = createReadyGame();
-      game.deal();
+      const game = createDealedGame();
       // Manually place a trump-rank card in p0's hand
       const trumpCard = new Card('H', game.trumpRank, 0);
       trumpCard.id = 'test_trump_card';
@@ -68,8 +72,7 @@ describe('GameState', () => {
     });
 
     it('rejects a single joker', () => {
-      const game = createReadyGame();
-      game.deal();
+      const game = createDealedGame();
       const joker = new Card('JOKER', 'SJ', 0);
       joker.id = 'test_joker';
       game.hands['p0'].push(joker);
@@ -79,8 +82,7 @@ describe('GameState', () => {
     });
 
     it('accepts a same-type joker pair', () => {
-      const game = createReadyGame();
-      game.deal();
+      const game = createDealedGame();
       const sj1 = new Card('JOKER', 'SJ', 0);
       sj1.id = 'sj_0';
       const sj2 = new Card('JOKER', 'SJ', 1);
@@ -94,8 +96,7 @@ describe('GameState', () => {
     });
 
     it('rejects a mixed joker pair', () => {
-      const game = createReadyGame();
-      game.deal();
+      const game = createDealedGame();
       const sj = new Card('JOKER', 'SJ', 0);
       sj.id = 'sj_test';
       const bj = new Card('JOKER', 'BJ', 0);
@@ -107,8 +108,7 @@ describe('GameState', () => {
     });
 
     it('higher strength overrides lower', () => {
-      const game = createReadyGame();
-      game.deal();
+      const game = createDealedGame();
 
       // p0 calls single
       const c1 = new Card('H', game.trumpRank, 0);
@@ -130,8 +130,7 @@ describe('GameState', () => {
     });
 
     it('same strength does not override', () => {
-      const game = createReadyGame();
-      game.deal();
+      const game = createDealedGame();
 
       const c1 = new Card('H', game.trumpRank, 0);
       c1.id = 'c1';

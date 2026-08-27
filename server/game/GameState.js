@@ -448,7 +448,20 @@ class GameState {
       this.hands[player.socketId] = hands[i];
     });
 
-    this.phase             = GAME_PHASES.TRUMP_SELECTION;
+    // Build the deal queue — the order cards would be dealt round-robin
+    this.dealQueue = [];
+    for (let i = 0; i < CARDS_PER_PLAYER; i++) {
+      for (let p = 0; p < PLAYERS_PER_ROOM; p++) {
+        this.dealQueue.push({
+          seatIndex: p,
+          socketId:  this.players[p].socketId,
+          card:      hands[p][i],
+        });
+      }
+    }
+    this.dealIndex = 0;
+
+    this.phase             = GAME_PHASES.DEALING;
     this.trumpSuit         = null;
     this.trumpDeclarer     = null;
     this.trumpCallStrength = 0;
@@ -458,6 +471,38 @@ class GameState {
     this.scores            = { 0: 0, 1: 0 };
     this.attackerPointPile = [];
 
+    return { success: true };
+  }
+
+  /**
+   * Get the number of cards dealt so far to each player (for partial hand display).
+   */
+  getDealtCounts() {
+    const counts = {};
+    this.players.forEach(p => { counts[p.socketId] = 0; });
+    for (let i = 0; i < this.dealIndex; i++) {
+      const entry = this.dealQueue[i];
+      counts[entry.socketId] = (counts[entry.socketId] || 0) + 1;
+    }
+    return counts;
+  }
+
+  /**
+   * Get the partial hand dealt so far for a specific player.
+   */
+  getDealtHand(socketId) {
+    const hand = this.hands[socketId];
+    if (!hand) return [];
+    const count = this.getDealtCounts()[socketId] || 0;
+    return hand.slice(0, count);
+  }
+
+  /**
+   * Finish the dealing phase — move to trump selection.
+   */
+  finishDealing() {
+    this.dealIndex = this.dealQueue ? this.dealQueue.length : 0;
+    this.phase = GAME_PHASES.TRUMP_SELECTION;
     return { success: true };
   }
 
@@ -476,9 +521,14 @@ class GameState {
    * Higher strength overrides lower. Same strength: first caller wins (no override).
    */
   callTrump(socketId, cardIds) {
-    if (this.phase !== GAME_PHASES.TRUMP_SELECTION) return { error: 'Not in trump selection phase' };
+    if (this.phase !== GAME_PHASES.TRUMP_SELECTION && this.phase !== GAME_PHASES.DEALING) {
+      return { error: 'Not in trump selection phase' };
+    }
 
-    const hand = this.hands[socketId];
+    // During dealing, only allow calling with cards already dealt to the player
+    const hand = this.phase === GAME_PHASES.DEALING
+      ? this.getDealtHand(socketId)
+      : this.hands[socketId];
     if (!hand) return { error: 'Player not found' };
 
     // Validate all cards are in the caller's hand
@@ -548,7 +598,9 @@ class GameState {
    * A player passes on calling trump. Returns whether all players have now passed.
    */
   passTrump(socketId) {
-    if (this.phase !== GAME_PHASES.TRUMP_SELECTION) return { error: 'Not in trump selection phase' };
+    if (this.phase !== GAME_PHASES.TRUMP_SELECTION && this.phase !== GAME_PHASES.DEALING) {
+      return { error: 'Not in trump selection phase' };
+    }
     const player = this.getPlayer(socketId);
     if (!player) return { error: 'Player not found' };
     this.trumpPasses.add(socketId);
@@ -923,10 +975,22 @@ class GameState {
 
   toPlayerJSON(socketId) {
     const full = this.toFullJSON();
-    full.myHand     = (this.hands[socketId] || []).map(c => c.toJSON());
-    full.handCounts = Object.fromEntries(
-      Object.entries(this.hands).map(([id, cards]) => [id, cards.length])
-    );
+
+    if (this.phase === GAME_PHASES.DEALING) {
+      full.myHand     = this.getDealtHand(socketId).map(c => c.toJSON());
+      const dealtCounts = this.getDealtCounts();
+      full.handCounts = Object.fromEntries(
+        Object.entries(dealtCounts).map(([id, count]) => [id, count])
+      );
+      full.dealTotal = this.dealQueue ? this.dealQueue.length : 0;
+      full.dealIndex = this.dealIndex || 0;
+    } else {
+      full.myHand     = (this.hands[socketId] || []).map(c => c.toJSON());
+      full.handCounts = Object.fromEntries(
+        Object.entries(this.hands).map(([id, cards]) => [id, cards.length])
+      );
+    }
+
     delete full.hands;
     return full;
   }

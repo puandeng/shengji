@@ -120,6 +120,12 @@ const TRUMP_DECLARATION_TIMEOUT = 30;
 // Delay before a bot auto-plays (ms) — gives humans time to follow the action
 const BOT_PLAY_DELAY_MS = 700;
 
+// Delay between each card dealt during animated dealing (ms)
+const DEAL_CARD_INTERVAL_MS = 120;
+
+// Delay after the last card in a trick before clearing (ms) — lets everyone see the result
+const TRICK_DISPLAY_DELAY_MS = 2500;
+
 module.exports = {
   SUITS,
   SUIT_NAMES,
@@ -140,4 +146,6 @@ module.exports = {
   MANDATORY_STOP_RANKS,
   TRUMP_DECLARATION_TIMEOUT,
   BOT_PLAY_DELAY_MS,
+  DEAL_CARD_INTERVAL_MS,
+  TRICK_DISPLAY_DELAY_MS,
 };
