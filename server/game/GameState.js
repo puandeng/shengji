@@ -9,6 +9,7 @@ const {
   STARTING_LEVEL,
   LEVEL_THRESHOLDS,
   LEVEL_ORDER,
+  MANDATORY_STOP_RANKS,
   TRUMP_DECLARATION_TIMEOUT,
 } = require('./constants');
 
@@ -17,12 +18,26 @@ const {
 // ─────────────────────────────────────────────
 
 /**
- * Advance a level by `steps`. Returns null if the team has won (levelled past A).
+ * Advance a level by `steps`, respecting mandatory stop ranks.
+ * `visitedRanks` is a Set of ranks the team has already been at (can skip freely).
+ * Returns null if the team has won (levelled past A).
  */
-function advanceLevel(currentLevel, steps) {
+function advanceLevel(currentLevel, steps, visitedRanks = new Set()) {
   const idx = LEVEL_ORDER.indexOf(currentLevel);
-  const newIdx = idx + steps;
+  let newIdx = idx + steps;
   if (newIdx >= LEVEL_ORDER.length) return null; // Past A → team wins
+
+  // Check for mandatory stop ranks between current and target (exclusive of current)
+  for (let i = idx + 1; i < newIdx; i++) {
+    const rank = LEVEL_ORDER[i];
+    if (MANDATORY_STOP_RANKS.has(rank) && !visitedRanks.has(rank)) {
+      newIdx = i; // Stop at the first unvisited mandatory rank
+      break;
+    }
+  }
+
+  // Also check the target itself — if it's past A after stop, cap it
+  if (newIdx >= LEVEL_ORDER.length) return null;
   return LEVEL_ORDER[newIdx];
 }
 
@@ -336,6 +351,8 @@ class GameState {
     this.trumpTimer     = null;
     this.roundNumber    = 1;
     this.trumpPasses    = new Set();      // socketIds that have passed on trump calling
+    // Track ranks each team has visited (for mandatory stop rank logic)
+    this.visitedRanks   = { 0: new Set([STARTING_LEVEL]), 1: new Set([STARTING_LEVEL]) };
   }
 
   // ─────────────────────────────────────────────
@@ -833,7 +850,7 @@ class GameState {
                       : 1;
     }
 
-    const newLevel = advanceLevel(this.teamLevels[advancingTeam], levelsAdvanced);
+    const newLevel = advanceLevel(this.teamLevels[advancingTeam], levelsAdvanced, this.visitedRanks[advancingTeam]);
     let gameOver   = false;
 
     if (newLevel === null) {
@@ -843,6 +860,7 @@ class GameState {
       this.winner = advancingTeam;
     } else {
       this.teamLevels[advancingTeam] = newLevel;
+      this.visitedRanks[advancingTeam].add(newLevel);
     }
 
     // Accumulate round scores (legacy, for UI compat)

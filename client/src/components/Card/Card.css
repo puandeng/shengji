@@ -26,14 +26,16 @@
 .card--trump     { border-color: rgba(240,192,64,0.5); }
 
 /* Jokers */
-.card--joker-big   { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #f0c040; }
-.card--joker-small { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #b0b0c0; }
-
-/* Joker emoji styling — big = full color, small = grayscale */
-.card--joker-big .card__rank,
-.card--joker-big .card__center { filter: none; }
-.card--joker-small .card__rank,
-.card--joker-small .card__center { filter: grayscale(1); }
+.card--joker-big {
+  background: linear-gradient(135deg, #2d1b4e, #1a1040);
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+}
+.card--joker-small {
+  background: linear-gradient(135deg, #1a2a3a, #0f1f2f);
+  color: #e0e0e0;
+  border-color: #7a8a9a;
+}
 
 /* Face-down */
 .card--facedown { background: #2c3e50; border-color: #1a2a3a; }
@@ -84,11 +86,18 @@
   opacity: 0.15;
 }
 
-/* Joker center pip should be fully visible */
-.card--joker-big .card__center,
+/* Joker center pip — large and high contrast */
+.card--joker-big .card__center {
+  opacity: 1;
+  font-size: 2.2em;
+  color: #ff6b6b;
+  text-shadow: 0 0 8px rgba(255, 107, 107, 0.6);
+}
 .card--joker-small .card__center {
   opacity: 0.9;
-  font-size: 2em;
+  font-size: 2.2em;
+  color: #e0e0e0;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 }
 
 /* Point badge */

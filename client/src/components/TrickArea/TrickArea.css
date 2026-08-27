@@ -34,3 +34,37 @@
   border: 2px dashed rgba(255,255,255,0.12);
   border-radius: 6px;
 }
+
+/* Multi-card combo — horizontal with overlap */
+.trick-area__combo {
+  display: flex;
+  align-items: center;
+}
+
+.trick-area__combo .card + .card {
+  margin-left: -28px;
+}
+
+/* Trick winner indicator */
+.trick-area__slot {
+  position: relative;
+}
+
+.trick-area__slot--winner .card {
+  box-shadow: 0 0 12px 3px rgba(240, 192, 64, 0.7);
+}
+
+.trick-area__winner-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 1.2rem;
+  color: var(--color-gold, #f0c040);
+  filter: drop-shadow(0 0 4px rgba(240, 192, 64, 0.8));
+  animation: winner-pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes winner-pulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.2); }
+}

@@ -95,3 +95,14 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
   - **Tractor:** consecutive pairs, same effective suit. `tractorValue()` rewritten so trump rank is adjacent to Aces (below) and small jokers (above), enabling A,A+trumpRank,trumpRank and trumpRank,trumpRank+SJ,SJ and SJ,SJ+BJ,BJ tractors.
   - **Throw (single+pair):** 3 cards, same effective suit, 1 single + 1 pair. Beaten when opponent beats both components. **Penalty:** if throw is beaten by opponent, attacker team loses 30 pts (or gains 30 if defender led).
   Added `isThrow()`, `splitThrowComponents()`, updated `beatsTrickEntry()` for throw comparison, and added throw penalty in `_resolveTrick()`. 3 new unit tests for combo validation.
+- [x] **Fix win condition: level progression 2→A, not "3 rounds".** The game should be won by progressing from level 2 through to Ace and then winning the round at Ace level. Replace any "first to 3 round-wins" logic with the level progression system (which is partially implemented via `teamLevels` and `advanceLevel()`). Key changes:
+  - A team wins the match only after winning a round while at level A (levelling past A).
+  - Ranks can be skipped based on point differential (both attacking and defending):
+    - [x] **Determine point thresholds for rank skipping.** Attackers score 0 → defenders jump 3; attackers < threshold−40 → defenders jump 2; attackers ≥ threshold+40 → attackers jump 2; attackers ≥ threshold+80 → attackers jump 3.
+  - **Mandatory stop ranks:** 5, 10, K, and A cannot be skipped the first time a team reaches them. `MANDATORY_STOP_RANKS` in constants, `visitedRanks` per-team tracking in GameState, `advanceLevel()` respects stops.
+- [x] **Improve joker card contrast.** BJ/SJ text labels with ★/☆ center symbols. Big joker = red (#ff6b6b) on purple gradient, small joker = light gray (#e0e0e0) on dark blue gradient with high-contrast borders and text-shadows.
+- [x] **Responsive card sizing to fit screen.** Dynamic card size (lg/md/sm) based on largest row count. Dynamic overlap via `calcOverlap()` targeting 900px width. Two-row layout inherits independent overlap per row.
+- [x] **1.5s delay before clearing completed trick.** Client-side `TRICK_COMPLETE` action keeps completed trick visible for 1.5s via `completedTrick` state; `CLEAR_COMPLETED_TRICK` dispatched after timeout. New card plays clear early.
+- [x] **Make attacking/defending team more obvious.** Colored badge above player's hand: red "ATTACKING" or blue "DEFENDING" with border and background tint.
+- [x] **Trick winner indicator arrow.** Gold star (★) badge with pulse animation on the winning player's trick slot during the 1.5s display period. Winner cards get a gold glow box-shadow.
+- [x] **Display multi-card plays horizontally.** TrickSlot renders cards in a flex row with -28px margin overlap. Cards > 2 use 'sm' size to fit. `.trick-area__combo` CSS handles layout.

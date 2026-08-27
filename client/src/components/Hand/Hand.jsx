@@ -70,8 +70,25 @@ export default function Hand({
     return { trumpCards: trump, nonTrumpCards: nonTrump };
   }, [cards, trumpSuit, trumpRank]);
 
-  const overlapTrump = Math.max(8, Math.min(32, Math.floor(600 / Math.max(trumpCards.length, 1))));
-  const overlapNon   = Math.max(8, Math.min(32, Math.floor(600 / Math.max(nonTrumpCards.length, 1))));
+  // Dynamic sizing: use 'lg' if few cards, 'md' normally, 'sm' if many cards
+  const maxRow = Math.max(trumpCards.length, nonTrumpCards.length);
+  const cardSize = maxRow <= 8 ? 'lg' : maxRow <= 15 ? 'md' : 'sm';
+
+  // Dynamic overlap: more cards = more overlap to keep them on screen
+  // Card widths: sm=56, md=84, lg=110
+  const cardWidth = cardSize === 'lg' ? 110 : cardSize === 'md' ? 84 : 56;
+  const calcOverlap = (count) => {
+    if (count <= 1) return 0;
+    // Target: fit all cards within ~90vw (approx 900px on a 1000px wide screen)
+    const targetWidth = 900;
+    const needed = cardWidth * count;
+    if (needed <= targetWidth) return Math.min(cardWidth * 0.3, 25);
+    // Overlap enough to fit
+    return Math.min(cardWidth * 0.65, Math.max(15, (needed - targetWidth) / (count - 1)));
+  };
+
+  const overlapTrump = calcOverlap(trumpCards.length);
+  const overlapNon   = calcOverlap(nonTrumpCards.length);
 
   const showPlayButton = selectionMode === 'play' && selectedCards.length > 0;
 
@@ -92,7 +109,7 @@ export default function Hand({
             >
               <Card
                 card={card}
-                size="md"
+                size={cardSize}
                 selected={isSelected}
                 onClick={onCardClick ? () => onCardClick(card) : undefined}
                 disabled={!isMyTurn && !selectionMode}
