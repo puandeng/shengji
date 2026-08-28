@@ -125,14 +125,18 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 - [x] **Directional slide-in animation.** Cards animate sliding in from their player's direction (top/bottom/left/right) when played into the trick area. 300ms ease-out CSS animation per slot.
 
 ## Trump declaration visuals
-- [ ] **Show declaring card during trump call.** When a player declares trump, physically display the card(s) used for the declaration (visible to all players) and keep them shown until the call is overridden by a stronger declaration or the game transitions to the playing phase.
+- [x] **Show declaring card during trump call.** When a player declares trump, physically display the card(s) used for the declaration (visible to all players) and keep them shown until the call is overridden by a stronger declaration or the game transitions to the playing phase. Server stores `trumpDeclareCards` in GameState, included in state snapshots, cleared on `finishTrumpSelection()`. Client shows cards in a glowing banner between scores and opposite player during DEALING/TRUMP_SELECTION.
 
 ## Bug fixes (new)
-- [ ] **Cards visually disappearing.** Cards sometimes vanish from the UI unexpectedly. Investigate and fix the rendering issue causing cards to disappear during gameplay.
-- [ ] **Dealing animation broken.** The animated card dealing (draw-style, drip-fed via `game:cardDealt`) from the dealing-animation PR is no longer working. Investigate and restore the dealing animation.
-- [ ] **Trump suit cards not sorted into upper row.** After trump is declared, trump-suit cards should appear in the top (trump) row of the hand, but they're staying in the bottom row. Investigate the sorting logic in `Hand.jsx`.
+- [x] **Cards visually disappearing.** Root cause: `game:trumpCalled` dispatched `GAME_STATE` which replaced the entire client gameState (including `myHand`) with the server's snapshot. During dealing, the server snapshot only contained cards dealt up to `dealIndex`, but the client had already received more cards via `game:cardDealt` events. Fix: during dealing, `game:trumpCalled` now dispatches `UPDATE_GAME_STATE` to only update trump-related fields while preserving the client's incrementally-built hand.
+- [x] **Dealing animation broken.** Same root cause as above — `game:trumpCalled` during dealing wiped the client's hand state, breaking the incremental card-by-card animation. Fixed together with the cards-disappearing bug.
+- [x] **Trump suit cards not sorted into upper row.** Same root cause — when `game:trumpCalled` replaced the entire gameState during dealing, it could reset hand state and cause re-sorting issues. The `UPDATE_GAME_STATE` fix ensures `trumpSuit` is updated without disrupting the hand, so `Hand.jsx`'s `isCardTrump()` correctly sorts trump-suit cards to the top row.
 
 ## UI improvements (new)
-- [ ] **Remove card counter from player icons.** Remove the card count number displayed below each player's avatar/icon — it's unnecessary clutter.
-- [ ] **Show opponent face-down hands shrinking.** Currently only the teammate's hand is visually shown. Add face-down card visuals for opponents (left and right players) that shrink as cards are played, so you can see how many cards each opponent has remaining.
-- [ ] **Card-based level indicator.** Replace the text "Level {rank}" display with a visual card component showing the current level rank on the card face. Use the actual Card component styled to display the team's current level rank.
+- [x] **Remove card counter from player icons.** Removed `{cardCount} cards` text and trump suit symbol from `PlayerInfo` details section. Only name and ATK/DEF role badge remain.
+- [x] **Show opponent face-down hands shrinking.** Added face-down card stacks for left and right players (`.gameboard__side-cards`), capped at 10 visible cards, rendered vertically with overlap. Cards shrink as they're played (driven by `handCounts`). Hidden on 480px screens.
+- [x] **Card-based level indicator.** Replaced `ScoreChip` text component with `LevelCard` which renders an actual `Card` component (sm size) showing the team's current level rank. Team 1 uses spades, Team 2 uses hearts. Card has colored glow matching ATK/DEF role.
+
+## Bug fixes (newer)
+- [ ] **Can't select more than one card for trump declaration.** When trying to declare trump with a pair (e.g., two trump-rank cards or a joker pair), clicking the first card immediately submits it as a single call instead of allowing a second card to be selected. The pair declaration flow is broken.
+- [ ] **Hand and play button overlap macOS dock.** The bottom of the game board (hand area, play button) extends too far down and gets hidden behind the macOS dock. Add bottom padding or adjust the layout so the hand stays fully visible above the dock.
