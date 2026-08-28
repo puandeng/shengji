@@ -23,23 +23,33 @@ export default function TrickArea({ trick = [], players = [], mySeat = 0, opposi
     return player && player.socketId === winnerSocketId;
   };
 
+  const slotClass = (seat, direction) => {
+    const hasCards = getCardsForSeat(seat).length > 0;
+    return [
+      'trick-area__slot',
+      `trick-area__${direction}`,
+      isWinner(seat) ? 'trick-area__slot--winner' : '',
+      hasCards ? `trick-area__slot--slide-${direction}` : '',
+    ].filter(Boolean).join(' ');
+  };
+
   return (
     <div className={`trick-area ${frozen ? 'trick-area--frozen' : ''}`}>
-      <div className="trick-area__slot trick-area__top">
+      <div className={slotClass(oppositeSeat, 'top')}>
         <TrickSlot cards={getCardsForSeat(oppositeSeat)} isWinner={isWinner(oppositeSeat)} />
       </div>
 
       <div className="trick-area__middle">
-        <div className="trick-area__slot trick-area__left">
+        <div className={slotClass(leftSeat, 'left')}>
           <TrickSlot cards={getCardsForSeat(leftSeat)} isWinner={isWinner(leftSeat)} />
         </div>
         <div className="trick-area__centre" />
-        <div className="trick-area__slot trick-area__right">
+        <div className={slotClass(rightSeat, 'right')}>
           <TrickSlot cards={getCardsForSeat(rightSeat)} isWinner={isWinner(rightSeat)} />
         </div>
       </div>
 
-      <div className="trick-area__slot trick-area__bottom">
+      <div className={slotClass(mySeat, 'bottom')}>
         <TrickSlot cards={getCardsForSeat(mySeat)} isWinner={isWinner(mySeat)} />
       </div>
     </div>

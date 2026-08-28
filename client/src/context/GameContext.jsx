@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from './SocketContext';
+import { playCardSnap, playTrickWon, playRoundEnd } from '../sounds';
 
 const GameContext = createContext(null);
 
@@ -200,8 +201,8 @@ export function GameProvider({ children }) {
     on('game:kittyDiscarded', (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
     on('game:cardDealt',      (data)             => dispatch({ type: 'CARD_DEALT', payload: data }));
     on('game:dealComplete',   (gameState)        => dispatch({ type: 'DEAL_COMPLETE', payload: gameState }));
-    on('game:cardPlayed',     (data)             => dispatch({ type: 'CARD_PLAYED', payload: data }));
-    on('game:cardsPlayed',    (data)             => dispatch({ type: 'CARD_PLAYED', payload: data }));
+    on('game:cardPlayed',     (data)             => { playCardSnap(); dispatch({ type: 'CARD_PLAYED', payload: data }); });
+    on('game:cardsPlayed',    (data)             => { playCardSnap(); dispatch({ type: 'CARD_PLAYED', payload: data }); });
     on('game:trickComplete',  (gameState)        => {
       const serverTrick = gameState.completedTrick;
       const completedTrick = serverTrick?.cards || stateRef.current.gameState?.currentTrick || [];
@@ -209,10 +210,12 @@ export function GameProvider({ children }) {
       const delay = gameState.trickDisplayDelay || 2500;
 
       dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner } });
+      playTrickWon();
       setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
 
       if (gameState.gameOver) {
         dispatch({ type: 'SET_NOTIFICATION', payload: `Team ${gameState.winnerTeam + 1} wins the game!` });
+        playRoundEnd(true);
       } else if (gameState.roundOver) {
         const adv = gameState.levelsAdvanced > 1 ? ` (+${gameState.levelsAdvanced} levels)` : '';
         const msg = gameState.attackingWon
@@ -220,6 +223,8 @@ export function GameProvider({ children }) {
           : `Defending team wins this round!${adv}`;
         dispatch({ type: 'SET_NOTIFICATION', payload: msg });
         setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 5000);
+        const myTeam = stateRef.current.myPlayer?.teamIndex;
+        playRoundEnd(myTeam === gameState.attackingTeam ? gameState.attackingWon : !gameState.attackingWon);
       }
     });
 

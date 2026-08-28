@@ -1,4 +1,5 @@
 .gameboard {
+  position: relative;
   width: 100vw;
   height: 100vh;
   display: grid;
@@ -299,4 +300,130 @@
   background: rgba(66, 165, 245, 0.2);
   color: #42a5f5;
   border: 1px solid rgba(66, 165, 245, 0.4);
+}
+
+/* ── Mobile layout (portrait phones) ────────────────────────────────── */
+@media (max-width: 768px) {
+  .gameboard {
+    padding: 0.25rem;
+    gap: 0.2rem;
+    grid-template-rows: auto auto auto 1fr auto auto auto;
+  }
+
+  .gameboard__scores {
+    padding: 0 0.25rem;
+  }
+
+  .score-chip {
+    padding: 0.2rem 0.5rem;
+    min-width: 64px;
+  }
+
+  .score-chip__level-display {
+    font-size: 0.9rem;
+  }
+
+  .gameboard__round {
+    font-size: 0.65rem;
+  }
+
+  .gameboard__opposite {
+    gap: 0.2rem;
+  }
+
+  .gameboard__opp-cards .card {
+    margin-left: -18px;
+  }
+
+  .gameboard__sides {
+    gap: 0.2rem;
+  }
+
+  .gameboard__left,
+  .gameboard__right {
+    min-width: 48px;
+  }
+
+  .gameboard__centre-col {
+    gap: 0.2rem;
+  }
+
+  .gameboard__point-pile {
+    max-width: 180px;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .point-pile__header {
+    font-size: 0.65rem;
+  }
+
+  .gameboard__prompt {
+    padding: 0.15rem;
+    min-height: 2rem;
+  }
+
+  .prompt-text {
+    font-size: 0.75rem;
+  }
+
+  .trump-actions,
+  .kitty-actions {
+    gap: 0.5rem;
+  }
+
+  .trump-actions .btn-secondary {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+  }
+
+  .kitty-actions .btn-primary {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .gameboard__team-role {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.6rem;
+    letter-spacing: 1px;
+  }
+}
+
+@media (max-width: 480px) {
+  .gameboard {
+    padding: 0.15rem;
+    gap: 0.15rem;
+  }
+
+  .gameboard__opposite {
+    gap: 0.1rem;
+  }
+
+  .gameboard__opp-cards {
+    display: none;
+  }
+
+  .gameboard__left,
+  .gameboard__right {
+    min-width: 36px;
+  }
+}
+
+/* Mute button */
+.gameboard__mute-btn {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 10;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
 }

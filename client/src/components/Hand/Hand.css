@@ -84,3 +84,31 @@
   font-style: italic;
   font-size: 0.875rem;
 }
+
+@media (max-width: 768px) {
+  .hand {
+    padding: 0.2rem 0.3rem 0.3rem;
+    min-height: 100px;
+    gap: 0.1rem;
+  }
+
+  .hand__row-label {
+    font-size: 0.45rem;
+  }
+
+  .hand__play-btn-row {
+    margin-top: 0.2rem;
+  }
+
+  .hand__play-btn-row .btn-primary {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hand {
+    padding: 0.15rem 0.15rem 0.2rem;
+    min-height: 80px;
+  }
+}

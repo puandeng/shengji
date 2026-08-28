@@ -112,3 +112,14 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 ## Visual clarity
 - [x] **Attacking/defending team indicators.** `PlayerInfo` now shows ATK/DEF role badges (red for attacking, blue for defending) on every player. `ScoreChip` shows "Attacking"/"Defending" labels with colored backgrounds. Player info panels have colored borders matching their role.
 - [x] **Responsive layout for 100% browser zoom.** Card sizes scaled down (md: 84×120 → 62×88, sm: 56×80 → 42×60), grid gaps and padding tightened, font sizes reduced across all components. Game fits at 100% zoom on a standard 1080p screen.
+
+## Sound effects
+- [x] **Card play & deal sounds.** Synthesized via Web Audio API (no external files) — card snap on play, ascending arpeggio on trick win, victory/defeat fanfare on round end. Mute toggle persists in localStorage.
+- [x] **Mute toggle.** Speaker icon button (top-right of game board) toggles all sounds. State saved to localStorage across sessions.
+
+## Mobile-friendly layout
+- [x] **Portrait phone layout.** Responsive CSS at 768px and 480px breakpoints. Cards, fonts, gaps, and padding scale down. Opponent face-down cards hidden on very small screens. Side players shrink to fit.
+- [x] **Viewport and scaling.** `<meta viewport>` updated with `maximum-scale=1.0, user-scalable=no` to prevent pinch-zoom during gameplay.
+
+## Card play animations
+- [x] **Directional slide-in animation.** Cards animate sliding in from their player's direction (top/bottom/left/right) when played into the trick area. 300ms ease-out CSS animation per slot.

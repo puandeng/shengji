@@ -103,3 +103,51 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+@media (max-width: 768px) {
+  .player-info {
+    padding: 0.25rem 0.4rem;
+    gap: 0.3rem;
+    min-width: 80px;
+  }
+
+  .player-info--vertical {
+    min-width: 48px;
+    padding: 0.25rem 0.2rem;
+  }
+
+  .player-info__avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+  }
+
+  .player-info__name {
+    font-size: 0.65rem;
+  }
+
+  .player-info__meta {
+    font-size: 0.55rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .player-info--vertical {
+    min-width: 36px;
+    padding: 0.15rem;
+  }
+
+  .player-info__avatar {
+    width: 20px;
+    height: 20px;
+    font-size: 0.6rem;
+  }
+
+  .player-info__name {
+    font-size: 0.55rem;
+  }
+
+  .player-info__meta {
+    font-size: 0.5rem;
+  }
+}
