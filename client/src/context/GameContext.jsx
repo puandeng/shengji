@@ -15,8 +15,8 @@ const INITIAL_STATE = {
   chatMessages:  [],
   devMode:       false,
   newCardIds:    [],       // Card IDs that were just drawn (for animation)
-  completedTrick: null,    // Trick that just finished (shown for 1.5s before clearing)
-  trickWinner:    null,    // socketId of the trick winner (shown during 1.5s delay)
+  completedTrick: null,
+  trickWinner:    null,
 };
 
 function reducer(state, action) {
@@ -84,8 +84,33 @@ function reducer(state, action) {
     case 'CLEAR_NEW_CARDS':
       return { ...state, newCardIds: [] };
 
+    case 'CARD_DEALT': {
+      if (!state.gameState) return state;
+      const { card, allCounts } = action.payload;
+      const newHand = card
+        ? [...(state.gameState.myHand || []), card]
+        : state.gameState.myHand || [];
+      return {
+        ...state,
+        gameState: {
+          ...state.gameState,
+          myHand: newHand,
+          handCounts: allCounts,
+          dealIndex: action.payload.dealIndex,
+          dealTotal: action.payload.dealTotal,
+        },
+        newCardIds: card ? [card.id] : [],
+      };
+    }
+
+    case 'DEAL_COMPLETE':
+      return {
+        ...state,
+        gameState: action.payload,
+        newCardIds: [],
+      };
+
     case 'TRICK_COMPLETE':
-      // Store the completed trick for display, update gameState but override currentTrick
       return {
         ...state,
         screen: 'game',
@@ -95,7 +120,6 @@ function reducer(state, action) {
       };
 
     case 'CLEAR_COMPLETED_TRICK':
-      // Now clear the trick display — set currentTrick to [] as server intended
       return {
         ...state,
         gameState: state.gameState ? { ...state.gameState, currentTrick: [] } : state.gameState,
@@ -174,14 +198,18 @@ export function GameProvider({ children }) {
       setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
     });
     on('game:kittyDiscarded', (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
+    on('game:cardDealt',      (data)             => dispatch({ type: 'CARD_DEALT', payload: data }));
+    on('game:dealComplete',   (gameState)        => dispatch({ type: 'DEAL_COMPLETE', payload: gameState }));
     on('game:cardPlayed',     (data)             => dispatch({ type: 'CARD_PLAYED', payload: data }));
     on('game:cardsPlayed',    (data)             => dispatch({ type: 'CARD_PLAYED', payload: data }));
     on('game:trickComplete',  (gameState)        => {
-      // Keep the completed trick visible for 1.5s before clearing
-      const completedTrick = stateRef.current.gameState?.currentTrick || [];
-      const trickWinner = gameState.completedTrick?.winner || null;
+      const serverTrick = gameState.completedTrick;
+      const completedTrick = serverTrick?.cards || stateRef.current.gameState?.currentTrick || [];
+      const trickWinner = serverTrick?.winner || null;
+      const delay = gameState.trickDisplayDelay || 2500;
+
       dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner } });
-      setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), 1500);
+      setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
 
       if (gameState.gameOver) {
         dispatch({ type: 'SET_NOTIFICATION', payload: `Team ${gameState.winnerTeam + 1} wins the game!` });
@@ -206,6 +234,8 @@ export function GameProvider({ children }) {
       socket.off('game:trumpCalled');
       socket.off('game:trumpSelected');
       socket.off('game:kittyDiscarded');
+      socket.off('game:cardDealt');
+      socket.off('game:dealComplete');
       socket.off('game:cardPlayed');
       socket.off('game:cardsPlayed');
       socket.off('game:trickComplete');
@@ -334,6 +364,8 @@ export function GameProvider({ children }) {
   return (
     <GameContext.Provider value={{
       ...state,
+      completedTrick: state.completedTrick,
+      trickWinner: state.trickWinner,
       createRoom,
       joinRoom,
       startGame,

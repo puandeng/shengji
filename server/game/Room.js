@@ -1,7 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const GameState = require('./GameState');
 const BotPlayer = require('./BotPlayer');
-const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, KITTY_SIZE } = require('./constants');
+const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, TRICK_DISPLAY_DELAY_MS } = require('./constants');
 
 /**
  * Room encapsulates a single game lobby + game session.
@@ -75,6 +75,48 @@ class Room {
     if (!this.game.isReady()) return { error: 'Need 4 players to start' };
     if (this.game.phase !== GAME_PHASES.WAITING) return { error: 'Game already started' };
     return this.game.deal();
+  }
+
+  /**
+   * Animate dealing: drip-feed cards one at a time to all clients.
+   * Calls `onDealCard(entry, index)` for each card dealt,
+   * and `onDealComplete()` when all cards are dealt.
+   */
+  startAnimatedDeal(onDealCard, onDealComplete) {
+    if (!this.game.dealQueue || this.game.phase !== GAME_PHASES.DEALING) return;
+
+    this._clearDealTimer();
+    const queue = this.game.dealQueue;
+    let idx = 0;
+
+    const dealNext = () => {
+      if (idx >= queue.length) {
+        this.game.finishDealing();
+        onDealComplete();
+        return;
+      }
+
+      this.game.dealIndex = idx + 1;
+      const entry = queue[idx];
+      onDealCard(entry, idx);
+      idx++;
+
+      // Every 4 cards (one full round), let bots try to call trump
+      if (idx % 4 === 0 && this.game.phase === GAME_PHASES.DEALING) {
+        this.scheduleBotTrumpCall();
+      }
+
+      this._dealTimer = setTimeout(dealNext, DEAL_CARD_INTERVAL_MS);
+    };
+
+    dealNext();
+  }
+
+  _clearDealTimer() {
+    if (this._dealTimer) {
+      clearTimeout(this._dealTimer);
+      this._dealTimer = null;
+    }
   }
 
   /** Start the trump-selection countdown timer */
@@ -155,20 +197,24 @@ class Room {
 
   /** Schedule bot trump calls shortly after dealing. */
   scheduleBotTrumpCall() {
-    if (this.game.phase !== GAME_PHASES.TRUMP_SELECTION) return;
+    if (this.game.phase !== GAME_PHASES.TRUMP_SELECTION && this.game.phase !== GAME_PHASES.DEALING) return;
 
     // Stagger bot calls with a short delay so it feels natural
     const botPlayers = this.game.players.filter(p => BotPlayer.isBot(p.socketId));
     botPlayers.forEach((bot, i) => {
       const timer = setTimeout(() => {
-        if (this.game.phase !== GAME_PHASES.TRUMP_SELECTION) return;
+        if (this.game.phase !== GAME_PHASES.TRUMP_SELECTION && this.game.phase !== GAME_PHASES.DEALING) return;
 
-        const hand = this.game.hands[bot.socketId];
-        if (!hand) return;
+        const hand = this.game.phase === GAME_PHASES.DEALING
+          ? this.game.getDealtHand(bot.socketId)
+          : this.game.hands[bot.socketId];
+        if (!hand || hand.length === 0) return;
 
         const cardIds = BotPlayer.chooseTrumpCall(hand, this.game.trumpRank, this.game.trumpCallStrength);
         if (!cardIds) {
-          // Bot can't call — pass instead
+          // Bot can't call — pass instead (but don't pass during dealing; wait until trump selection)
+          if (this.game.phase === GAME_PHASES.DEALING) return;
+
           const passResult = this.game.passTrump(bot.socketId);
           if (passResult.allPassed) {
             this._clearTrumpTimer();
@@ -248,12 +294,11 @@ class Room {
 
     this._broadcastAfterPlay(result, socketId, cardIds[0]);
 
-    // Chain to next bot if the game is still going
     if (!result.trickComplete) {
       this.scheduleBotPlay();
     } else if (!result.roundOver && !result.gameOver) {
-      // Extra delay after trick completion so the client can display the winning card
-      const timer = setTimeout(() => this.scheduleBotPlay(), BOT_PLAY_DELAY_MS);
+      // Wait for trick display delay before starting next trick
+      const timer = setTimeout(() => this.scheduleBotPlay(), TRICK_DISPLAY_DELAY_MS + BOT_PLAY_DELAY_MS);
       this._botTimers.push(timer);
     }
   }

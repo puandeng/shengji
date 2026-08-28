@@ -2,7 +2,7 @@
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-rows: auto auto auto 1fr auto minmax(0, auto);
   grid-template-areas:
     "trump"
     "scores"
@@ -12,15 +12,8 @@
     "hand";
   background: var(--color-felt);
   overflow: hidden;
-  padding: 0.5rem;
-  gap: 0.4rem;
-}
-
-/* Responsive layout */
-@media (min-height: 700px) {
-  .gameboard {
-    grid-template-rows: auto auto auto 1fr auto auto;
-  }
+  padding: 0.3rem;
+  gap: 0.2rem;
 }
 
 .gameboard__scores {
@@ -32,7 +25,7 @@
 }
 
 .gameboard__round {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -42,31 +35,51 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.3rem 0.8rem;
-  border: 1px solid;
+  padding: 0.2rem 0.6rem;
+  border: 2px solid;
   border-radius: 8px;
   background: rgba(0,0,0,0.3);
-  min-width: 80px;
+  min-width: 90px;
+}
+
+.score-chip--attacking {
+  background: rgba(231, 76, 60, 0.15);
+}
+
+.score-chip--defending {
+  background: rgba(41, 128, 185, 0.1);
 }
 
 .score-chip__label {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--color-text-muted);
 }
 
 .score-chip__level-display {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
 .score-chip__role {
   font-size: 0.6rem;
-  color: #ef5350;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-top: 1px;
+}
+
+.score-chip__role--atk {
+  color: #fff;
+  background: #e74c3c;
+}
+
+.score-chip__role--def {
+  color: #fff;
+  background: #2980b9;
 }
 
 .gameboard__opposite {
@@ -74,16 +87,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.2rem;
 }
 
 .gameboard__opp-cards {
   display: flex;
-  gap: -4px;
 }
 
 .gameboard__opp-cards .card {
-  margin-left: -12px;
+  margin-left: -16px;
 }
 
 .gameboard__opp-cards .card:first-child {
@@ -94,9 +106,10 @@
   grid-area: sides;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.3rem;
   justify-content: center;
   flex: 1;
+  min-height: 0;
 }
 
 .gameboard__left,
@@ -104,31 +117,74 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .gameboard__centre-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.3rem;
   flex: 1;
+  min-height: 0;
+}
+
+/* Dealing animation */
+.gameboard__dealing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.dealing__deck {
+  position: relative;
+}
+
+.dealing__deck::before,
+.dealing__deck::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #2c3e50;
+  border: 1.5px solid #1a2a3a;
+  border-radius: 7px;
+  z-index: -1;
+}
+
+.dealing__deck::before {
+  top: -2px;
+  left: 2px;
+}
+
+.dealing__deck::after {
+  top: -4px;
+  left: 4px;
+}
+
+.dealing__progress {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.5px;
 }
 
 /* Attacker point pile */
 .gameboard__point-pile {
   width: 100%;
-  max-width: 220px;
+  max-width: 240px;
   background: rgba(0,0,0,0.3);
   border-radius: 8px;
-  padding: 0.4rem 0.7rem;
+  padding: 0.3rem 0.5rem;
 }
 
 .point-pile__header {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
 }
 
 .point-pile__total {
@@ -141,7 +197,7 @@
 }
 
 .point-pile__bar {
-  height: 6px;
+  height: 5px;
   background: rgba(255,255,255,0.1);
   border-radius: 3px;
   overflow: hidden;
@@ -154,46 +210,70 @@
   transition: width 0.4s ease;
 }
 
+.point-pile__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 0.3rem;
+  max-height: 50px;
+  overflow: hidden;
+}
+
+.point-pile__cards .card {
+  margin-left: -20px;
+  transform: scale(0.6);
+  transform-origin: bottom left;
+}
+
+.point-pile__cards .card:first-child {
+  margin-left: 0;
+}
+
+.prompt-text--trick-display {
+  color: var(--color-gold);
+  font-weight: 600;
+}
+
 .hand__play-btn-row {
   display: flex;
   justify-content: center;
-  margin-top: 0.5rem;
+  margin-top: 0.3rem;
 }
 
 .gameboard__prompt {
   grid-area: prompt;
   text-align: center;
-  padding: 0.3rem;
-  min-height: 2.5rem;
+  padding: 0.15rem;
+  min-height: 1.8rem;
 }
 
 .prompt-text {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   color: var(--color-text-muted);
 }
 
 .trump-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.8rem;
   justify-content: center;
 }
 
 .trump-actions .btn-secondary {
-  padding: 0.3rem 0.8rem;
-  font-size: 0.8rem;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.75rem;
 }
 
 .kitty-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.8rem;
   justify-content: center;
 }
 
 .kitty-actions .btn-primary {
-  padding: 0.4rem 1rem;
-  font-size: 0.875rem;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
 }
 
 /* Team role badge above hand */

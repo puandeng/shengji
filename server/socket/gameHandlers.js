@@ -1,4 +1,4 @@
-const { GAME_PHASES } = require('../game/constants');
+const { GAME_PHASES, TRICK_DISPLAY_DELAY_MS } = require('../game/constants');
 
 /**
  * Game-related socket events:
@@ -47,8 +47,8 @@ function setupGameHandlers(io, socket, registry) {
       const result = room.passTrump(socket.id);
       if (result.error) return callback?.({ error: result.error });
 
-      if (result.allPassed) {
-        // Everyone passed — finalize trump selection immediately
+      // Only finalize if all passed AND we're in trump selection (not still dealing)
+      if (result.allPassed && room.game.phase === GAME_PHASES.TRUMP_SELECTION) {
         room._clearTrumpTimer();
         room.game.finishTrumpSelection();
         const kittyResult = room.game.giveKittyToDeclarer();
@@ -145,9 +145,14 @@ function setupGameHandlers(io, socket, registry) {
             scores:         result.scores || room.game.scores,
             roundScores:    result.roundScores || room.game.roundScores,
             winnerTeam:     result.winner,
+            trickDisplayDelay: TRICK_DISPLAY_DELAY_MS,
             ...room.toGameStateFor(p.socketId),
           });
         });
+        // Delay bot play after trick completes to let players see the trick
+        if (!result.roundOver && !result.gameOver) {
+          setTimeout(() => room.scheduleBotPlay(), TRICK_DISPLAY_DELAY_MS);
+        }
       } else {
         io.to(room.code).emit('game:cardsPlayed', {
           socketId:    socket.id,
@@ -161,9 +166,9 @@ function setupGameHandlers(io, socket, registry) {
             shape:    e.shape,
           })),
         });
+        room.scheduleBotPlay();
       }
 
-      room.scheduleBotPlay();
       callback?.({ success: true });
 
     } catch (err) {
@@ -195,9 +200,13 @@ function setupGameHandlers(io, socket, registry) {
             scores:         result.scores || room.game.scores,
             roundScores:    result.roundScores || room.game.roundScores,
             winnerTeam:     result.winner,
+            trickDisplayDelay: TRICK_DISPLAY_DELAY_MS,
             ...room.toGameStateFor(p.socketId),
           });
         });
+        if (!result.roundOver && !result.gameOver) {
+          setTimeout(() => room.scheduleBotPlay(), TRICK_DISPLAY_DELAY_MS);
+        }
       } else {
         io.to(room.code).emit('game:cardPlayed', {
           socketId:    socket.id,
@@ -206,13 +215,13 @@ function setupGameHandlers(io, socket, registry) {
           trick:       room.game.currentTrick.map(e => ({
             socketId: e.socketId,
             cards:    e.cards.map(c => c.toJSON()),
-            card:     e.cards[0]?.toJSON(), // Legacy compat
+            card:     e.cards[0]?.toJSON(),
             shape:    e.shape,
           })),
         });
+        room.scheduleBotPlay();
       }
 
-      room.scheduleBotPlay();
       callback?.({ success: true });
 
     } catch (err) {

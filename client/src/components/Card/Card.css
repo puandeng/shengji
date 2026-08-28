@@ -9,9 +9,9 @@
 }
 
 /* Sizes */
-.card--sm  { width: 56px;  height: 80px;  border-radius: 5px; }
-.card--md  { width: 84px;  height: 120px; border-radius: 7px; }
-.card--lg  { width: 110px; height: 154px; border-radius: 9px; }
+.card--sm  { width: 42px;  height: 60px;  border-radius: 4px; }
+.card--md  { width: 62px;  height: 88px;  border-radius: 5px; }
+.card--lg  { width: 84px;  height: 118px; border-radius: 7px; }
 
 /* Colors */
 .card--red   { color: var(--color-red); }
@@ -19,8 +19,8 @@
 
 /* States */
 .card--clickable { cursor: pointer; }
-.card--clickable:hover { transform: translateY(-10px); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
-.card--selected  { transform: translateY(-14px); box-shadow: 0 0 0 2px var(--color-gold), 0 10px 24px rgba(0,0,0,0.5); }
+.card--clickable:hover { transform: translateY(-8px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+.card--selected  { transform: translateY(-10px); box-shadow: 0 0 0 2px var(--color-gold), 0 8px 20px rgba(0,0,0,0.5); }
 .card--disabled  { opacity: 0.5; cursor: not-allowed; }
 .card--highlight { box-shadow: 0 0 8px 2px rgba(240,192,64,0.6); }
 .card--trump     { border-color: rgba(240,192,64,0.5); }
@@ -103,15 +103,15 @@
 /* Point badge */
 .card__points-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -4px;
+  right: -4px;
   background: var(--color-gold);
   color: #111;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 800;
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -119,10 +119,12 @@
 }
 
 /* Size adjustments for corners */
-.card--sm .card__rank { font-size: 0.75em; }
-.card--sm .card__center { font-size: 1.3em; }
-.card--md .card__rank { font-size: 0.9em; }
-.card--md .card__suit { font-size: 0.75em; }
-.card--md .card__center { font-size: 1.8em; }
-.card--lg .card__rank { font-size: 1.1em; }
-.card--lg .card__center { font-size: 2.2em; }
+.card--sm .card__rank { font-size: 0.6em; }
+.card--sm .card__suit { font-size: 0.5em; }
+.card--sm .card__center { font-size: 1em; }
+.card--md .card__rank { font-size: 0.75em; }
+.card--md .card__suit { font-size: 0.6em; }
+.card--md .card__center { font-size: 1.4em; }
+.card--lg .card__rank { font-size: 0.9em; }
+.card--lg .card__suit { font-size: 0.7em; }
+.card--lg .card__center { font-size: 1.8em; }

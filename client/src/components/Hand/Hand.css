@@ -3,9 +3,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.3rem 1rem 0.5rem;
-  min-height: 150px;
-  gap: 0.2rem;
+  padding: 0.2rem 0.5rem 0.3rem;
+  min-height: 0;
+  gap: 0.1rem;
 }
 
 .hand__row {

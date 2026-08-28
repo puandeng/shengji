@@ -102,7 +102,13 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
   - **Mandatory stop ranks:** 5, 10, K, and A cannot be skipped the first time a team reaches them. `MANDATORY_STOP_RANKS` in constants, `visitedRanks` per-team tracking in GameState, `advanceLevel()` respects stops.
 - [x] **Improve joker card contrast.** BJ/SJ text labels with ★/☆ center symbols. Big joker = red (#ff6b6b) on purple gradient, small joker = light gray (#e0e0e0) on dark blue gradient with high-contrast borders and text-shadows.
 - [x] **Responsive card sizing to fit screen.** Dynamic card size (lg/md/sm) based on largest row count. Dynamic overlap via `calcOverlap()` targeting 900px width. Two-row layout inherits independent overlap per row.
-- [x] **1.5s delay before clearing completed trick.** Client-side `TRICK_COMPLETE` action keeps completed trick visible for 1.5s via `completedTrick` state; `CLEAR_COMPLETED_TRICK` dispatched after timeout. New card plays clear early.
-- [x] **Make attacking/defending team more obvious.** Colored badge above player's hand: red "ATTACKING" or blue "DEFENDING" with border and background tint.
-- [x] **Trick winner indicator arrow.** Gold star (★) badge with pulse animation on the winning player's trick slot during the 1.5s display period. Winner cards get a gold glow box-shadow.
 - [x] **Display multi-card plays horizontally.** TrickSlot renders cards in a flex row with -28px margin overlap. Cards > 2 use 'sm' size to fit. `.trick-area__combo` CSS handles layout.
+
+## Dealing & gameplay feel
+- [x] **Animated card dealing (draw-style).** New `DEALING` phase: server drip-feeds cards one at a time via `game:cardDealt` events at 120ms intervals. Client renders a deck in the center and animates each card into the player's hand. Trump can be called during dealing with cards already in hand. `game:dealComplete` fires when all 100 cards are dealt, then transitions to `TRUMP_SELECTION`. Bots attempt trump calls every 4 cards during dealing.
+- [x] **Captured-points pile.** Point pile section now shows the actual captured point cards (miniature Card components) alongside the progress bar, not just a number. Cards accumulate visually throughout the round.
+- [x] **Trick display delay.** After the last card in a trick, all 4 plays stay visible for 2.5s (`TRICK_DISPLAY_DELAY_MS`) with a golden glow on the winner's cards and a "Winner" badge. Bots wait for the delay before playing next. Client holds `completedTrick` in state and delays the game state update.
+
+## Visual clarity
+- [x] **Attacking/defending team indicators.** `PlayerInfo` now shows ATK/DEF role badges (red for attacking, blue for defending) on every player. `ScoreChip` shows "Attacking"/"Defending" labels with colored backgrounds. Player info panels have colored borders matching their role.
+- [x] **Responsive layout for 100% browser zoom.** Card sizes scaled down (md: 84×120 → 62×88, sm: 56×80 → 42×60), grid gaps and padding tightened, font sizes reduced across all components. Game fits at 100% zoom on a standard 1080p screen.

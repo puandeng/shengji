@@ -110,29 +110,48 @@ function setupRoomHandlers(io, socket, registry) {
       const result = room.startGame();
       if (result.error) return callback?.({ error: result.error });
 
-      // Send each player their own hand
+      // Send initial state (dealing phase, empty hands)
       room.game.players.forEach(p => {
-        const stateForPlayer = room.toGameStateFor(p.socketId);
-        io.to(p.socketId).emit('game:started', stateForPlayer);
+        io.to(p.socketId).emit('game:started', room.toGameStateFor(p.socketId));
       });
 
-      // Let bots attempt trump calls immediately
-      room.scheduleBotTrumpCall();
-
-      // Start trump selection timer
-      room.startTrumpTimer(({ kittyResult }) => {
-        // Timer expired — auto-select trump and move to kitty phase
-        room.game.players.forEach(p => {
-          const stateForPlayer = room.toGameStateFor(p.socketId);
-          io.to(p.socketId).emit('game:trumpSelected', {
-            trumpSuit:     room.game.trumpSuit,
-            trumpDeclarer: room.game.trumpDeclarer,
-            auto:          true,
-            ...stateForPlayer,
+      // Animate dealing: drip-feed cards one at a time
+      room.startAnimatedDeal(
+        (entry, idx) => {
+          // Each card dealt — send updated partial hand to each player
+          room.game.players.forEach(p => {
+            const dealtCard = entry.socketId === p.socketId ? entry.card.toJSON() : null;
+            io.to(p.socketId).emit('game:cardDealt', {
+              seatIndex:  entry.seatIndex,
+              card:       dealtCard,
+              dealIndex:  idx + 1,
+              dealTotal:  room.game.dealQueue.length,
+              handCount:  room.game.getDealtCounts()[p.socketId] || 0,
+              allCounts:  room.game.getDealtCounts(),
+            });
           });
-        });
-        room.scheduleBotKittyDiscard();
-      });
+        },
+        () => {
+          // Dealing complete — move to trump selection
+          room.game.players.forEach(p => {
+            io.to(p.socketId).emit('game:dealComplete', room.toGameStateFor(p.socketId));
+          });
+
+          room.scheduleBotTrumpCall();
+
+          room.startTrumpTimer(({ kittyResult }) => {
+            room.game.players.forEach(p => {
+              io.to(p.socketId).emit('game:trumpSelected', {
+                trumpSuit:     room.game.trumpSuit,
+                trumpDeclarer: room.game.trumpDeclarer,
+                auto:          true,
+                ...room.toGameStateFor(p.socketId),
+              });
+            });
+            room.scheduleBotKittyDiscard();
+          });
+        }
+      );
 
       console.log(`[Room] Game started in room ${room.code}`);
       callback?.({ success: true });
@@ -156,21 +175,41 @@ function setupRoomHandlers(io, socket, registry) {
         io.to(p.socketId).emit('game:newRound', room.toGameStateFor(p.socketId));
       });
 
-      // Let bots attempt trump calls immediately
-      room.scheduleBotTrumpCall();
-
-      // Restart trump timer
-      room.startTrumpTimer(({ kittyResult }) => {
-        room.game.players.forEach(p => {
-          io.to(p.socketId).emit('game:trumpSelected', {
-            trumpSuit:     room.game.trumpSuit,
-            trumpDeclarer: room.game.trumpDeclarer,
-            auto:          true,
-            ...room.toGameStateFor(p.socketId),
+      // Animate dealing for the new round
+      room.startAnimatedDeal(
+        (entry, idx) => {
+          room.game.players.forEach(p => {
+            const dealtCard = entry.socketId === p.socketId ? entry.card.toJSON() : null;
+            io.to(p.socketId).emit('game:cardDealt', {
+              seatIndex:  entry.seatIndex,
+              card:       dealtCard,
+              dealIndex:  idx + 1,
+              dealTotal:  room.game.dealQueue.length,
+              handCount:  room.game.getDealtCounts()[p.socketId] || 0,
+              allCounts:  room.game.getDealtCounts(),
+            });
           });
-        });
-        room.scheduleBotKittyDiscard();
-      });
+        },
+        () => {
+          room.game.players.forEach(p => {
+            io.to(p.socketId).emit('game:dealComplete', room.toGameStateFor(p.socketId));
+          });
+
+          room.scheduleBotTrumpCall();
+
+          room.startTrumpTimer(({ kittyResult }) => {
+            room.game.players.forEach(p => {
+              io.to(p.socketId).emit('game:trumpSelected', {
+                trumpSuit:     room.game.trumpSuit,
+                trumpDeclarer: room.game.trumpDeclarer,
+                auto:          true,
+                ...room.toGameStateFor(p.socketId),
+              });
+            });
+            room.scheduleBotKittyDiscard();
+          });
+        }
+      );
 
       callback?.({ success: true });
 

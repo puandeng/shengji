@@ -64,6 +64,34 @@
   opacity: 0.7;
 }
 
+.player-info__role {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.2;
+}
+
+.player-info__role--atk {
+  color: #fff;
+  background: #e74c3c;
+}
+
+.player-info__role--def {
+  color: #fff;
+  background: #2980b9;
+}
+
+.player-info--attacking {
+  border-color: rgba(231, 76, 60, 0.5);
+}
+
+.player-info--defending {
+  border-color: rgba(41, 128, 185, 0.3);
+}
+
 .player-info__turn-indicator {
   color: var(--color-gold);
   font-size: 0.6rem;

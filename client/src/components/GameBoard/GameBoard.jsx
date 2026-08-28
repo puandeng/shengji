@@ -10,7 +10,7 @@ import './GameBoard.css';
 const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
 export default function GameBoard() {
-  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, trickWinner } = useGame();
+  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, completedTrick, trickWinner } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
   const [hasPassed, setHasPassed] = useState(false);
 
@@ -21,6 +21,8 @@ export default function GameBoard() {
     myHand, currentTrick, handCounts, attackingTeam, attackerPointPile,
     scores, threshold,
   } = gameState;
+
+  const isDealing = phase === 'DEALING';
 
   // Clear selected cards and pass state when game phase changes
   useEffect(() => {
@@ -37,8 +39,9 @@ export default function GameBoard() {
 
   const isMyTurn        = currentSeat === mySeat && phase === 'PLAYING';
   const isKittyPhase    = phase === 'KITTY';
-  const isTrumpPhase    = phase === 'TRUMP_SELECTION';
+  const isTrumpPhase    = phase === 'TRUMP_SELECTION' || isDealing;
   const isKittyDeclarer = isKittyPhase && gameState.trumpDeclarer === myPlayer.socketId;
+  const showTrickDisplay = !!completedTrick;
 
   // ── Trump calling ─────────────────────────────────────────────────────────
   function handleCallTrump(card) {
@@ -95,9 +98,12 @@ export default function GameBoard() {
   // Determine click handler and selection mode for the Hand
   let handClickHandler, handSelectionMode, handMaxSel;
 
-  if (isTrumpPhase) {
+  if (isTrumpPhase && !isDealing) {
     handClickHandler  = handleCallTrump;
-    handSelectionMode = null; // Trump selection uses its own visual cue
+    handSelectionMode = null;
+  } else if (isDealing) {
+    handClickHandler  = handleCallTrump;
+    handSelectionMode = null;
   } else if (isKittyDeclarer) {
     handClickHandler  = toggleKittySelect;
     handSelectionMode = 'kitty';
@@ -146,6 +152,7 @@ export default function GameBoard() {
           cardCount={handCounts?.[getPlayer(oppositeSeat)?.socketId] ?? 0}
           isActive={currentSeat === oppositeSeat}
           trumpSuit={trumpSuit}
+          attackingTeam={attackingTeam}
         />
         <div className="gameboard__opp-cards">
           {Array.from({ length: Math.min(handCounts?.[getPlayer(oppositeSeat)?.socketId] ?? 0, 7) }).map((_, i) => (
@@ -162,27 +169,56 @@ export default function GameBoard() {
             cardCount={handCounts?.[getPlayer(leftSeat)?.socketId] ?? 0}
             isActive={currentSeat === leftSeat}
             trumpSuit={trumpSuit}
+            attackingTeam={attackingTeam}
             vertical
           />
         </div>
 
         {/* Centre: trick area + point pile */}
         <div className="gameboard__centre-col">
-          <TrickArea
-            trick={currentTrick}
-            players={players}
-            mySeat={mySeat}
-            oppositeSeat={oppositeSeat}
-            leftSeat={leftSeat}
-            rightSeat={rightSeat}
-            winnerSocketId={trickWinner}
-          />
+          {/* Dealing deck animation */}
+          {isDealing && (
+            <div className="gameboard__dealing">
+              <div className="dealing__deck">
+                <Card card={{ id: 'deck', suit: 'S', rank: '?' }} faceDown size="md" />
+              </div>
+              <div className="dealing__progress">
+                Dealing cards… {gameState.dealIndex || 0} / {gameState.dealTotal || 100}
+              </div>
+            </div>
+          )}
 
-          {/* Attacker point pile */}
-          {phase === 'PLAYING' && (
+          {/* Show completed trick during display delay */}
+          {showTrickDisplay && (
+            <TrickArea
+              trick={completedTrick}
+              players={players}
+              mySeat={mySeat}
+              oppositeSeat={oppositeSeat}
+              leftSeat={leftSeat}
+              rightSeat={rightSeat}
+              winnerSocketId={trickWinner}
+              frozen
+            />
+          )}
+
+          {/* Show current trick when not frozen */}
+          {!showTrickDisplay && !isDealing && (
+            <TrickArea
+              trick={currentTrick}
+              players={players}
+              mySeat={mySeat}
+              oppositeSeat={oppositeSeat}
+              leftSeat={leftSeat}
+              rightSeat={rightSeat}
+            />
+          )}
+
+          {/* Attacker point pile with captured cards */}
+          {(phase === 'PLAYING' || showTrickDisplay) && (
             <div className="gameboard__point-pile">
               <div className="point-pile__header">
-                <span>Attacker pts: </span>
+                <span>Captured pts: </span>
                 <span className={`point-pile__total ${pileTotal >= thresh ? 'point-pile__total--won' : ''}`}>
                   {pileTotal} / {thresh}
                 </span>
@@ -193,6 +229,13 @@ export default function GameBoard() {
                   style={{ width: `${Math.min(100, (pileTotal / thresh) * 100)}%` }}
                 />
               </div>
+              {(attackerPointPile || []).length > 0 && (
+                <div className="point-pile__cards">
+                  {(attackerPointPile || []).map((card, i) => (
+                    <Card key={card.id || i} card={card} size="sm" />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -203,6 +246,7 @@ export default function GameBoard() {
             cardCount={handCounts?.[getPlayer(rightSeat)?.socketId] ?? 0}
             isActive={currentSeat === rightSeat}
             trumpSuit={trumpSuit}
+            attackingTeam={attackingTeam}
             vertical
           />
         </div>
@@ -211,7 +255,23 @@ export default function GameBoard() {
       {/* Action prompt */}
       <div className="gameboard__prompt">
         {error && <p className="error-text">{error}</p>}
-        {isTrumpPhase && !hasPassed && (
+        {isDealing && !hasPassed && (
+          <div className="trump-actions">
+            <p className="prompt-text">
+              Cards are being dealt — click a <strong>{trumpRank}</strong> to call trump
+            </p>
+            <button
+              className="btn-secondary"
+              onClick={() => { passTrump().then(() => setHasPassed(true)).catch(() => {}); }}
+            >
+              Pass
+            </button>
+          </div>
+        )}
+        {isDealing && hasPassed && (
+          <p className="prompt-text">Cards being dealt… you passed on trump</p>
+        )}
+        {isTrumpPhase && !isDealing && !hasPassed && (
           <div className="trump-actions">
             <p className="prompt-text">
               {trumpSuit
@@ -227,8 +287,11 @@ export default function GameBoard() {
             </button>
           </div>
         )}
-        {isTrumpPhase && hasPassed && (
+        {isTrumpPhase && !isDealing && hasPassed && (
           <p className="prompt-text">You passed — waiting for other players…</p>
+        )}
+        {showTrickDisplay && (
+          <p className="prompt-text prompt-text--trick-display">Trick complete — reviewing cards…</p>
         )}
         {isKittyPhase && isKittyDeclarer && (
           <div className="kitty-actions">
@@ -241,13 +304,13 @@ export default function GameBoard() {
         {isKittyPhase && !isKittyDeclarer && (
           <p className="prompt-text">Waiting for trump declarer to discard to kitty…</p>
         )}
-        {phase === 'PLAYING' && isMyTurn && selectedCards.length === 0 && (
+        {phase === 'PLAYING' && !showTrickDisplay && isMyTurn && selectedCards.length === 0 && (
           <p className="prompt-text">Your turn — select card(s) and press Play</p>
         )}
-        {phase === 'PLAYING' && isMyTurn && selectedCards.length > 0 && (
+        {phase === 'PLAYING' && !showTrickDisplay && isMyTurn && selectedCards.length > 0 && (
           <p className="prompt-text">{selectedCards.length} card{selectedCards.length !== 1 ? 's' : ''} selected</p>
         )}
-        {phase === 'PLAYING' && !isMyTurn && (
+        {phase === 'PLAYING' && !showTrickDisplay && !isMyTurn && (
           <p className="prompt-text">Waiting for {getPlayer(currentSeat)?.name ?? '…'}…</p>
         )}
       </div>
@@ -279,10 +342,12 @@ export default function GameBoard() {
 function ScoreChip({ label, level = '2', isAttacking, teamIdx }) {
   const colors = ['var(--color-team0)', 'var(--color-team1)'];
   return (
-    <div className="score-chip" style={{ borderColor: colors[teamIdx] }}>
+    <div className={`score-chip ${isAttacking ? 'score-chip--attacking' : 'score-chip--defending'}`} style={{ borderColor: colors[teamIdx] }}>
       <span className="score-chip__label">{label}</span>
       <span className="score-chip__level-display" style={{ color: colors[teamIdx] }}>Level {level}</span>
-      {isAttacking && <span className="score-chip__role">Attacking</span>}
+      <span className={`score-chip__role ${isAttacking ? 'score-chip__role--atk' : 'score-chip__role--def'}`}>
+        {isAttacking ? 'Attacking' : 'Defending'}
+      </span>
     </div>
   );
 }
