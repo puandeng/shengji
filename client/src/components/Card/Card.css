@@ -128,3 +128,30 @@
 .card--lg .card__rank { font-size: 0.9em; }
 .card--lg .card__suit { font-size: 0.7em; }
 .card--lg .card__center { font-size: 1.8em; }
+
+/* Mobile: smaller cards */
+@media (max-width: 768px) {
+  .card--sm .card__rank  { font-size: 0.55em; }
+  .card--sm .card__suit  { font-size: 0.45em; }
+  .card--sm .card__center { font-size: 0.9em; }
+  .card--md .card__rank  { font-size: 0.65em; }
+  .card--md .card__suit  { font-size: 0.5em; }
+  .card--md .card__center { font-size: 1.2em; }
+  .card--lg .card__rank  { font-size: 0.8em; }
+  .card--lg .card__suit  { font-size: 0.6em; }
+  .card--lg .card__center { font-size: 1.5em; }
+
+  .card--clickable:hover { transform: translateY(-6px); }
+  .card--selected { transform: translateY(-8px); }
+
+  .card__points-badge { width: 13px; height: 13px; font-size: 0.45rem; top: -4px; right: -4px; }
+}
+
+@media (max-width: 480px) {
+  .card--sm  { width: 36px;  height: 52px;  }
+  .card--md  { width: 50px;  height: 72px;  }
+  .card--lg  { width: 66px;  height: 94px;  }
+
+  .card__corner--top-left { top: 2px; left: 3px; }
+  .card__corner--bottom-right { bottom: 2px; right: 3px; }
+}

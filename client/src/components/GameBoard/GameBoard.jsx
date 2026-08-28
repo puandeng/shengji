@@ -5,6 +5,7 @@ import Hand from '../Hand/Hand';
 import TrickArea from '../TrickArea/TrickArea';
 import PlayerInfo from '../PlayerInfo/PlayerInfo';
 import TrumpBanner from '../TrumpBanner/TrumpBanner';
+import { isMuted, setMuted } from '../../sounds';
 import './GameBoard.css';
 
 const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
@@ -13,6 +14,7 @@ export default function GameBoard() {
   const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, completedTrick, trickWinner } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
   const [hasPassed, setHasPassed] = useState(false);
+  const [muted, setMutedState] = useState(isMuted());
 
   if (!gameState || !myPlayer) return null;
 
@@ -117,8 +119,18 @@ export default function GameBoard() {
   const pileTotal = (attackerPointPile || []).reduce((s, c) => s + (c.points || 0), 0);
   const thresh    = threshold ?? 80;
 
+  function toggleMute() {
+    const next = !muted;
+    setMutedState(next);
+    setMuted(next);
+  }
+
   return (
     <div className="gameboard">
+      <button className="gameboard__mute-btn" onClick={toggleMute} title={muted ? 'Unmute' : 'Mute'}>
+        {muted ? '🔇' : '🔊'}
+      </button>
+
       <TrumpBanner
         trumpSuit={trumpSuit}
         trumpRank={trumpRank}
