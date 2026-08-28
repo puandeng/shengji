@@ -123,3 +123,16 @@ The current code in `server/game/` implements an oversimplified variant. Real Sh
 
 ## Card play animations
 - [x] **Directional slide-in animation.** Cards animate sliding in from their player's direction (top/bottom/left/right) when played into the trick area. 300ms ease-out CSS animation per slot.
+
+## Trump declaration visuals
+- [ ] **Show declaring card during trump call.** When a player declares trump, physically display the card(s) used for the declaration (visible to all players) and keep them shown until the call is overridden by a stronger declaration or the game transitions to the playing phase.
+
+## Bug fixes (new)
+- [ ] **Cards visually disappearing.** Cards sometimes vanish from the UI unexpectedly. Investigate and fix the rendering issue causing cards to disappear during gameplay.
+- [ ] **Dealing animation broken.** The animated card dealing (draw-style, drip-fed via `game:cardDealt`) from the dealing-animation PR is no longer working. Investigate and restore the dealing animation.
+- [ ] **Trump suit cards not sorted into upper row.** After trump is declared, trump-suit cards should appear in the top (trump) row of the hand, but they're staying in the bottom row. Investigate the sorting logic in `Hand.jsx`.
+
+## UI improvements (new)
+- [ ] **Remove card counter from player icons.** Remove the card count number displayed below each player's avatar/icon — it's unnecessary clutter.
+- [ ] **Show opponent face-down hands shrinking.** Currently only the teammate's hand is visually shown. Add face-down card visuals for opponents (left and right players) that shrink as cards are played, so you can see how many cards each opponent has remaining.
+- [ ] **Card-based level indicator.** Replace the text "Level {rank}" display with a visual card component showing the current level rank on the card face. Use the actual Card component styled to display the team's current level rank.
