@@ -29,6 +29,7 @@ shengji/
 | `server/game/Card.js` | Card model, jokers, `isTrump()`, `effectiveSuit()`, `trumpOrder()`, `beats()` |
 | `server/game/Deck.js` | Two-deck shuffle + deal into hands & kitty |
 | `server/game/GameState.js` | Core state machine: dealing → trump → kitty → playing → scoring; shape detection, follow-suit enforcement, level progression |
+| `server/game/GameLogger.js` | Per-room append-only game log — JSONL event stream + chess-style notation |
 | `server/game/BotPlayer.js` | Stub bot logic for `DEV_MODE` — trump calls, passes, legal card/combo selection |
 | `server/game/__tests__/` | Jest suite for `Card` and `GameState` (`npm test --workspace=server`) |
 | `server/game/Room.js` | Room wrapper + `RoomRegistry` (in-memory store, code generator) |
@@ -46,6 +47,26 @@ shengji/
 | `client/src/pages/Game.jsx` | Active game screen |
 | `client/src/components/` | `Card`, `Hand`, `GameBoard`, `TrickArea`, `PlayerInfo`, `TrumpBanner`, `ScoringModal`, `ChatPanel`, `Notification` |
 | `client/src/sounds.js` | Web Audio synthesised sound effects + localStorage mute toggle |
+
+## Game Logs
+
+Every room writes a complete, replayable record of its games to `logs/` at the repo root (gitignored). Two files per room, written side by side and flushed per event, so an abandoned or crashed game still leaves a usable record:
+
+| File | Audience | Contents |
+|---|---|---|
+| `logs/<CODE>-<timestamp>.jsonl` | agents / tooling | One JSON record per event: `round_start`, `deal`, `trump_call`, `trump_rejected`, `trump_pass`, `trump_final`, `kitty_discard`, `play`, `play_rejected`, `trick_end`, `round_end` |
+| `logs/<CODE>-<timestamp>.log` | humans skimming | Chess-style notation — one line per trick |
+
+Notation: cards are `<suit><rank>` (`S5`, `D10`, `CK`), jokers are `BJ` / `SJ`. Cards in one play are written with no separator (`S5S5` is a pair of 5s) — each token is self-delimiting since it starts with a suit letter or is `BJ`/`SJ`.
+
+```
+ 2. 1:S3  2:S8  3:S10  0:S8  > seat3 [T1 DEF]  table 10pts  credited +0  att 0/80
+      10pts on the table went uncredited — defending team T1 took the trick, and only the attacking team (T0) scores
+```
+
+`trick_end` records both `trickPoints` (points on the table) and `credited` (points that actually reached the attacker score), plus a `reason` string when they differ. That distinction is what makes "I won that trick, where are my points?" answerable from the log alone. The deal record includes every player's full hand, so a round can be replayed exactly.
+
+The logger writes to the repo root and never inside `server/` — nodemon watches `server/` in dev, and log files there would restart the process on every trick. Disable logging with `GAME_LOG=0`.
 
 ## Game Flow
 1. **WAITING** — players join via room code; host starts when 4 are seated (or fewer, with bots, under `DEV_MODE`).
@@ -189,7 +210,7 @@ cd client && npm run dev    # → http://localhost:5173
 Then open `http://localhost:5173`, create a room, and share the 4-letter code with 3 friends.
 
 ### Environment
-- `server/.env` — `PORT` (default 3001), `CLIENT_URL` (CORS origin, default `http://localhost:5173`), `DEV_MODE` (any truthy value lets a room start with <4 players and fills empty seats with bots; exposed to the client via `GET /config`)
+- `server/.env` — `PORT` (default 3001), `CLIENT_URL` (CORS origin, default `http://localhost:5173`), `DEV_MODE` (any truthy value lets a room start with <4 players and fills empty seats with bots; exposed to the client via `GET /config`), `GAME_LOG` (set to `0` to disable game logging)
 - `client/.env` — server URL for the socket connection
 
 ### Build / Production

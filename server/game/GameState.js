@@ -329,6 +329,7 @@ function bestCard(cards, trumpSuit, trumpRank) {
 class GameState {
   constructor(roomId) {
     this.roomId         = roomId;
+    this.logger         = null;         // GameLogger, attached by Room
     this.devMode        = false;
     this.phase          = GAME_PHASES.WAITING;
     this.players        = [];
@@ -421,6 +422,12 @@ class GameState {
     return this.players.find(p => p.connected === false && p.name === name);
   }
 
+  /** Seat index for a socketId, or null. Used for log records. */
+  _seat(socketId) {
+    const p = this.getPlayer(socketId);
+    return p ? p.seatIndex : null;
+  }
+
   getPlayer(socketId) {
     return this.players.find(p => p.socketId === socketId);
   }
@@ -472,6 +479,23 @@ class GameState {
     this.tricks            = [];
     this.scores            = { 0: 0, 1: 0 };
     this.attackerPointPile = [];
+
+    if (this.logger) {
+      this.logger.roundStart({
+        roundNumber:   this.roundNumber,
+        players:       this.players.map(p => ({ seatIndex: p.seatIndex, name: p.name, teamIndex: p.teamIndex, isBot: !!p.isBot })),
+        teamLevels:    { ...this.teamLevels },
+        trumpRank:     this.trumpRank,
+        attackingTeam: this.attackingTeam,
+      });
+      this.logger.deal({
+        hands: this.players.map(p => ({
+          seatIndex: p.seatIndex,
+          cards:     this.hands[p.socketId].map(c => c.toJSON()),
+        })),
+        kitty: this.kitty.map(c => c.toJSON()),
+      });
+    }
 
     return { success: true };
   }
@@ -587,6 +611,17 @@ class GameState {
     const caller = this.getPlayer(socketId);
     this.attackingTeam = caller.teamIndex;
 
+    if (this.logger) {
+      this.logger.trumpCall({
+        seatIndex:     caller.seatIndex,
+        name:          caller.name,
+        cards:         this.trumpDeclareCards,
+        strength,
+        trumpSuit:     this.trumpSuit,
+        attackingTeam: this.attackingTeam,
+      });
+    }
+
     return {
       success:      true,
       trumpSuit:    this.trumpSuit,
@@ -608,6 +643,9 @@ class GameState {
     if (!player) return { error: 'Player not found' };
     this.trumpPasses.add(socketId);
     const allPassed = this.players.every(p => this.trumpPasses.has(p.socketId));
+    if (this.logger) {
+      this.logger.trumpPass({ seatIndex: player.seatIndex, name: player.name, allPassed });
+    }
     return { success: true, allPassed };
   }
 
@@ -637,9 +675,22 @@ class GameState {
 
   /** Move from trump selection → kitty phase */
   finishTrumpSelection() {
-    if (this.trumpCallStrength === 0) this.autoSelectTrump();
+    const auto = this.trumpCallStrength === 0;
+    if (auto) this.autoSelectTrump();
     this.trumpDeclareCards = [];
     this.phase = GAME_PHASES.KITTY;
+
+    if (this.logger) {
+      this.logger.trumpFinal({
+        trumpSuit:     this.trumpSuit,
+        trumpRank:     this.trumpRank,
+        declarerSeat:  this._seat(this.trumpDeclarer),
+        attackingTeam: this.attackingTeam,
+        threshold:     LEVEL_THRESHOLDS[this.trumpRank],
+        auto,
+      });
+    }
+
     return { success: true };
   }
 
@@ -670,6 +721,9 @@ class GameState {
     this.kitty = discarded;
 
     const declarer      = this.getPlayer(socketId);
+    if (this.logger) {
+      this.logger.kittyDiscard({ seatIndex: declarer.seatIndex, cards: discarded.map(c => c.toJSON()) });
+    }
     this.leadSeat       = declarer.seatIndex;
     this.currentSeat    = declarer.seatIndex;
     this.phase          = GAME_PHASES.PLAYING;
@@ -722,6 +776,17 @@ class GameState {
     });
 
     this.currentTrick.push({ socketId, cards, shape });
+
+    if (this.logger) {
+      const p = this.getPlayer(socketId);
+      this.logger.play({
+        seatIndex: p.seatIndex,
+        name:      p.name,
+        cards:     cards.map(c => c.toJSON()),
+        shape,
+        leadSeat:  this.leadSeat,
+      });
+    }
 
     if (this.currentTrick.length < PLAYERS_PER_ROOM) {
       this._advanceSeat();
@@ -828,16 +893,19 @@ class GameState {
     );
 
     // Only credit attacking team
-    let pointsScored = 0;
+    let pointsScored    = 0;
+    let kittyPoints     = 0;
+    let kittyMultiplier = 0;
+    let kittyBonus      = 0;
     if (winnerPlayer.teamIndex === this.attackingTeam) {
       pointsScored = trickPoints;
 
       if (isLastTrick) {
         // Kitty multiplier: × (2 × number of cards in winning play)
-        const winCardsCount = winnerEntry.cards.length;
-        const multiplier    = 2 * winCardsCount;
-        const kittyPoints   = this.kitty.reduce((s, c) => s + c.points, 0);
-        pointsScored        += kittyPoints * multiplier;
+        kittyMultiplier = 2 * winnerEntry.cards.length;
+        kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
+        kittyBonus      = kittyPoints * kittyMultiplier;
+        pointsScored   += kittyBonus;
       }
 
       this.scores[this.attackingTeam] += pointsScored;
@@ -853,6 +921,44 @@ class GameState {
     // Apply throw penalty
     if (throwPenalty !== 0) {
       this.scores[this.attackingTeam] = Math.max(0, this.scores[this.attackingTeam] + throwPenalty);
+    }
+
+    if (this.logger) {
+      const attackerWon = winnerPlayer.teamIndex === this.attackingTeam;
+      let reason = null;
+      if (!attackerWon && trickPoints > 0) {
+        reason = `${trickPoints}pts on the table went uncredited — defending team T${winnerPlayer.teamIndex} took the trick, and only the attacking team (T${this.attackingTeam}) scores`;
+      } else if (!attackerWon) {
+        reason = `defending team T${winnerPlayer.teamIndex} took the trick (no points on the table)`;
+      }
+      this.logger.trickEnd({
+        plays: this.currentTrick.map(e => {
+          const p = this.getPlayer(e.socketId);
+          return {
+            seatIndex: p ? p.seatIndex : null,
+            name:      p ? p.name : null,
+            teamIndex: p ? p.teamIndex : null,
+            cards:     e.cards.map(c => c.toJSON()),
+            shape:     e.shape,
+          };
+        }),
+        leadSeat:      leadPlayer ? leadPlayer.seatIndex : null,
+        winnerSeat:    winnerPlayer.seatIndex,
+        winnerTeam:    winnerPlayer.teamIndex,
+        attackingTeam: this.attackingTeam,
+        trumpSuit:     this.trumpSuit,
+        trumpRank:     this.trumpRank,
+        trickPoints,
+        credited:      pointsScored,
+        reason,
+        kittyPoints,
+        kittyMultiplier,
+        kittyBonus,
+        throwPenalty,
+        scores:        { ...this.scores },
+        threshold:     LEVEL_THRESHOLDS[this.trumpRank],
+        isLastTrick,
+      });
     }
 
     const completedTrick = {
@@ -924,6 +1030,21 @@ class GameState {
       this.roundScores[this.attackingTeam] += 1;
     } else {
       this.roundScores[defendingTeam] += 1;
+    }
+
+    if (this.logger) {
+      this.logger.roundEnd({
+        roundNumber:    this.roundNumber,
+        attackingTeam:  this.attackingTeam,
+        attackingScore,
+        threshold,
+        attackingWon,
+        advancingTeam,
+        levelsAdvanced,
+        teamLevels:     { ...this.teamLevels },
+        gameOver,
+        winner:         this.winner,
+      });
     }
 
     return {

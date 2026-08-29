@@ -9,10 +9,12 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 ## Open
 
 ### Bugs
+- [ ] **Trump auto-select can deadlock the round.** `autoSelectTrump()` picks a suit from the kitty but sets `trumpDeclarer = null`. `giveKittyToDeclarer()` then returns `{ error: 'No trump declarer' }`, and both callers (`Room.scheduleBotTrumpCall()` on all-pass, and the trump timer path) ignore the error. Nobody holds the kitty, nobody can discard, and the game sits in `KITTY` forever. Reproduced with `GAME_LOG` + a headless 4-bot round where no player held a trump-rank card. Fix: fall back to a real seat as declarer (seat 0, or the last player to act) instead of `null`.
 - [ ] **Can't select more than one card for trump declaration.** `GameBoard.handleCallTrump()` auto-submits a single non-joker card the moment it's clicked, so a trump-rank pair can never be assembled — only joker pairs wait for a second card. Needs an explicit "Call trump" confirm step, or a short debounce/second-click window before submitting a single.
 - [ ] **Hand and play button overlap the macOS dock.** `GameBoard.css` and `Game.css` use `height: 100vh` with no bottom inset, so the hand row and play button sit under the dock. Use `100dvh` and add `env(safe-area-inset-bottom)` padding.
 
-### Docs
+### Done this pass
+- [x] **Game logging for post-hoc review.** `server/game/GameLogger.js` writes a JSONL event stream plus chess-style notation to `logs/` per room. Captures deal (all hands), trump bidding incl. rejected calls, every play, and per-trick scoring with a `credited` vs `trickPoints` split and a `reason` when they differ. See the Game Logs section of `CLAUDE.md`. Disable with `GAME_LOG=0`.
 - [x] **`CLAUDE.md` is stale vs. the implementation.** It still documents the pre-refactor rules and protocol. At minimum: win condition is level progression 2→A (not "first to 3 rounds"), kitty discard is 8 (not 4), kitty multiplier is 2× the winning play's card count (not flat ×2), and the socket protocol is missing `game:playCards`, `game:callTrump`, `game:passTrump`, `game:cardDealt`, `game:dealComplete`, plus the `DEALING` phase. Also missing from the file tree: `server/game/BotPlayer.js`, `server/game/__tests__/`, `client/src/sounds.js`.
 
 ---

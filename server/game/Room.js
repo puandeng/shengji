@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const GameState = require('./GameState');
 const BotPlayer = require('./BotPlayer');
+const { GameLogger } = require('./GameLogger');
 const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, TRICK_DISPLAY_DELAY_MS } = require('./constants');
 
 /**
@@ -15,6 +16,8 @@ class Room {
     this.devMode   = !!process.env.DEV_MODE;
     this.game      = new GameState(this.id);
     this.game.devMode = this.devMode;
+    this.logger    = new GameLogger(roomCode);
+    this.game.logger = this.logger;
     this.chatLog   = [];                  // [{ name, message, timestamp }]
     this._trumpTimer = null;
     this._io         = null;              // Socket.io server instance (set via setIO)
@@ -145,7 +148,11 @@ class Room {
    * can attempt to override. Call finishTrumpSelection() when the timer fires.
    */
   callTrump(socketId, cardIds) {
-    return this.game.callTrump(socketId, cardIds);
+    const result = this.game.callTrump(socketId, cardIds);
+    if (result.error) {
+      this.logger.trumpRejected({ seatIndex: this.game._seat(socketId), cardIds, error: result.error });
+    }
+    return result;
   }
 
   passTrump(socketId) {
@@ -170,7 +177,11 @@ class Room {
 
   /** Play one or more cards (single / pair / tractor / throw). */
   playCards(socketId, cardIds) {
-    return this.game.playCards(socketId, cardIds);
+    const result = this.game.playCards(socketId, cardIds);
+    if (result.error) {
+      this.logger.playRejected({ seatIndex: this.game._seat(socketId), cardIds, error: result.error });
+    }
+    return result;
   }
 
   startNewRound() {
