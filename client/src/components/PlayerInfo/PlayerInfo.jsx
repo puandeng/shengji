@@ -32,14 +32,6 @@ export default function PlayerInfo({ player, cardCount = 0, isActive, trumpSuit,
       </div>
       <div className="player-info__details">
         <span className="player-info__name">{player.name}</span>
-        <span className="player-info__meta">
-          {cardCount} cards
-          {trumpSuit && player.teamIndex !== undefined && (
-            <span className="player-info__trump">
-              {SUIT_SYMBOLS[trumpSuit]}
-            </span>
-          )}
-        </span>
         <span className={`player-info__role ${isAttacking ? 'player-info__role--atk' : 'player-info__role--def'}`}>
           {isAttacking ? 'ATK' : 'DEF'}
         </span>

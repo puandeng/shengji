@@ -171,7 +171,20 @@ export function GameProvider({ children }) {
     on('game:started',        (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
     on('game:newRound',       (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
     on('game:trumpCalled',    (gameState)        => {
-      dispatch({ type: 'GAME_STATE', payload: gameState });
+      // During dealing, preserve the client's incrementally-built hand
+      // instead of replacing it with the server's snapshot (which may lag)
+      if (stateRef.current.gameState?.phase === 'DEALING' || gameState.phase === 'DEALING') {
+        dispatch({ type: 'UPDATE_GAME_STATE', payload: {
+          trumpSuit: gameState.trumpSuit,
+          trumpRank: gameState.trumpRank,
+          trumpDeclarer: gameState.trumpDeclarer,
+          trumpCallStrength: gameState.trumpCallStrength,
+          trumpDeclareCards: gameState.trumpDeclareCards,
+          attackingTeam: gameState.attackingTeam,
+        }});
+      } else {
+        dispatch({ type: 'GAME_STATE', payload: gameState });
+      }
       const suitLabel = gameState.trumpSuit || 'no-trump';
       const strengthLabel = gameState.strength === 3 ? 'joker pair' : gameState.strength === 2 ? 'pair' : 'single';
       dispatch({ type: 'SET_NOTIFICATION', payload: `${gameState.declarerName} called ${suitLabel} with a ${strengthLabel}` });

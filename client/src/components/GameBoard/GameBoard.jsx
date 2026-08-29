@@ -20,6 +20,7 @@ export default function GameBoard() {
 
   const {
     phase, players, currentSeat, trumpSuit, trumpRank, trumpCallStrength,
+    trumpDeclareCards,
     myHand, currentTrick, handCounts, attackingTeam, attackerPointPile,
     scores, threshold,
   } = gameState;
@@ -142,14 +143,14 @@ export default function GameBoard() {
 
       {/* Score bar */}
       <div className="gameboard__scores">
-        <ScoreChip
+        <LevelCard
           label="Team 1"
           level={gameState.teamLevels?.[0] ?? '2'}
           isAttacking={attackingTeam === 0}
           teamIdx={0}
         />
         <span className="gameboard__round">Round {gameState.roundNumber || 1}</span>
-        <ScoreChip
+        <LevelCard
           label="Team 2"
           level={gameState.teamLevels?.[1] ?? '2'}
           isAttacking={attackingTeam === 1}
@@ -157,11 +158,24 @@ export default function GameBoard() {
         />
       </div>
 
+      {/* Trump declaration cards */}
+      {(trumpDeclareCards || []).length > 0 && (isTrumpPhase) && (
+        <div className="gameboard__trump-declare">
+          <span className="trump-declare__label">
+            {players.find(p => p.socketId === gameState.trumpDeclarer)?.name ?? 'Player'} declared:
+          </span>
+          <div className="trump-declare__cards">
+            {trumpDeclareCards.map((card, i) => (
+              <Card key={card.id || i} card={card} size="md" />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Opposite player */}
       <div className="gameboard__opposite">
         <PlayerInfo
           player={getPlayer(oppositeSeat)}
-          cardCount={handCounts?.[getPlayer(oppositeSeat)?.socketId] ?? 0}
           isActive={currentSeat === oppositeSeat}
           trumpSuit={trumpSuit}
           attackingTeam={attackingTeam}
@@ -178,12 +192,16 @@ export default function GameBoard() {
         <div className="gameboard__left">
           <PlayerInfo
             player={getPlayer(leftSeat)}
-            cardCount={handCounts?.[getPlayer(leftSeat)?.socketId] ?? 0}
             isActive={currentSeat === leftSeat}
             trumpSuit={trumpSuit}
             attackingTeam={attackingTeam}
             vertical
           />
+          <div className="gameboard__side-cards">
+            {Array.from({ length: Math.min(handCounts?.[getPlayer(leftSeat)?.socketId] ?? 0, 10) }).map((_, i) => (
+              <Card key={i} card={{ id: `left-${i}`, suit: 'S', rank: '?' }} faceDown size="sm" />
+            ))}
+          </div>
         </div>
 
         {/* Centre: trick area + point pile */}
@@ -255,12 +273,16 @@ export default function GameBoard() {
         <div className="gameboard__right">
           <PlayerInfo
             player={getPlayer(rightSeat)}
-            cardCount={handCounts?.[getPlayer(rightSeat)?.socketId] ?? 0}
             isActive={currentSeat === rightSeat}
             trumpSuit={trumpSuit}
             attackingTeam={attackingTeam}
             vertical
           />
+          <div className="gameboard__side-cards">
+            {Array.from({ length: Math.min(handCounts?.[getPlayer(rightSeat)?.socketId] ?? 0, 10) }).map((_, i) => (
+              <Card key={i} card={{ id: `right-${i}`, suit: 'S', rank: '?' }} faceDown size="sm" />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -351,14 +373,15 @@ export default function GameBoard() {
   );
 }
 
-function ScoreChip({ label, level = '2', isAttacking, teamIdx }) {
-  const colors = ['var(--color-team0)', 'var(--color-team1)'];
+function LevelCard({ label, level = '2', isAttacking, teamIdx }) {
+  const suit = teamIdx === 0 ? 'S' : 'H';
+  const card = { id: `level-${teamIdx}`, suit, rank: level, isJoker: false };
   return (
-    <div className={`score-chip ${isAttacking ? 'score-chip--attacking' : 'score-chip--defending'}`} style={{ borderColor: colors[teamIdx] }}>
-      <span className="score-chip__label">{label}</span>
-      <span className="score-chip__level-display" style={{ color: colors[teamIdx] }}>Level {level}</span>
-      <span className={`score-chip__role ${isAttacking ? 'score-chip__role--atk' : 'score-chip__role--def'}`}>
-        {isAttacking ? 'Attacking' : 'Defending'}
+    <div className={`level-card ${isAttacking ? 'level-card--attacking' : 'level-card--defending'}`}>
+      <span className="level-card__label">{label}</span>
+      <Card card={card} size="sm" />
+      <span className={`level-card__role ${isAttacking ? 'level-card__role--atk' : 'level-card__role--def'}`}>
+        {isAttacking ? 'ATK' : 'DEF'}
       </span>
     </div>
   );

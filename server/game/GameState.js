@@ -338,6 +338,7 @@ class GameState {
     this.trumpRank      = STARTING_LEVEL;
     this.trumpDeclarer  = null;
     this.trumpCallStrength = 0;         // 0=none, 1=single, 2=pair (for bidding mechanic)
+    this.trumpDeclareCards = [];        // Card objects shown during trump declaration
     this.attackingTeam  = 0;
     this.teamLevels     = { 0: STARTING_LEVEL, 1: STARTING_LEVEL };
     this.currentTrick   = [];           // [{ socketId, cards: Card[], shape }]
@@ -465,6 +466,7 @@ class GameState {
     this.trumpSuit         = null;
     this.trumpDeclarer     = null;
     this.trumpCallStrength = 0;
+    this.trumpDeclareCards = [];
     this.trumpPasses       = new Set();
     this.currentTrick      = [];
     this.tricks            = [];
@@ -580,6 +582,7 @@ class GameState {
     this.trumpSuit         = suit;
     this.trumpDeclarer     = socketId;
     this.trumpCallStrength = strength;
+    this.trumpDeclareCards = cards.map(c => c.toJSON());
 
     const caller = this.getPlayer(socketId);
     this.attackingTeam = caller.teamIndex;
@@ -635,6 +638,7 @@ class GameState {
   /** Move from trump selection → kitty phase */
   finishTrumpSelection() {
     if (this.trumpCallStrength === 0) this.autoSelectTrump();
+    this.trumpDeclareCards = [];
     this.phase = GAME_PHASES.KITTY;
     return { success: true };
   }
@@ -954,6 +958,7 @@ class GameState {
       trumpRank:         this.trumpRank,
       trumpDeclarer:     this.trumpDeclarer,
       trumpCallStrength: this.trumpCallStrength,
+      trumpDeclareCards: this.trumpDeclareCards,
       attackingTeam:     this.attackingTeam,
       teamLevels:        { ...this.teamLevels },
       currentTrick:      this.currentTrick.map(e => ({
