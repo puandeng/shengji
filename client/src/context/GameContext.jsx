@@ -18,6 +18,7 @@ const INITIAL_STATE = {
   newCardIds:    [],       // Card IDs that were just drawn (for animation)
   completedTrick: null,
   trickWinner:    null,
+  dealPause:      null,    // { windowIndex, totalWindows, deadline, durationMs } while dealing is paused
 };
 
 function reducer(state, action) {
@@ -103,6 +104,36 @@ function reducer(state, action) {
         newCardIds: card ? [card.id] : [],
       };
     }
+
+    // Slow-motion deal: dealing halts so everyone can call trump or pass.
+    // Only trump/pause fields are merged — replacing gameState wholesale would
+    // wipe the hand built up incrementally from game:cardDealt events.
+    case 'DEAL_PAUSED':
+      return {
+        ...state,
+        dealPause: {
+          windowIndex:  action.payload.windowIndex,
+          totalWindows: action.payload.totalWindows,
+          deadline:     action.payload.deadline,
+          durationMs:   action.payload.durationMs,
+        },
+        gameState: {
+          ...state.gameState,
+          trumpSuit:         action.payload.trumpSuit,
+          trumpRank:         action.payload.trumpRank,
+          trumpDeclarer:     action.payload.trumpDeclarer,
+          trumpDeclareCards: action.payload.trumpDeclareCards,
+          trumpCallStrength: action.payload.trumpCallStrength,
+          dealPaused:        true,
+        },
+      };
+
+    case 'DEAL_RESUMED':
+      return {
+        ...state,
+        dealPause: null,
+        gameState: { ...state.gameState, dealPaused: false },
+      };
 
     case 'DEAL_COMPLETE':
       return {
@@ -214,6 +245,8 @@ export function GameProvider({ children }) {
     on('game:kittyDiscarded', (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
     on('game:cardDealt',      (data)             => dispatch({ type: 'CARD_DEALT', payload: data }));
     on('game:dealComplete',   (gameState)        => dispatch({ type: 'DEAL_COMPLETE', payload: gameState }));
+    on('game:dealPaused',     (data)             => dispatch({ type: 'DEAL_PAUSED', payload: data }));
+    on('game:dealResumed',    (data)             => dispatch({ type: 'DEAL_RESUMED', payload: data }));
     on('game:cardPlayed',     (data)             => { playCardSnap(); dispatch({ type: 'CARD_PLAYED', payload: data }); });
     on('game:cardsPlayed',    (data)             => { playCardSnap(); dispatch({ type: 'CARD_PLAYED', payload: data }); });
     on('game:trickComplete',  (gameState)        => {
@@ -254,6 +287,8 @@ export function GameProvider({ children }) {
       socket.off('game:kittyDiscarded');
       socket.off('game:cardDealt');
       socket.off('game:dealComplete');
+      socket.off('game:dealPaused');
+      socket.off('game:dealResumed');
       socket.off('game:cardPlayed');
       socket.off('game:cardsPlayed');
       socket.off('game:trickComplete');

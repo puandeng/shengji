@@ -11,8 +11,9 @@ import './GameBoard.css';
 const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
 export default function GameBoard() {
-  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, completedTrick, trickWinner } = useGame();
+  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, completedTrick, trickWinner, dealPause } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
+  const [secondsLeft, setSecondsLeft]     = useState(0);
   const [hasPassed, setHasPassed] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
 
@@ -37,6 +38,17 @@ export default function GameBoard() {
   const oppositeSeat = (mySeat + 2) % 4;
   const leftSeat     = (mySeat + 3) % 4;
   const rightSeat    = (mySeat + 1) % 4;
+
+  // Each pause window is a fresh decision — a pass only skips the window it was
+  // made in, so the prompt has to come back when the next one opens.
+  useEffect(() => {
+    if (!dealPause) return;
+    setHasPassed(false);
+    const tick = () => setSecondsLeft(Math.max(0, Math.ceil((dealPause.deadline - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [dealPause?.windowIndex]);
 
   const getPlayer = (seat) => players.find(p => p.seatIndex === seat);
 
@@ -289,10 +301,14 @@ export default function GameBoard() {
       {/* Action prompt */}
       <div className="gameboard__prompt">
         {error && <p className="error-text">{error}</p>}
-        {isDealing && !hasPassed && (
-          <div className="trump-actions">
+        {isDealing && dealPause && !hasPassed && (
+          <div className="trump-actions trump-actions--paused">
+            <span className="deal-window-badge">
+              Call window {dealPause.windowIndex}/{dealPause.totalWindows}
+            </span>
             <p className="prompt-text">
-              Cards are being dealt — click a <strong>{trumpRank}</strong> to call trump
+              Deal paused — click a <strong>{trumpRank}</strong> to call trump
+              {trumpSuit !== undefined && trumpCallStrength > 0 && ' (or a stronger combo to override)'}
             </p>
             <button
               className="btn-secondary"
@@ -300,10 +316,14 @@ export default function GameBoard() {
             >
               Pass
             </button>
+            <span className="deal-window-timer">{secondsLeft}s</span>
           </div>
         )}
-        {isDealing && hasPassed && (
-          <p className="prompt-text">Cards being dealt… you passed on trump</p>
+        {isDealing && dealPause && hasPassed && (
+          <p className="prompt-text">Passed this window — dealing resumes in {secondsLeft}s</p>
+        )}
+        {isDealing && !dealPause && (
+          <p className="prompt-text">Dealing… next call window shortly</p>
         )}
         {isTrumpPhase && !isDealing && !hasPassed && (
           <div className="trump-actions">

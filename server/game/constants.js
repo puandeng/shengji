@@ -123,6 +123,14 @@ const BOT_PLAY_DELAY_MS = 700;
 // Delay between each card dealt during animated dealing (ms)
 const DEAL_CARD_INTERVAL_MS = 120;
 
+// Slow-motion dealing: after every N cards dealt (N/4 cards to each player) the
+// deal pauses so every player gets an explicit, unhurried chance to call trump
+// or pass. 20 = 5 cards each, giving 5 decision windows across the deal.
+const DEAL_PAUSE_EVERY_CARDS = 20;
+
+// How long each pause window stays open before auto-skipping (ms)
+const DEAL_PAUSE_MS = 5000;
+
 // Delay after the last card in a trick before clearing (ms) — lets everyone see the result
 const TRICK_DISPLAY_DELAY_MS = 2500;
 
@@ -147,5 +155,7 @@ module.exports = {
   TRUMP_DECLARATION_TIMEOUT,
   BOT_PLAY_DELAY_MS,
   DEAL_CARD_INTERVAL_MS,
+  DEAL_PAUSE_EVERY_CARDS,
+  DEAL_PAUSE_MS,
   TRICK_DISPLAY_DELAY_MS,
 };

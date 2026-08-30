@@ -150,7 +150,18 @@ function setupRoomHandlers(io, socket, registry) {
             });
             room.scheduleBotKittyDiscard();
           });
-        }
+        },
+        (info) => {
+          // Slow-motion deal: the deal is paused, everyone may call trump or pass
+          room.game.players.forEach(p => {
+            io.to(p.socketId).emit('game:dealPaused', { ...info, ...room.toGameStateFor(p.socketId) });
+          });
+        },
+        (info) => {
+          room.game.players.forEach(p => {
+            io.to(p.socketId).emit('game:dealResumed', { ...info, ...room.toGameStateFor(p.socketId) });
+          });
+        },
       );
 
       console.log(`[Room] Game started in room ${room.code}`);
@@ -208,7 +219,18 @@ function setupRoomHandlers(io, socket, registry) {
             });
             room.scheduleBotKittyDiscard();
           });
-        }
+        },
+        (info) => {
+          // Slow-motion deal: the deal is paused, everyone may call trump or pass
+          room.game.players.forEach(p => {
+            io.to(p.socketId).emit('game:dealPaused', { ...info, ...room.toGameStateFor(p.socketId) });
+          });
+        },
+        (info) => {
+          room.game.players.forEach(p => {
+            io.to(p.socketId).emit('game:dealResumed', { ...info, ...room.toGameStateFor(p.socketId) });
+          });
+        },
       );
 
       callback?.({ success: true });

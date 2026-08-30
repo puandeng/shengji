@@ -353,6 +353,12 @@ class GameState {
     this.trumpTimer     = null;
     this.roundNumber    = 1;
     this.trumpPasses    = new Set();      // socketIds that have passed on trump calling
+    // Deal-window passes are scoped to a single slow-motion pause window and are
+    // cleared when the next window opens — passing now must not stop a player
+    // from calling later, once they have seen more of their hand.
+    this.dealWindowPasses = new Set();
+    this.dealWindowIndex  = 0;
+    this.dealPaused       = false;
     // Track ranks each team has visited (for mandatory stop rank logic)
     this.visitedRanks   = { 0: new Set([STARTING_LEVEL]), 1: new Set([STARTING_LEVEL]) };
   }
@@ -475,6 +481,9 @@ class GameState {
     this.trumpCallStrength = 0;
     this.trumpDeclareCards = [];
     this.trumpPasses       = new Set();
+    this.dealWindowPasses  = new Set();
+    this.dealWindowIndex   = 0;
+    this.dealPaused        = false;
     this.currentTrick      = [];
     this.tricks            = [];
     this.scores            = { 0: 0, 1: 0 };
@@ -641,12 +650,52 @@ class GameState {
     }
     const player = this.getPlayer(socketId);
     if (!player) return { error: 'Player not found' };
+
+    // During dealing, a pass only skips the current pause window.
+    if (this.phase === GAME_PHASES.DEALING) {
+      if (this.dealWindowPasses.has(socketId)) return { success: true, windowPass: true, allActed: this.allActedThisWindow() };
+      this.dealWindowPasses.add(socketId);
+      const allActed = this.allActedThisWindow();
+      if (this.logger) {
+        this.logger.trumpPass({ seatIndex: player.seatIndex, name: player.name, allPassed: false, windowIndex: this.dealWindowIndex });
+      }
+      return { success: true, windowPass: true, allActed };
+    }
+
+    if (this.trumpPasses.has(socketId)) {
+      return { success: true, allPassed: this.players.every(p => this.trumpPasses.has(p.socketId)) };
+    }
     this.trumpPasses.add(socketId);
     const allPassed = this.players.every(p => this.trumpPasses.has(p.socketId));
     if (this.logger) {
       this.logger.trumpPass({ seatIndex: player.seatIndex, name: player.name, allPassed });
     }
     return { success: true, allPassed };
+  }
+
+  /**
+   * Open a new slow-motion deal pause window. Clears the previous window's
+   * passes so everyone gets a fresh decision with the cards they now hold.
+   */
+  openDealWindow() {
+    this.dealWindowIndex += 1;
+    this.dealWindowPasses = new Set();
+    this.dealPaused       = true;
+    return { windowIndex: this.dealWindowIndex };
+  }
+
+  closeDealWindow() {
+    this.dealPaused = false;
+  }
+
+  /**
+   * Everyone has acted this window if they have passed it, or already hold the
+   * current winning call (no reason to ask them again).
+   */
+  allActedThisWindow() {
+    return this.players.every(p =>
+      this.dealWindowPasses.has(p.socketId) || p.socketId === this.trumpDeclarer
+    );
   }
 
   /**
@@ -1081,6 +1130,8 @@ class GameState {
       trumpCallStrength: this.trumpCallStrength,
       trumpDeclareCards: this.trumpDeclareCards,
       attackingTeam:     this.attackingTeam,
+      dealPaused:        this.dealPaused,
+      dealWindowIndex:   this.dealWindowIndex,
       teamLevels:        { ...this.teamLevels },
       currentTrick:      this.currentTrick.map(e => ({
         socketId: e.socketId,

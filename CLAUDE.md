@@ -70,7 +70,7 @@ The logger writes to the repo root and never inside `server/` — nodemon watche
 
 ## Game Flow
 1. **WAITING** — players join via room code; host starts when 4 are seated (or fewer, with bots, under `DEV_MODE`).
-2. **DEALING** — 2 decks + 4 jokers (108 cards) → 25 per player + 8 kitty. Cards are drip-fed one at a time via `game:cardDealt` every `DEAL_CARD_INTERVAL_MS` (120ms) so the client can animate the deal. Players may call trump with cards already in hand during this phase. `game:dealComplete` ends it.
+2. **DEALING** — 2 decks + 4 jokers (108 cards) → 25 per player + 8 kitty. Cards are drip-fed one at a time via `game:cardDealt` every `DEAL_CARD_INTERVAL_MS` (120ms) so the client can animate the deal. **Slow-motion deal:** every `DEAL_PAUSE_EVERY_CARDS` (20 — five cards each) the deal halts for a *call window* of `DEAL_PAUSE_MS` (5s), announced by `game:dealPaused` and closed by `game:dealResumed`. During a window any player may call trump or pass; the window closes early once everyone has acted, and auto-skips on the deadline. A pass is scoped to its window (`GameState.dealWindowPasses`) — passing now must not stop a player calling later with more cards in hand. `game:dealComplete` ends the phase.
 3. **TRUMP_SELECTION** — 30s window. Players call trump with `game:callTrump` by showing cards: 1 rank card = strength 1, a rank pair = strength 2, a same-type joker pair = strength 3. Higher strength overrides a lower one; equal strength goes to the first caller. A joker-pair call sets `trumpSuit = null` (only trump-rank cards and jokers are trump that round). Players may `game:passTrump`; once all four pass, selection finalises immediately instead of waiting out the timer. On timeout with no call, `autoSelectTrump()` falls back to the first kitty card's suit. Declarer's team becomes attacker.
 4. **KITTY** — declarer picks up the 8 kitty cards and discards 8 back.
 5. **PLAYING** — trick-taking with multi-card plays: single, pair, tractor (consecutive pairs), and throw (1 single + 1 pair, 3 cards). All combo cards must share an effective suit. Must follow the lead suit if held. Trump order: big joker > small joker > in-suit trump-rank > off-suit trump-rank > trump suit by rank > lead suit > off-suit. A throw that gets beaten by the opposing team costs the throwing team 30 points.
@@ -125,6 +125,8 @@ The logger writes to the repo root and never inside `server/` — nodemon watche
 | `player:left` | A player disconnected |
 | `game:started` | Game has started; dealing begins |
 | `game:cardDealt` | One card dealt to this player (animated deal) |
+| `game:dealPaused` | Slow-motion deal halted for a call window (`windowIndex`, `totalWindows`, `deadline`) |
+| `game:dealResumed` | Call window closed; dealing continues |
 | `game:dealComplete` | All 100 cards dealt; moves to `TRUMP_SELECTION` |
 | `game:trumpCalled` | A trump call was made or overridden (includes the declaring cards) |
 | `game:trumpSelected` | Trump finalised; declarer picks up the kitty |
@@ -211,6 +213,7 @@ Then open `http://localhost:5173`, create a room, and share the 4-letter code wi
 
 ### Environment
 - `server/.env` — `PORT` (default 3001), `CLIENT_URL` (CORS origin, default `http://localhost:5173`), `DEV_MODE` (any truthy value lets a room start with <4 players and fills empty seats with bots; exposed to the client via `GET /config`), `GAME_LOG` (set to `0` to disable game logging)
+- Dealing pace lives in `server/game/constants.js`: `DEAL_CARD_INTERVAL_MS`, `DEAL_PAUSE_EVERY_CARDS`, `DEAL_PAUSE_MS`
 - `client/.env` — server URL for the socket connection
 
 ### Build / Production
