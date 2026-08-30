@@ -83,7 +83,7 @@ The logger writes to the repo root and never inside `server/` — nodemon watche
 3. **TRUMP_SELECTION** — 30s window. Players call trump with `game:callTrump` by showing cards: 1 rank card = strength 1, a rank pair = strength 2, a same-type joker pair = strength 3. Higher strength overrides a lower one; equal strength goes to the first caller. A joker-pair call sets `trumpSuit = null` (only trump-rank cards and jokers are trump that round). Players may `game:passTrump`; once all four pass, selection finalises immediately instead of waiting out the timer. On timeout with no call, `autoSelectTrump()` falls back to the first kitty card's suit. Declarer's team becomes the **defending team**; the other team attacks.
 4. **KITTY** — declarer picks up the 8 kitty cards and discards 8 back.
 5. **PLAYING** — trick-taking with multi-card plays: single, pair, tractor (consecutive pairs), and throw (1 single + 1 pair, 3 cards). All combo cards must share an effective suit. Must follow the lead suit if held. Trump order: big joker > small joker > in-suit trump-rank > off-suit trump-rank > trump suit by rank > lead suit > off-suit. A throw that gets beaten by the opposing team costs the throwing team 30 points.
-6. **SCORING** — round ends when hands are empty. Attackers win if they collected ≥ `LEVEL_THRESHOLDS[trumpRank]` (80 for levels 2–K, 120 for A). If the defending team holds (attackers below threshold), defenders advance 1–3 levels and keep defending. If attackers reach threshold, they become the new defending team and advance levels. See the rules table for level skip margins.
+6. **SCORING** — round ends when hands are empty. Attackers win if they collected ≥ `LEVEL_THRESHOLDS[trumpRank]` (80 for levels 2–K, 120 for A). If the defending team holds (attackers below threshold), defenders advance 1–3 levels and keep defending. If attackers reach threshold, they become the new defending team but only advance levels if they exceed threshold by 40+ (see the rules table).
 7. **GAME_OVER** — a team that advances past `A` wins the match.
 
 ## Game Rules Reference
@@ -105,8 +105,8 @@ The logger writes to the repo root and never inside `server/` — nodemon watche
 | Trump call strength | 1 = rank card, 2 = rank pair, 3 = same-type joker pair; higher overrides, ties to first caller |
 | Levels | Both teams start at `2`; round winner advances 1–3 levels |
 | Level skips — defenders hold | Attackers scored 0 → defenders +3, attackers < threshold−40 → defenders +2, else defenders +1 |
-| Level skips — attackers break through | Attackers ≥ threshold+80 → attackers +3, ≥ threshold+40 → +2, else +1 |
-| Round transition | Defenders hold → defenders advance and keep defending. Attackers break through → attackers become new defenders |
+| Level skips — attackers break through | Attackers ≥ threshold → become new defenders (no level advance). ≥ threshold+40 → +1, ≥ threshold+80 → +2, ≥ threshold+120 → +3 |
+| Round transition | Defenders hold → defenders advance and keep defending. Attackers break through → attackers become new defenders (advance only if margin ≥ 40) |
 | Mandatory stops | 5, 10, K, A cannot be skipped on a team's first visit (`MANDATORY_STOP_RANKS`) |
 | Jack demotion | If the defending team is at level J and the attacking team wins the last trick with a Jack card, the defending team is demoted to level 2 |
 | Match length | First team to advance past `A` |

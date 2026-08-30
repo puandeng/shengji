@@ -9,7 +9,14 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 ## Open
 
 ### Refactor
-- [ ] **Swap attacking/defending team semantics.** The team that calls trump and plays first is the *defending* team (they protect the kitty and try to prevent the other team from scoring). The other team is the *attacking* team (they try to collect points to reach threshold). Currently the codebase has this backwards: `attackingTeam` is set to the trump caller's team. Rename throughout server and client so the labels match traditional Sheng Ji terminology. Round transitions: when the defending team wins, they advance in levels and continue defending next round. When the attacking team beats the defending team, the attacking team becomes the new defending team (roles swap).
+- [ ] **Swap attacking/defending team semantics.** The team that calls trump and plays first is the *defending* team (they protect the kitty and try to prevent the other team from scoring). The other team is the *attacking* team (they try to collect points to reach threshold). Currently the codebase has this backwards: `attackingTeam` is set to the trump caller's team. Rename throughout server and client so the labels match traditional Sheng Ji terminology. This refactor includes:
+  - Swap which team accumulates points (non-caller should accumulate, not caller)
+  - Fix the threshold check (non-caller's score vs threshold, not caller's)
+  - Level advancement — defenders hold: attackers scored 0 → defenders +3, attackers < threshold−40 → +2, else +1
+  - Level advancement — attackers break through: at threshold → +0 (role swap only), ≥ threshold+40 → +1, ≥ threshold+80 → +2, ≥ threshold+120 → +3
+  - Round transitions: defenders hold → advance and keep defending. Attackers break through → become new defenders
+  - Rename `attackingTeam` / `defendingTeam` / `attackingWon` / `attackerPointPile` etc. across server + client
+  - Update UI labels (ATK/DEF badges, scoring modal, notifications)
 
 ### Bugs
 - [ ] **Trump auto-select can deadlock the round.** `autoSelectTrump()` picks a suit from the kitty but sets `trumpDeclarer = null`. `giveKittyToDeclarer()` then returns `{ error: 'No trump declarer' }`, and both callers (`Room.scheduleBotTrumpCall()` on all-pass, and the trump timer path) ignore the error. Nobody holds the kitty, nobody can discard, and the game sits in `KITTY` forever. Reproduced with `GAME_LOG` + a headless 4-bot round where no player held a trump-rank card. Fix: fall back to a real seat as declarer (seat 0, or the last player to act) instead of `null`.
@@ -38,7 +45,7 @@ Condensed; full rationale for each item is in git history and the PRs that lande
 - Trump caller's team = **defending team** (picks up kitty, tries to deny points). Other team = **attacking team** (accumulates points, tries to reach threshold).
 - Kitty: defending team winning last trick protects the kitty (no bonus). Attacking team winning last trick → kitty points × (2 × cards in winning play) added to score.
 - Trump ordering: regular trump < off-suit trump-rank < in-suit trump-rank < small joker < big joker. `Card.beats()` takes `trumpRank`.
-- Level progression 2→A. Defenders hold (attackers below threshold) → defenders advance +1 to +3 levels and keep defending. Attackers break through (≥ threshold) → attackers advance +1 to +3 levels and become new defenders. Skip margins: attackers 0 → defenders +3; < threshold−40 → defenders +2; ≥ threshold+40 → attackers +2; ≥ threshold+80 → attackers +3. `MANDATORY_STOP_RANKS` (5, 10, K, A) can't be skipped on first visit; `visitedRanks` tracked per team.
+- Level progression 2→A. Defenders hold (attackers below threshold) → defenders advance +1 to +3 and keep defending. Attackers break through (≥ threshold) → become new defenders, no level advance unless margin ≥ 40. Defender skip margins: attackers 0 → +3; < threshold−40 → +2; else +1. Attacker skip margins: ≥ threshold → +0 (role swap only); ≥ threshold+40 → +1; ≥ threshold+80 → +2; ≥ threshold+120 → +3. `MANDATORY_STOP_RANKS` (5, 10, K, A) can't be skipped on first visit; `visitedRanks` tracked per team.
 - Jack demotion: if defending team is at level J and attacking team wins last trick with a Jack card, defenders demoted to level 2.
 - Multi-card plays: single / pair / tractor / throw, with shape detection and follow-suit enforcement for combos. Cross-suit pairs rejected. Tractors allow A+trumpRank, trumpRank+SJ, SJ+BJ adjacency. Beaten throws cost the throwing team 30 pts.
 - Trump calling: `game:callTrump` with strengths 1 (single rank card), 2 (pair), 3 (joker pair); higher overrides lower, ties go to first caller. Joker pairs must be same-type and set `trumpSuit = null`. `game:passTrump` finalizes early once all 4 pass.

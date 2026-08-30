@@ -1141,7 +1141,10 @@ class GameState {
     const threshold      = LEVEL_THRESHOLDS[this.trumpRank];
     const attackingWon   = attackingScore >= threshold;
 
-    // Level advancement — attacker margin determines how many levels they advance
+    // Level advancement
+    // NOTE: variable names are inverted vs traditional Sheng Ji. In code,
+    // attackingTeam = trump caller = DEFENDING team in traditional terms.
+    // The full rename + scoring refactor is tracked in PLAN.md.
     let levelsAdvanced = 0;
     let advancingTeam;
 
