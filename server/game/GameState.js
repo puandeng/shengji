@@ -2,6 +2,7 @@ const Deck = require('./Deck');
 const Card = require('./Card');
 const {
   GAME_PHASES,
+  SUIT_NAMES,
   TEAM_ASSIGNMENTS,
   PLAYERS_PER_ROOM,
   CARDS_PER_PLAYER,
@@ -876,17 +877,17 @@ class GameState {
     // Player must contribute as many lead-suit cards as possible (up to n)
     const maxCanPlay = Math.min(info.total, n);
     if (playedInLeadSuit < maxCanPlay) {
-      return { error: `Must play as many ${leadEffSuit === 'TRUMP' ? 'trump' : leadEffSuit} cards as possible` };
+      return { error: this._followSuitError(hand, leadEffSuit, info.total, playedInLeadSuit, maxCanPlay, n) };
     }
 
     // If player has enough lead-suit cards to fill the whole play (info.total >= n),
     // additionally check shape requirements: must match the best shape available.
     if (info.total >= n) {
       if (leadEntry.shape === 'pair' && info.pairCount > 0 && shape !== 'pair') {
-        return { error: 'Must play a pair when you have one in the lead suit' };
+        return { error: `A pair was led and you hold ${info.pairCount} ${this._suitPlural(leadEffSuit)} pair(s) — you must play one of them, not two odd cards.` };
       }
       if (leadEntry.shape === 'tractor' && info.tractorPairCount * 2 >= n && shape !== 'tractor') {
-        return { error: 'Must play a tractor when you can form one in the lead suit' };
+        return { error: `A tractor (${n / 2} consecutive pairs) was led and you can form one in ${this._suitPlural(leadEffSuit)} — you must play it.` };
       }
       // For throws: must include a pair if you have one in the lead suit
       if (leadEntry.shape === 'throw' && info.pairCount > 0) {
@@ -901,12 +902,59 @@ class GameState {
         });
         const hasPair = Object.values(pairGroups).some(count => count >= 2);
         if (!hasPair) {
-          return { error: 'Must play a pair in the lead suit when you have one' };
+          return { error: `A throw (single + pair) was led and you hold ${info.pairCount} ${this._suitPlural(leadEffSuit)} pair(s) — your play must include one of them.` };
         }
       }
     }
 
     return null;
+  }
+
+  /**
+   * Suit names for messages. SUIT_NAMES is plural ('Spades'), but most of these
+   * sentences need it as an adjective ('2 spade cards'), so expose both forms.
+   */
+  _suitPlural(effSuit) {
+    if (effSuit === 'TRUMP') return 'trump';
+    return (SUIT_NAMES[effSuit] || effSuit).toLowerCase();
+  }
+
+  _suitWord(effSuit) {
+    return this._suitPlural(effSuit).replace(/s$/, '');
+  }
+
+  /**
+   * Follow-suit rejections are the most confusing moment in the game, because
+   * "what counts as a spade" is not what the card says: trump-rank cards and
+   * jokers are trump regardless of their printed suit. So say exactly how many
+   * the player holds, how many they must play, and — when it applies — why some
+   * cards that look like the lead suit do not count.
+   */
+  _followSuitError(hand, leadEffSuit, held, played, required, leadCount) {
+    const word   = this._suitWord(leadEffSuit);     // 'spade'  — adjective
+    const plural = this._suitPlural(leadEffSuit);    // 'spades' — noun
+    const label  = leadEffSuit === 'TRUMP' ? 'Trump' : (SUIT_NAMES[leadEffSuit] || leadEffSuit);
+    const s      = n => (n === 1 ? '' : 's');
+
+    let msg;
+    if (required === leadCount) {
+      msg = `${label} led. You hold ${held} ${word} card${s(held)} and played ${played} — you must play ${required}. `
+          + `You can only play trump or another suit once you are out of ${plural}.`;
+    } else {
+      msg = `${label} led. You hold only ${held} ${word} card${s(held)}, so you must play all ${required} of them `
+          + `and fill the remaining ${leadCount - required} with anything — you played ${played}.`;
+    }
+
+    // Cards whose printed suit matches the lead but which are actually trump.
+    if (leadEffSuit !== 'TRUMP') {
+      const lookalikes = hand.filter(c =>
+        c.suit === leadEffSuit && c.effectiveSuit(this.trumpSuit, this.trumpRank) !== leadEffSuit
+      );
+      if (lookalikes.length > 0) {
+        msg += ` (Your ${lookalikes.map(c => `${c.rank} of ${plural}`).join(', ')} counts as trump, not ${plural}.)`;
+      }
+    }
+    return msg;
   }
 
   _advanceSeat() {
