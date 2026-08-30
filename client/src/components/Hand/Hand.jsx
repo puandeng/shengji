@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import Card from '../Card/Card';
 import './Hand.css';
 
@@ -26,6 +26,25 @@ function trumpSortKey(card, trumpSuit, trumpRank) {
   return (RANK_ORDER[card.rank] ?? 0);
 }
 
+// Card widths mirror Card.css. `sliver` is the minimum exposed strip that still
+// shows the top-left corner index (rank + suit) legibly at that size.
+const SIZES = [
+  { name: 'lg', width: 84, sliver: 24 },
+  { name: 'md', width: 62, sliver: 20 },
+  { name: 'sm', width: 42, sliver: 16 },
+];
+
+const DEFAULT_HAND_WIDTH = 900;
+
+/** Largest card size whose fanned row still fits the available width. */
+function pickSize(count, width) {
+  if (count <= 1) return SIZES[0];
+  for (const size of SIZES) {
+    if ((count - 1) * size.sliver + size.width <= width) return size;
+  }
+  return SIZES[SIZES.length - 1];
+}
+
 /**
  * Hand renders the current player's cards in two rows:
  *   Top row:    Trump cards (trump suit, then off-suit trump rank, then jokers)
@@ -42,8 +61,23 @@ export default function Hand({
   maxSelection,
   onPlaySelected,
   newCardIds = [],
+  capacity = 25,
 }) {
   const newIdSet = new Set(newCardIds);
+
+  // Fan width depends on the real container, not a guessed constant.
+  const handRef = useRef(null);
+  const [availWidth, setAvailWidth] = useState(DEFAULT_HAND_WIDTH);
+  useEffect(() => {
+    const el = handRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      if (w > 0) setAvailWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const { trumpCards, nonTrumpCards } = useMemo(() => {
     const trump = [];
@@ -70,16 +104,23 @@ export default function Hand({
     return { trumpCards: trump, nonTrumpCards: nonTrump };
   }, [cards, trumpSuit, trumpRank]);
 
-  const maxRow = Math.max(trumpCards.length, nonTrumpCards.length);
-  const cardSize = maxRow <= 8 ? 'lg' : maxRow <= 15 ? 'md' : 'sm';
+  // A fanned hand only needs each card's top-left corner showing — rank and
+  // suit — the way you hold real cards. That means a card costs its `sliver`
+  // of width, not its full width, so a full hand can use *larger* cards than
+  // it could laid out edge to edge.
+  const maxRow      = Math.max(trumpCards.length, nonTrumpCards.length);
+  const layoutCount = Math.max(maxRow, capacity);
+  const size        = pickSize(layoutCount, availWidth);
+  const cardSize    = size.name;
 
-  const cardWidth = cardSize === 'lg' ? 110 : cardSize === 'md' ? 84 : 56;
+  // Advance = how far each card sits from the previous one. Spread to fill the
+  // row when there is room, tighten to the corner sliver when there is not, and
+  // never gap (advance is capped at the full card width).
   const calcOverlap = (count) => {
     if (count <= 1) return 0;
-    const targetWidth = 900;
-    const needed = cardWidth * count;
-    if (needed <= targetWidth) return Math.min(cardWidth * 0.3, 25);
-    return Math.min(cardWidth * 0.65, Math.max(15, (needed - targetWidth) / (count - 1)));
+    const fill    = (availWidth - size.width) / (count - 1);
+    const advance = Math.min(size.width, Math.max(size.sliver, fill));
+    return size.width - advance;
   };
 
   const overlapTrump = calcOverlap(trumpCards.length);
@@ -119,7 +160,7 @@ export default function Hand({
   }
 
   return (
-    <div className="hand">
+    <div className="hand" ref={handRef}>
       {trumpCards.length > 0 && (
         <div className="hand__row hand__row--trump">
           <span className="hand__row-label">Trump</span>

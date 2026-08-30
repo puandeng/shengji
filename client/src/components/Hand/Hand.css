@@ -6,6 +6,18 @@
   padding: 0.1rem 0.5rem 0.15rem;
   min-height: 0;
   gap: 0.1rem;
+  /* Bound by the layout, not by the cards. Without this the hand is sized by
+     its own content, so the fan measurement is circular — the row is wide
+     because the cards don't overlap, and the cards don't overlap because the
+     row is wide — and the fan never tightens on a narrow screen. */
+  width: 100%;
+  min-width: 0;
+}
+
+.hand__row,
+.hand__cards {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .hand__row {
@@ -35,20 +47,29 @@
   align-items: flex-end;
 }
 
-.hand__cards .card {
+/* The slot is the flex item and carries the fan overlap. It used to be
+   `display: contents`, which made the card the flex item instead — and then
+   `.card:first-child` matched EVERY card (each is the only child of its own
+   slot), zeroing every margin. The hand never actually fanned, which is why a
+   full hand had to shrink to fit. */
+.hand__cards > .hand__card-slot {
+  display: block;
+  position: relative;
   margin-left: calc(-1 * var(--overlap, 20px));
-  transition: transform 0.15s, box-shadow 0.15s, margin 0.15s;
+  transition: margin 0.15s;
   z-index: 1;
 }
 
-.hand__cards .card:first-child {
+.hand__cards > .hand__card-slot:first-child {
   margin-left: 0;
 }
 
-/* Kitty draw animation — cards slide in from above with a slight stagger */
-.hand__card-slot {
-  display: contents;
+.hand__cards .card {
+  transition: transform 0.15s, box-shadow 0.15s;
 }
+
+/* Kitty draw animation — cards slide in from above with a slight stagger */
+/* (slot layout is defined above — it must be a real box to carry the overlap) */
 
 .hand__card-slot--drawing .card {
   animation: hand-draw 650ms cubic-bezier(0.25, 0.9, 0.3, 1) backwards;
@@ -68,8 +89,8 @@
   }
 }
 
-.hand__cards .card:hover,
-.hand__cards .card--selected {
+.hand__cards > .hand__card-slot:hover,
+.hand__cards > .hand__card-slot:has(.card--selected) {
   z-index: 10;
 }
 
@@ -111,4 +132,21 @@
     padding: 0.15rem 0.15rem 0.2rem;
     min-height: 80px;
   }
+}
+
+/* Fanned hand: only the top-left corner of each card shows, so lift the one
+   under the pointer clear of its neighbours to read it in full. */
+.hand__cards .card--clickable:hover {
+    transform: translateY(-14px);
+    z-index: 20;
+}
+
+.hand__cards .card--selected {
+    transform: translateY(-18px);
+    z-index: 25;
+}
+
+.hand__cards .card--clickable:hover .card__corner--top-left,
+.hand__cards .card--selected .card__corner--top-left {
+    text-shadow: 0 0 6px rgba(0, 0, 0, .35);
 }
