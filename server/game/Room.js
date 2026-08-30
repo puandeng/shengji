@@ -251,18 +251,16 @@ class Room {
     let nextKittySeat;
 
     if (attackingWon) {
-      // Attacking team stays on attack; kitty rotates to the partner
-      // Team 0 = seats 0&2, Team 1 = seats 1&3 → partner is (seat + 2) % 4
-      nextKittySeat = (prevKittySeat + 2) % 4;
-    } else {
-      // Defending team becomes attackers
-      this.game.attackingTeam = prevAttacking === 0 ? 1 : 0;
-      // Player to the right of previous kitty picker picks up kitty
+      // Attackers broke through → roles swap (attackers become new defenders)
+      this.game.attackingTeam = this.game.defendingTeam;
       nextKittySeat = (prevKittySeat + 1) % 4;
+    } else {
+      // Defenders held → no role change, kitty to partner
+      nextKittySeat = (prevKittySeat + 2) % 4;
     }
 
-    // Trump rank for next round = attacking team's current level
-    this.game.trumpRank = this.game.teamLevels[this.game.attackingTeam];
+    // Trump rank = defending team's current level
+    this.game.trumpRank = this.game.teamLevels[this.game.defendingTeam];
 
     // Pre-assign kitty picker — they will be trumpDeclarer after trump selection
     this.game.kittyPickerSeat = nextKittySeat;
@@ -270,12 +268,11 @@ class Room {
     const result = this.game.deal();
     if (result.error) return result;
 
-    // Set pre-determined kitty picker as the trumpDeclarer
-    // Trump calling can still change the suit, but this player picks up the kitty
+    // Kitty picker's team is the defending team; the other team attacks
     const kittyPlayer = this.game.players.find(p => p.seatIndex === nextKittySeat);
     if (kittyPlayer) {
       this.game.trumpDeclarer = kittyPlayer.socketId;
-      this.game.attackingTeam = kittyPlayer.teamIndex;
+      this.game.attackingTeam = kittyPlayer.teamIndex === 0 ? 1 : 0;
     }
 
     return result;
@@ -295,6 +292,11 @@ class Room {
       const timer = setTimeout(() => {
         if (this.game.phase !== GAME_PHASES.TRUMP_SELECTION && this.game.phase !== GAME_PHASES.DEALING) return;
 
+        // Skip bots that already hold the winning call or have already passed
+        if (bot.socketId === this.game.trumpDeclarer) return;
+        if (this.game.phase === GAME_PHASES.DEALING && this.game.dealWindowPasses.has(bot.socketId)) return;
+        if (this.game.phase === GAME_PHASES.TRUMP_SELECTION && this.game.trumpPasses.has(bot.socketId)) return;
+
         const hand = this.game.phase === GAME_PHASES.DEALING
           ? this.game.getDealtHand(bot.socketId)
           : this.game.hands[bot.socketId];
@@ -302,8 +304,6 @@ class Room {
 
         const cardIds = BotPlayer.chooseTrumpCall(hand, this.game.trumpRank, this.game.trumpCallStrength);
         if (!cardIds) {
-          // During dealing, a bot only passes the open window — and only once,
-          // otherwise every dealt card re-scheduled another identical pass.
           if (this.game.phase === GAME_PHASES.DEALING) {
             if (!this.game.dealPaused) return;
             this.game.passTrump(bot.socketId);
