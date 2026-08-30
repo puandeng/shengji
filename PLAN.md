@@ -35,10 +35,11 @@ Condensed; full rationale for each item is in git history and the PRs that lande
 ### Rules engine
 - Jokers added — 108-card deck (2 × 52 + 4 jokers), 25 per player, kitty 8.
 - Level-based thresholds (`LEVEL_THRESHOLDS`: 80 for 2–K, 120 for A) replaced the hardcoded 100.
-- Only the attacking team accumulates points; defenders deny only.
-- Kitty multiplier = 2 × card count of the last winning play (single ×2, pair ×4, tractor of 3 pairs ×12).
+- Trump caller's team = **defending team** (picks up kitty, tries to deny points). Other team = **attacking team** (accumulates points, tries to reach threshold).
+- Kitty: defending team winning last trick protects the kitty (no bonus). Attacking team winning last trick → kitty points × (2 × cards in winning play) added to score.
 - Trump ordering: regular trump < off-suit trump-rank < in-suit trump-rank < small joker < big joker. `Card.beats()` takes `trumpRank`.
-- Level progression 2→A replaced "first to 3 rounds". Rank skipping by point differential (attackers 0 → defenders +3; < threshold−40 → defenders +2; ≥ threshold+40 → attackers +2; ≥ threshold+80 → attackers +3). `MANDATORY_STOP_RANKS` (5, 10, K, A) can't be skipped on first visit; `visitedRanks` tracked per team.
+- Level progression 2→A. Defenders hold (attackers below threshold) → defenders advance +1 to +3 levels and keep defending. Attackers break through (≥ threshold) → attackers advance +1 to +3 levels and become new defenders. Skip margins: attackers 0 → defenders +3; < threshold−40 → defenders +2; ≥ threshold+40 → attackers +2; ≥ threshold+80 → attackers +3. `MANDATORY_STOP_RANKS` (5, 10, K, A) can't be skipped on first visit; `visitedRanks` tracked per team.
+- Jack demotion: if defending team is at level J and attacking team wins last trick with a Jack card, defenders demoted to level 2.
 - Multi-card plays: single / pair / tractor / throw, with shape detection and follow-suit enforcement for combos. Cross-suit pairs rejected. Tractors allow A+trumpRank, trumpRank+SJ, SJ+BJ adjacency. Beaten throws cost the throwing team 30 pts.
 - Trump calling: `game:callTrump` with strengths 1 (single rank card), 2 (pair), 3 (joker pair); higher overrides lower, ties go to first caller. Joker pairs must be same-type and set `trumpSuit = null`. `game:passTrump` finalizes early once all 4 pass.
 
