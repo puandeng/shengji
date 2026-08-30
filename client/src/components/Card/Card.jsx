@@ -1,7 +1,7 @@
 import React from 'react';
+import { SUIT_SYMBOLS } from '../../suits';
 import './Card.css';
 
-const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
 const RED_SUITS    = new Set(['H', 'D']);
 
 /**

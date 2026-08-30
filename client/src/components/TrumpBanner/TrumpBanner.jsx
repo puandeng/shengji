@@ -1,8 +1,7 @@
 import React from 'react';
+import { suitLabel } from '../../suits';
 import './TrumpBanner.css';
 
-const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
-const SUIT_NAMES   = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 const RED_SUITS    = new Set(['H', 'D']);
 
 const STRENGTH_LABEL = { 1: 'single', 2: 'pair', 3: 'joker pair' };
@@ -36,7 +35,7 @@ export default function TrumpBanner({ trumpSuit, trumpRank, trumpCallStrength, a
     <div className="trump-banner">
       <span className="trump-banner__label">Trump</span>
       <span className={`trump-banner__suit ${isRed ? 'trump-banner__suit--red' : ''}`}>
-        {SUIT_SYMBOLS[trumpSuit]} {SUIT_NAMES[trumpSuit]}
+        {suitLabel(trumpSuit)}
       </span>
       {trumpRank && (
         <>
