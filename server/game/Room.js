@@ -90,7 +90,10 @@ class Room {
 
     this._clearDealTimer();
     const queue        = this.game.dealQueue;
-    const totalWindows = Math.floor(queue.length / DEAL_PAUSE_EVERY_CARDS);
+    // The boundary that lands on the final card is skipped — dealing is over and
+    // TRUMP_SELECTION opens its own window there — so don't count it, or the UI
+    // promises a window that never comes ("CALL WINDOW 4/5" was the last one).
+    const totalWindows = Math.floor((queue.length - 1) / DEAL_PAUSE_EVERY_CARDS);
     let idx = 0;
 
     const resume = () => {
