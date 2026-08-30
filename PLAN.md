@@ -8,6 +8,9 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 
 ## Open
 
+### Refactor
+- [ ] **Swap attacking/defending team semantics.** The team that calls trump and plays first is the *defending* team (they protect the kitty and try to prevent the other team from scoring). The other team is the *attacking* team (they try to collect points to reach threshold). Currently the codebase has this backwards: `attackingTeam` is set to the trump caller's team. Rename throughout server and client so the labels match traditional Sheng Ji terminology.
+
 ### Bugs
 - [ ] **Trump auto-select can deadlock the round.** `autoSelectTrump()` picks a suit from the kitty but sets `trumpDeclarer = null`. `giveKittyToDeclarer()` then returns `{ error: 'No trump declarer' }`, and both callers (`Room.scheduleBotTrumpCall()` on all-pass, and the trump timer path) ignore the error. Nobody holds the kitty, nobody can discard, and the game sits in `KITTY` forever. Reproduced with `GAME_LOG` + a headless 4-bot round where no player held a trump-rank card. Fix: fall back to a real seat as declarer (seat 0, or the last player to act) instead of `null`.
 - [ ] **Home page "How to play" copy is stale.** It still says "First team to win 3 rounds wins the match!" — the win condition is level progression 2→A. Same drift that was just fixed in `CLAUDE.md`.
