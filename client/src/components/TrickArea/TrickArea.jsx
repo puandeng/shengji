@@ -3,10 +3,20 @@ import Card from '../Card/Card';
 import './TrickArea.css';
 
 /**
+ * Largest card size that still fits the slot for that many cards.
+ * `scale="lg"` is the centre-of-table size — a trick has to read at a glance.
+ */
+function cardSizeFor(count, scale) {
+  if (scale === 'lg') return count === 1 ? 'lg' : count <= 3 ? 'md' : 'sm';
+  if (scale === 'xs' || scale === 'sm') return 'sm';
+  return count > 2 ? 'sm' : 'md';
+}
+
+/**
  * TrickArea shows the cards played in the current trick.
  * Each player position shows all cards they played (supporting multi-card plays).
  */
-export default function TrickArea({ trick = [], players = [], mySeat = 0, oppositeSeat = 2, leftSeat = 3, rightSeat = 1, winnerSocketId = null, frozen }) {
+export default function TrickArea({ trick = [], players = [], mySeat = 0, oppositeSeat = 2, leftSeat = 3, rightSeat = 1, winnerSocketId = null, frozen, scale = 'md' }) {
   const cardsBySocket = {};
   trick.forEach(({ socketId, cards, card }) => {
     cardsBySocket[socketId] = cards || (card ? [card] : []);
@@ -34,35 +44,35 @@ export default function TrickArea({ trick = [], players = [], mySeat = 0, opposi
   };
 
   return (
-    <div className={`trick-area ${frozen ? 'trick-area--frozen' : ''}`}>
+    <div className={`trick-area trick-area--${scale} ${frozen ? 'trick-area--frozen' : ''}`}>
       <div className={slotClass(oppositeSeat, 'top')}>
-        <TrickSlot cards={getCardsForSeat(oppositeSeat)} isWinner={isWinner(oppositeSeat)} />
+        <TrickSlot cards={getCardsForSeat(oppositeSeat)} isWinner={isWinner(oppositeSeat)} scale={scale} />
       </div>
 
       <div className="trick-area__middle">
         <div className={slotClass(leftSeat, 'left')}>
-          <TrickSlot cards={getCardsForSeat(leftSeat)} isWinner={isWinner(leftSeat)} />
+          <TrickSlot cards={getCardsForSeat(leftSeat)} isWinner={isWinner(leftSeat)} scale={scale} />
         </div>
         <div className="trick-area__centre" />
         <div className={slotClass(rightSeat, 'right')}>
-          <TrickSlot cards={getCardsForSeat(rightSeat)} isWinner={isWinner(rightSeat)} />
+          <TrickSlot cards={getCardsForSeat(rightSeat)} isWinner={isWinner(rightSeat)} scale={scale} />
         </div>
       </div>
 
       <div className={slotClass(mySeat, 'bottom')}>
-        <TrickSlot cards={getCardsForSeat(mySeat)} isWinner={isWinner(mySeat)} />
+        <TrickSlot cards={getCardsForSeat(mySeat)} isWinner={isWinner(mySeat)} scale={scale} />
       </div>
     </div>
   );
 }
 
-function TrickSlot({ cards, isWinner }) {
+function TrickSlot({ cards, isWinner, scale }) {
   if (!cards || cards.length === 0) {
     return <div className="trick-area__placeholder" />;
   }
-  const size = cards.length > 2 ? 'sm' : 'md';
+  const size = cardSizeFor(cards.length, scale);
   return (
-    <div className={`trick-area__combo ${isWinner ? 'trick-area__combo--winner' : ''}`}>
+    <div className={`trick-area__combo trick-area__combo--${size} ${isWinner ? 'trick-area__combo--winner' : ''}`}>
       {cards.map((card, i) => (
         <Card key={card?.id ?? i} card={card} size={size} />
       ))}

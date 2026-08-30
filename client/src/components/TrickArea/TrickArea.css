@@ -9,6 +9,45 @@
   min-width: 180px;
 }
 
+/* Too little height for the cross layout (a short window, a tall hand). Lay the
+   four plays out as one strip instead of showing a clipped sliver of each. */
+.trick-area--xs {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.trick-area--xs .trick-area__middle {
+  display: contents;
+}
+
+.trick-area--xs .trick-area__centre {
+  display: none;
+}
+
+.trick-area--xs .trick-area__placeholder {
+  width: 18px;
+  height: 26px;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.10);
+}
+
+.trick-area--xs .trick-area__winner-badge {
+  bottom: -8px;
+  font-size: 0.5rem;
+  padding: 0 4px;
+}
+
+/* Centre-of-table size: the played cards should read from across the room, so
+   they take the space the empty felt used to. */
+.trick-area--lg {
+  max-width: 420px;
+  min-width: 200px;
+  gap: 4px;
+}
+
 .trick-area--frozen {
   animation: trick-glow 1s ease-in-out infinite alternate;
 }
@@ -44,6 +83,20 @@
   border-radius: 6px;
 }
 
+/* An empty seat only has to hold its place, not reserve a whole card of felt. */
+.trick-area--lg .trick-area__placeholder {
+  width: 30px;
+  height: 42px;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.10);
+  border-radius: 5px;
+}
+
+.trick-area--lg .trick-area__centre {
+  width: 24px;
+  height: 42px;
+}
+
 .trick-area__combo {
   position: relative;
   display: flex;
@@ -53,6 +106,11 @@
 .trick-area__combo .card + .card {
   margin-left: -28px;
 }
+
+/* Overlap scales with the card so the rank corner stays readable. */
+.trick-area__combo--lg .card + .card { margin-left: -46px; }
+.trick-area__combo--md .card + .card { margin-left: -32px; }
+.trick-area__combo--sm .card + .card { margin-left: -22px; }
 
 .trick-area__combo--winner {
   filter: drop-shadow(0 0 8px var(--color-gold));
@@ -112,6 +170,11 @@
     gap: 2px;
   }
 
+  .trick-area--lg {
+    max-width: 320px;
+    min-width: 170px;
+  }
+
   .trick-area__centre {
     width: 50px;
     height: 72px;
@@ -122,9 +185,19 @@
     height: 72px;
   }
 
+  .trick-area--lg .trick-area__placeholder,
+  .trick-area--lg .trick-area__centre {
+    width: 26px;
+    height: 36px;
+  }
+
   .trick-area__combo .card + .card {
     margin-left: -20px;
   }
+
+  .trick-area__combo--lg .card + .card { margin-left: -36px; }
+  .trick-area__combo--md .card + .card { margin-left: -26px; }
+  .trick-area__combo--sm .card + .card { margin-left: -18px; }
 }
 
 @media (max-width: 480px) {
@@ -133,6 +206,11 @@
     min-width: 120px;
   }
 
+  .trick-area--lg {
+    max-width: 260px;
+    min-width: 150px;
+  }
+
   .trick-area__centre {
     width: 40px;
     height: 58px;
@@ -142,4 +220,12 @@
     width: 40px;
     height: 58px;
   }
+
+  .trick-area--lg .trick-area__placeholder,
+  .trick-area--lg .trick-area__centre {
+    width: 22px;
+    height: 30px;
+  }
+
+  .trick-area__combo--lg .card + .card { margin-left: -30px; }
 }

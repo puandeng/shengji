@@ -47,6 +47,23 @@ shengji/
 | `client/src/pages/Game.jsx` | Active game screen |
 | `client/src/components/` | `Card`, `Hand`, `GameBoard`, `TrickArea`, `PlayerInfo`, `TrumpBanner`, `ScoringModal`, `ChatPanel`, `Notification` |
 | `client/src/sounds.js` | Web Audio synthesised sound effects + localStorage mute toggle |
+| `client/src/suits.js` | Suit display helpers — symbol for chips, word for prose. Never render a bare suit code to a player |
+| `client/src/components/ScoreLadder/` | Six-band scoring ladder, rendered from `levelBands` |
+| `client/src/components/ActionBar/` | Fixed action bar — phase verbs always present, disabled with a visible reason |
+| `client/src/components/HandSettings/` | Hand sort preferences (suit order, trump end, rank direction), persisted to `localStorage` |
+| `client/src/components/GameBoard/usePlayPreview.js` | Debounced, sequence-guarded `game:previewPlay` hook |
+
+## Scoring is banded, not pass/fail
+
+A round is never simply won or lost. `GameState.levelBands()` returns the ordered bands covering 0–200 and **`_finishRound()` derives its verdict from that same function**, so the ladder the UI draws can never drift from what actually scores. At threshold 80:
+
+| 0 | 1–39 | 40–79 | 80–119 | 120–159 | 160–200 |
+|---|---|---|---|---|---|
+| def +3 | def +2 | def +1 | atk +1 | atk +2 | atk +3 |
+
+Boundaries fall every 40 points anchored on the threshold, plus a shutout band at exactly 0; at level A the threshold is 120 and the whole ladder shifts. Never hardcode 80 or 40 in the client — read `levelBands` from the state snapshot.
+
+`pointsPlayed` / `pointsRemaining` track point cards seen in completed tricks. `pointsRemaining` includes the kitty deliberately: it leaks nothing (anyone can count point cards that have appeared) and it tells both teams which bands are still reachable.
 
 ## Game Logs
 
@@ -125,6 +142,7 @@ The logger writes to the repo root and never inside `server/` — nodemon watche
 | `game:passTrump` | — | Pass on calling trump |
 | `game:discardKitty` | `{ cardIds[] }` | Discard 8 cards to the kitty |
 | `game:playCards` | `{ cardIds[] }` | Play 1–N cards (single / pair / tractor / throw) |
+| `game:previewPlay` | `{ cardIds[] }` | Ask what a selection *is* and whether it is legal, without playing it. Replies **only** via the ack callback — broadcasting would leak one player's selection to the table. Returns `{ shape, shapeLabel, legal, reason, requiredCount }` |
 | `room:newRound` | — | Start next round (host only) |
 | `room:state` | — | Re-request the current snapshot (used on reconnect) |
 | `game:declareTrump` | `{ cardId }` | **Legacy** — wraps `callTrump` with a single card |

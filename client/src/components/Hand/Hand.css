@@ -1,17 +1,28 @@
 .hand {
   grid-area: hand;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  gap: 0.25rem;
   padding: 0.1rem 0.5rem 0.15rem;
   min-height: 0;
-  gap: 0.1rem;
   /* Bound by the layout, not by the cards. Without this the hand is sized by
      its own content, so the fan measurement is circular — the row is wide
      because the cards don't overlap, and the cards don't overlap because the
      row is wide — and the fan never tightens on a narrow screen. */
   width: 100%;
   min-width: 0;
+}
+
+/* The measured column. The settings control sits *beside* it, so what the
+   ResizeObserver reports is genuinely what the fan may spend. */
+.hand__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
 }
 
 .hand__row,
@@ -23,8 +34,13 @@
 .hand__row {
   display: flex;
   align-items: flex-end;
+  align-self: stretch;
   gap: 0.3rem;
 }
+
+/* Which end of the hand the trump group sits at. */
+.hand__main--right .hand__row { justify-content: flex-end; }
+.hand__main--left  .hand__row { justify-content: flex-start; }
 
 .hand__row--trump {
   position: relative;
@@ -58,6 +74,18 @@
   margin-left: calc(-1 * var(--overlap, 20px));
   transition: margin 0.15s;
   z-index: 1;
+}
+
+/* Suit gutter: the first card of each group advances by the gutter on top of
+   the normal step, so the last card of the previous group shows a wider strip
+   of itself and the eye can count a suit without reading every rank. The
+   gutter is subtracted from the width budget in Hand.jsx before the overlap is
+   solved, so the row still fits. */
+.hand__cards > .hand__card-slot--gutter {
+  margin-left: calc(var(--gutter, 12px) - var(--overlap, 20px));
+  /* Shadow on the slot, not the card: it spills left onto the previous group
+     and reads as a seam, and it stays clear of the card's own hover shadow. */
+  box-shadow: -5px 0 7px -3px rgba(0, 0, 0, 0.55);
 }
 
 .hand__cards > .hand__card-slot:first-child {
@@ -110,7 +138,7 @@
   .hand {
     padding: 0.2rem 0.3rem 0.3rem;
     min-height: 100px;
-    gap: 0.1rem;
+    gap: 0.2rem;
   }
 
   .hand__row-label {
@@ -131,6 +159,7 @@
   .hand {
     padding: 0.15rem 0.15rem 0.2rem;
     min-height: 80px;
+    gap: 0.15rem;
   }
 }
 

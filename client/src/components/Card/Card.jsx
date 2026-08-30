@@ -36,6 +36,12 @@ export default function Card({
 
   const label    = isBig ? 'BJ' : isSmall ? 'SJ' : card.rank;
   const centerSym = isBig ? '★' : isSmall ? '☆' : symbol;
+  // Jokers show their star in the corner too — in a fan the corner is the only
+  // part of the card you can see, so BJ/SJ must be distinguishable there.
+  const cornerSym = isJoker ? centerSym : symbol;
+  // '10', 'BJ' and 'SJ' are two glyphs wide and would overrun the exposed
+  // sliver at full rank size.
+  const rankClass = String(label).length > 1 ? 'card__rank card__rank--wide' : 'card__rank';
 
   const classes = [
     'card',
@@ -69,13 +75,13 @@ export default function Card({
       title={titleStr}
     >
       <div className="card__corner card__corner--top-left">
-        <span className="card__rank">{label}</span>
-        {!isJoker && <span className="card__suit">{symbol}</span>}
+        <span className={rankClass}>{label}</span>
+        <span className="card__suit">{cornerSym}</span>
       </div>
       <div className="card__center">{centerSym}</div>
       <div className="card__corner card__corner--bottom-right">
-        <span className="card__rank">{label}</span>
-        {!isJoker && <span className="card__suit">{symbol}</span>}
+        <span className={rankClass}>{label}</span>
+        <span className="card__suit">{cornerSym}</span>
       </div>
       {card.points > 0 && (
         <div className="card__points-badge">{card.points}</div>

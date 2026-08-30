@@ -25,7 +25,17 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 - [x] **Can't select more than one card for trump declaration.** Fixed: `handleCallTrump()` is now a pure toggle (max 2 cards) and a `Call trump (1 card / pair)` button submits, matching the kitty-discard and play flows. The old auto-submit sent the single to the server before a second card could be picked, and the resulting strength-1 call then blocked the strength-2 one it should have become.
 - [x] **Hand and play button overlap the macOS dock.** Fixed — `.game-root` is a flex column on `100dvh` with the board as `flex:1`, plus `env(safe-area-inset-bottom)` padding. Measured: the hand went from 17px clipped to 30px of clearance.
 
-### Done this pass
+### Done this pass — the design review, built
+All seven proposals from the "Reading the Table" review are now implemented.
+- [x] **Selection feedback before commit.** New non-mutating `GameState.previewPlay()` + `game:previewPlay` (ack-only, never broadcast — it would leak a selection). The client shows the shape and legality live via a 150ms-debounced, sequence-guarded hook; a stale ack can never overwrite a fresh one. No rule logic on the client: `reason` is the verbatim validator error, and a test asserts `preview.reason === playCards().error`.
+- [x] **Scoring ladder.** `levelBands()` is the single source of truth — `_finishRound()` derives its verdict from it, so display and scoring cannot drift. `ScoreLadder` renders six bands, the marker, out-of-reach bands, and distance in both directions. Also `pointsPlayed` / `pointsRemaining`.
+- [x] **Fixed action bar.** Verbs always rendered, disabled with a visible reason. PLAYING has Play + Clear only — no pass on your turn. Readout is a target (`2 of 2 selected`).
+- [x] **Hand sort preferences.** Suit order, trump end, rank direction; persisted to `localStorage` under `shengji-hand-prefs`, sanitised on load and update.
+- [x] **Legibility.** Suit gutters folded into the fan width budget; corner index ~+50% with the centre pip dropped at small sizes.
+- [x] **Last trick on demand.** Reopen the previous trick any time; forced freeze cut from 2500ms to 1100ms.
+- [x] **Centre region reclaimed.** `.gameboard__sides` used `align-items: center`, so the centre column sized from its own content and could never be bounded — the trick row had 23px at a 720px window. Now `stretch`, with a measured scale for the trick cards.
+
+### Done earlier this pass
 - [x] **Play selection was uncapped.** `togglePlaySelect()` accepted any number of cards, so an unplayable selection could be assembled and was only refused after pressing Play. The lead fixes the count for everyone — there is no passing on your turn — so selection is now capped at the lead count and the prompt reads `N of M selected`.
 - [x] **Hand never overlapped; cards shrank while dealing.** `.hand__card-slot` used `display: contents`, making the card the flex item, so `.card:first-child` matched every card and zeroed every margin. With overlap impossible, a full hand could only fit by shrinking. Slot is now a real box carrying the fan overlap; card size is fixed for the round from the known final hand size. Cards went 42px → 84px.
 - [x] **Point pile rendered on top of the action prompt.** 32px of overlap measured at 900×800; the pile now has its own grid row.

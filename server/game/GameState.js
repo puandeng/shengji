@@ -7,6 +7,7 @@ const {
   PLAYERS_PER_ROOM,
   CARDS_PER_PLAYER,
   KITTY_SIZE,
+  TOTAL_POINTS,
   STARTING_LEVEL,
   LEVEL_THRESHOLDS,
   LEVEL_ORDER,
@@ -304,6 +305,52 @@ function bestCard(cards, trumpSuit, trumpRank) {
 }
 
 // ─────────────────────────────────────────────
+// Player-facing labels
+// ─────────────────────────────────────────────
+
+/** Rank as a word: 'K' → 'King', '7' → '7'. */
+function rankWord(rank) {
+  return ({ J: 'Jack', Q: 'Queen', K: 'King', A: 'Ace' })[rank] || rank;
+}
+
+/** Name one card the way a player would say it: 'King of hearts', 'small joker'. */
+function cardName(card) {
+  if (card.isBigJoker)   return 'big joker';
+  if (card.isSmallJoker) return 'small joker';
+  return `${rankWord(card.rank)} of ${(SUIT_NAMES[card.suit] || card.suit).toLowerCase()}`;
+}
+
+/** Name a pair of this card: 'Kings', '7s', 'big jokers'. */
+function pairName(card) {
+  if (card.isBigJoker)   return 'big jokers';
+  if (card.isSmallJoker) return 'small jokers';
+  return `${rankWord(card.rank)}s`;
+}
+
+/**
+ * Player-facing description of a selection — suit words, never raw suit letters.
+ *   'Single — King of hearts' | 'Pair of 7s' | 'Tractor — 3 consecutive pairs'
+ *   'Throw — single + pair'   | 'Not a legal combo'
+ */
+function shapeLabel(cards, shape) {
+  switch (shape) {
+    case 'single':  return `Single — ${cardName(cards[0])}`;
+    case 'pair':    return `Pair of ${pairName(cards[0])}`;
+    case 'tractor': return `Tractor — ${cards.length / 2} consecutive pairs`;
+    case 'throw':   return 'Throw — single + pair';
+    default:        return 'Not a legal combo';
+  }
+}
+
+// ─────────────────────────────────────────────
+// Level bands
+// ─────────────────────────────────────────────
+
+// Level gains step every 40 points either side of the round threshold, so the
+// whole ladder slides when the threshold does (80 for levels 2–K, 120 at A).
+const BAND_WIDTH = 40;
+
+// ─────────────────────────────────────────────
 // GameState
 // ─────────────────────────────────────────────
 
@@ -350,6 +397,7 @@ class GameState {
     this.scores         = { 0: 0, 1: 0 }; // Only attackingTeam entry is ever non-zero
     this.roundScores    = { 0: 0, 1: 0 }; // Kept for compat; semantics = round-wins
     this.attackerPointPile = [];        // Point cards captured by attackers this round
+    this.pointsPlayed   = 0;            // Point value of every card in completed tricks (both teams)
     this.winner         = null;
     this.trumpTimer     = null;
     this.roundNumber    = 1;
@@ -489,6 +537,7 @@ class GameState {
     this.tricks            = [];
     this.scores            = { 0: 0, 1: 0 };
     this.attackerPointPile = [];
+    this.pointsPlayed      = 0;
 
     if (this.logger) {
       this.logger.roundStart({
@@ -838,6 +887,14 @@ class GameState {
   }
 
   /**
+   * Points not yet taken in a trick. Includes the kitty, which leaks nothing —
+   * anyone at the table can count the point cards that have already appeared.
+   */
+  get pointsRemaining() {
+    return Math.max(0, TOTAL_POINTS - this.pointsPlayed);
+  }
+
+  /**
    * Play one or more cards. Validates turn, follow-suit rules, and shape legality.
    * cardIds — string[] (1 for single, 2 for pair, 4+ for tractor, etc.)
    */
@@ -891,6 +948,50 @@ class GameState {
     }
 
     return this._resolveTrick();
+  }
+
+  /**
+   * Answer "what have I selected, and may I play it?" without touching any state.
+   *
+   * Runs exactly the validation sequence playCards() runs before it mutates, and
+   * returns the verdict instead of applying it — so a preview and the real play can
+   * never disagree. Rejection text is reused verbatim from the validators.
+   *
+   * @returns {{ shape: string, shapeLabel: string, legal: boolean, reason: string|null, requiredCount: number }}
+   *          requiredCount is how many cards the lead demands, or 0 when leading.
+   */
+  previewPlay(socketId, cardIds) {
+    const leadEntry     = this.currentTrick[0] || null;
+    const requiredCount = leadEntry ? leadEntry.cards.length : 0;
+
+    const reject = (reason, shape = 'invalid', label = 'Not a legal combo') =>
+      ({ shape, shapeLabel: label, legal: false, reason, requiredCount });
+
+    if (!cardIds || cardIds.length === 0) {
+      return reject('Must play at least one card', 'invalid', 'Nothing selected');
+    }
+
+    const hand  = this.hands[socketId] || [];
+    const cards = cardIds.map(id => hand.find(c => c.id === id)).filter(Boolean);
+    if (cards.length !== cardIds.length) {
+      return reject('One or more cards not in your hand');
+    }
+
+    const shape = classifyPlay(cards, this.trumpSuit, this.trumpRank);
+    const label = shapeLabel(cards, shape);
+
+    let reason = null;
+    if (!leadEntry) {
+      const err = this._validateLead(cards, shape);
+      if (err) reason = err.error;
+    } else if (cards.length !== requiredCount) {
+      reason = `Must play exactly ${requiredCount} card(s) to match the lead`;
+    } else {
+      const err = this._validateFollow(socketId, cards, shape, leadEntry);
+      if (err) reason = err.error;
+    }
+
+    return { shape, shapeLabel: label, legal: reason === null, reason, requiredCount };
   }
 
   /** Validate a lead play — all combos must be a recognized shape from the same effective suit. */
@@ -1035,6 +1136,7 @@ class GameState {
     const trickPoints = this.currentTrick.reduce(
       (sum, e) => sum + e.cards.reduce((s, c) => s + c.points, 0), 0
     );
+    this.pointsPlayed += trickPoints;
 
     // Only credit attacking team
     let pointsScored    = 0;
@@ -1133,33 +1235,52 @@ class GameState {
   // Scoring & level progression
   // ─────────────────────────────────────────────
 
+  /**
+   * The full level-gain ladder for the current round, ordered low → high score
+   * and covering 0..TOTAL_POINTS. Every boundary is derived from the round
+   * threshold, so at level A (threshold 120) the whole ladder slides with it.
+   *
+   * @returns {{ min: number, max: number, team: 'defenders'|'attackers', levels: number }[]}
+   */
+  levelBands() {
+    const t = LEVEL_THRESHOLDS[this.trumpRank];
+    return [
+      { min: 0,                  max: 0,                      team: 'defenders', levels: 3 },
+      { min: 1,                  max: t - BAND_WIDTH - 1,     team: 'defenders', levels: 2 },
+      { min: t - BAND_WIDTH,     max: t - 1,                  team: 'defenders', levels: 1 },
+      { min: t,                  max: t + BAND_WIDTH - 1,     team: 'attackers', levels: 1 },
+      { min: t + BAND_WIDTH,     max: t + 2 * BAND_WIDTH - 1, team: 'attackers', levels: 2 },
+      { min: t + 2 * BAND_WIDTH, max: TOTAL_POINTS,           team: 'attackers', levels: 3 },
+    ]
+      .map(b => ({ ...b, max: Math.min(b.max, TOTAL_POINTS) }))
+      .filter(b => b.min <= b.max);
+  }
+
+  /**
+   * Band an attacker score falls in. Kitty multipliers can push a score past
+   * TOTAL_POINTS, so anything above the ladder lands in the top band.
+   */
+  _bandForScore(score) {
+    const bands = this.levelBands();
+    return bands.find(b => score >= b.min && score <= b.max) || bands[bands.length - 1];
+  }
+
   _finishRound() {
     this.phase = GAME_PHASES.SCORING;
 
     const attackingScore = this.scores[this.attackingTeam];
     const defendingTeam  = this.attackingTeam === 0 ? 1 : 0;
     const threshold      = LEVEL_THRESHOLDS[this.trumpRank];
-    const attackingWon   = attackingScore >= threshold;
 
-    // Level advancement
+    // Level advancement reads straight off the ladder the players are shown, so
+    // the displayed bands and the actual scoring can never drift apart.
     // NOTE: variable names are inverted vs traditional Sheng Ji. In code,
     // attackingTeam = trump caller = DEFENDING team in traditional terms.
     // The full rename + scoring refactor is tracked in PLAN.md.
-    let levelsAdvanced = 0;
-    let advancingTeam;
-
-    if (attackingWon) {
-      advancingTeam  = this.attackingTeam;
-      levelsAdvanced = attackingScore >= threshold + 80 ? 3
-                     : attackingScore >= threshold + 40 ? 2
-                     : 1;
-    } else {
-      advancingTeam  = defendingTeam;
-      const shortfall = threshold - attackingScore;
-      levelsAdvanced  = attackingScore === 0 ? 3
-                      : shortfall > 40       ? 2
-                      : 1;
-    }
+    const band           = this._bandForScore(attackingScore);
+    const attackingWon   = band.team === 'attackers';
+    const advancingTeam  = attackingWon ? this.attackingTeam : defendingTeam;
+    const levelsAdvanced = band.levels;
 
     // Jack demotion: if attackers are at level J and defenders won the last
     // trick with a Jack card, attackers are demoted back to level 2.
@@ -1265,6 +1386,9 @@ class GameState {
       winner:            this.winner,
       roundNumber:       this.roundNumber,
       threshold:         LEVEL_THRESHOLDS[this.trumpRank],
+      levelBands:        this.levelBands(),
+      pointsPlayed:      this.pointsPlayed,
+      pointsRemaining:   this.pointsRemaining,
       trumpPassCount:    this.trumpPasses.size,
     };
   }
