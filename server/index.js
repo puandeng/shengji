@@ -45,6 +45,6 @@ if (isProduction) {
 }
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🃏 200 Card Game Server running on port ${PORT}`);
 });

@@ -8,4 +8,4 @@ cmds = ["npm ci"]
 cmds = ["npm run build --workspace=client"]
 
 [start]
-cmd = "npm start"
+cmd = "NODE_ENV=production node server/index.js"
