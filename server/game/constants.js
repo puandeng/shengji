@@ -131,6 +131,12 @@ const DEAL_PAUSE_EVERY_CARDS = 20;
 // How long each pause window stays open before auto-skipping (ms)
 const DEAL_PAUSE_MS = 5000;
 
+// A window also opens the moment a dealt card lets someone make a call that
+// would beat the standing one. Without a floor, a run of trump-rank cards would
+// stop the deal several times in a row, so pauses stay at least this many cards
+// apart (4 = one full round of the table).
+const DEAL_PAUSE_MIN_GAP_CARDS = 4;
+
 // Delay after the last card in a trick before clearing (ms) — lets everyone see the result
 const TRICK_DISPLAY_DELAY_MS = 2500;
 
@@ -157,5 +163,6 @@ module.exports = {
   DEAL_CARD_INTERVAL_MS,
   DEAL_PAUSE_EVERY_CARDS,
   DEAL_PAUSE_MS,
+  DEAL_PAUSE_MIN_GAP_CARDS,
   TRICK_DISPLAY_DELAY_MS,
 };

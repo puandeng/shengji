@@ -375,3 +375,43 @@ describe('follow-suit rejection messages', () => {
     expect(error).toContain('spades pair');
   });
 });
+
+describe('trump call availability', () => {
+  function gameWithRank(rank) {
+    const game = createReadyGame();
+    game.trumpRank = rank;
+    return game;
+  }
+
+  it('rates a single trump-rank card as strength 1', () => {
+    const game = gameWithRank('2');
+    expect(game.bestCallStrength([new Card('S', '2', 0), new Card('H', '9', 0)])).toBe(1);
+  });
+
+  it('rates a same-suit trump-rank pair as strength 2', () => {
+    const game = gameWithRank('2');
+    expect(game.bestCallStrength([new Card('S', '2', 0), new Card('S', '2', 1)])).toBe(2);
+  });
+
+  it('does not rate trump-rank cards of different suits as a pair', () => {
+    const game = gameWithRank('2');
+    expect(game.bestCallStrength([new Card('S', '2', 0), new Card('H', '2', 0)])).toBe(1);
+  });
+
+  it('rates a same-type joker pair as strength 3 but a mixed pair as 0', () => {
+    const game = gameWithRank('2');
+    const small = [new Card('JOKER', 'SJ', 0), new Card('JOKER', 'SJ', 1)];
+    const mixed = [new Card('JOKER', 'SJ', 0), new Card('JOKER', 'BJ', 0)];
+    expect(game.bestCallStrength(small)).toBe(3);
+    expect(game.bestCallStrength(mixed)).toBe(0);
+  });
+
+  it('canCall requires strictly beating the standing call', () => {
+    const game = gameWithRank('2');
+    game.phase = 'TRUMP_SELECTION';
+    game.hands['p0'] = [new Card('S', '2', 0)];
+    expect(game.canCall('p0')).toBe(true);
+    game.trumpCallStrength = 1;           // an equal call already stands
+    expect(game.canCall('p0')).toBe(false);
+  });
+});

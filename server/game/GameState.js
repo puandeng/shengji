@@ -675,6 +675,39 @@ class GameState {
   }
 
   /**
+   * Strongest trump call these cards could make: 3 = same-type joker pair,
+   * 2 = trump-rank pair in one suit, 1 = single trump-rank card, 0 = none.
+   */
+  bestCallStrength(cards) {
+    if (!cards || cards.length === 0) return 0;
+    let smallJokers = 0;
+    let bigJokers   = 0;
+    const rankBySuit = {};
+
+    for (const c of cards) {
+      if (c.isSmallJoker)      smallJokers += 1;
+      else if (c.isBigJoker)   bigJokers   += 1;
+      else if (c.rank === this.trumpRank) rankBySuit[c.suit] = (rankBySuit[c.suit] || 0) + 1;
+    }
+
+    if (smallJokers >= 2 || bigJokers >= 2) return 3;
+    if (Object.values(rankBySuit).some(n => n >= 2)) return 2;
+    if (Object.keys(rankBySuit).length > 0) return 1;
+    return 0;
+  }
+
+  /**
+   * Could this player call right now and have it stand? Equal strength does not
+   * override (first caller wins), so the bar is strictly greater.
+   */
+  canCall(socketId) {
+    const hand = this.phase === GAME_PHASES.DEALING
+      ? this.getDealtHand(socketId)
+      : this.hands[socketId];
+    return this.bestCallStrength(hand) > this.trumpCallStrength;
+  }
+
+  /**
    * Open a new slow-motion deal pause window. Clears the previous window's
    * passes so everyone gets a fresh decision with the cards they now hold.
    */

@@ -303,12 +303,13 @@ export default function GameBoard() {
         {error && <p className="error-text">{error}</p>}
         {isDealing && dealPause && !hasPassed && (
           <div className="trump-actions trump-actions--paused">
-            <span className="deal-window-badge">
-              Call window {dealPause.windowIndex}/{dealPause.totalWindows}
+            <span className={`deal-window-badge${dealPause.youCanCall ? ' deal-window-badge--can-call' : ''}`}>
+              {dealPause.youCanCall ? 'You can call!' : `Call window ${dealPause.windowIndex}`}
             </span>
             <p className="prompt-text">
-              Deal paused — click a <strong>{trumpRank}</strong> to call trump
-              {trumpSuit !== undefined && trumpCallStrength > 0 && ' (or a stronger combo to override)'}
+              {dealPause.youCanCall
+                ? <>Deal paused — click your <strong>{trumpRank}</strong>{trumpCallStrength > 0 ? ' (pair beats the standing call)' : ''} to call trump</>
+                : <>Deal paused — nothing to call with yet</>}
             </p>
             <button
               className="btn-secondary"

@@ -113,7 +113,7 @@ function reducer(state, action) {
         ...state,
         dealPause: {
           windowIndex:  action.payload.windowIndex,
-          totalWindows: action.payload.totalWindows,
+          youCanCall:   action.payload.youCanCall,
           deadline:     action.payload.deadline,
           durationMs:   action.payload.durationMs,
         },

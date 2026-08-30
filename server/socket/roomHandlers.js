@@ -154,7 +154,13 @@ function setupRoomHandlers(io, socket, registry) {
         (info) => {
           // Slow-motion deal: the deal is paused, everyone may call trump or pass
           room.game.players.forEach(p => {
-            io.to(p.socketId).emit('game:dealPaused', { ...info, ...room.toGameStateFor(p.socketId) });
+            // youCanCall is per-player on purpose: broadcasting *why* the deal
+            // paused would tell the table that someone just drew a trump card.
+            io.to(p.socketId).emit('game:dealPaused', {
+              ...info,
+              youCanCall: room.game.canCall(p.socketId),
+              ...room.toGameStateFor(p.socketId),
+            });
           });
         },
         (info) => {
@@ -223,7 +229,13 @@ function setupRoomHandlers(io, socket, registry) {
         (info) => {
           // Slow-motion deal: the deal is paused, everyone may call trump or pass
           room.game.players.forEach(p => {
-            io.to(p.socketId).emit('game:dealPaused', { ...info, ...room.toGameStateFor(p.socketId) });
+            // youCanCall is per-player on purpose: broadcasting *why* the deal
+            // paused would tell the table that someone just drew a trump card.
+            io.to(p.socketId).emit('game:dealPaused', {
+              ...info,
+              youCanCall: room.game.canCall(p.socketId),
+              ...room.toGameStateFor(p.socketId),
+            });
           });
         },
         (info) => {
