@@ -59,26 +59,27 @@ export default function GameBoard() {
   const showTrickDisplay = !!completedTrick;
 
   // ── Trump calling ─────────────────────────────────────────────────────────
+  // Selecting a card never submits on its own. Auto-submitting the first click
+  // made a pair impossible to assemble: the single went to the server before a
+  // second card could be picked, and the resulting strength-1 call then blocked
+  // the strength-2 one it should have become.
   function handleCallTrump(card) {
     if (!isTrumpPhase) return;
-    const alreadySelected = selectedCards.includes(card.id);
-    if (alreadySelected) {
-      // Deselect
-      setSelectedCards(prev => prev.filter(id => id !== card.id));
-    } else if (selectedCards.length < 2) {
-      const newSel = [...selectedCards, card.id];
-      // Auto-submit on first valid selection (single or joker pair)
-      const isJoker = card.isJoker || card.suit === 'JOKER';
-      if (newSel.length === 1 && !isJoker) {
-        // Single non-joker call — submit immediately
-        callTrump(newSel).then(() => setSelectedCards([])).catch(() => {});
-      } else if (newSel.length === 2) {
-        // Pair — submit
-        callTrump(newSel).then(() => setSelectedCards([])).catch(() => {});
-      } else {
-        setSelectedCards(newSel);
-      }
-    }
+    setSelectedCards(prev => {
+      if (prev.includes(card.id)) return prev.filter(id => id !== card.id);
+      if (prev.length >= 2) return prev;          // a call is at most two cards
+      return [...prev, card.id];
+    });
+  }
+
+  function handleSubmitTrumpCall() {
+    if (selectedCards.length === 0) return;
+    callTrump(selectedCards).then(() => setSelectedCards([])).catch(() => {});
+  }
+
+  function handlePassTrump() {
+    setSelectedCards([]);
+    passTrump().then(() => setHasPassed(true)).catch(() => {});
   }
 
   // ── Kitty discard ──────────────────────────────────────────────────────────
@@ -308,13 +309,15 @@ export default function GameBoard() {
             </span>
             <p className="prompt-text">
               {dealPause.youCanCall
-                ? <>Deal paused — click your <strong>{trumpRank}</strong>{trumpCallStrength > 0 ? ' (pair beats the standing call)' : ''} to call trump</>
+                ? <>Deal paused — pick a <strong>{trumpRank}</strong> to call{selectedCards.length === 1 ? ', or a matching second card for a stronger pair call' : ''}</>
                 : <>Deal paused — nothing to call with yet</>}
             </p>
-            <button
-              className="btn-secondary"
-              onClick={() => { passTrump().then(() => setHasPassed(true)).catch(() => {}); }}
-            >
+            {selectedCards.length > 0 && (
+              <button className="btn-primary" onClick={handleSubmitTrumpCall}>
+                Call trump ({selectedCards.length === 2 ? 'pair' : '1 card'})
+              </button>
+            )}
+            <button className="btn-secondary" onClick={handlePassTrump}>
               Pass
             </button>
             <span className="deal-window-timer">{secondsLeft}s</span>
@@ -334,10 +337,12 @@ export default function GameBoard() {
                 : <>Click a <strong>{trumpRank}</strong> to call trump, or a pair for a stronger call</>
               }
             </p>
-            <button
-              className="btn-secondary"
-              onClick={() => { passTrump().then(() => setHasPassed(true)).catch(() => {}); }}
-            >
+            {selectedCards.length > 0 && (
+              <button className="btn-primary" onClick={handleSubmitTrumpCall}>
+                Call trump ({selectedCards.length === 2 ? 'pair' : '1 card'})
+              </button>
+            )}
+            <button className="btn-secondary" onClick={handlePassTrump}>
               Pass
             </button>
           </div>
