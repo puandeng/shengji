@@ -75,6 +75,8 @@ The logger writes to the repo root and never inside `server/` — nodemon watche
   - **A call became possible** — the card just dealt is a joker or a trump-rank card *and* gives its recipient a call that would beat the standing one (`GameState.canCall`, strictly greater since equal strength does not override). This is the trigger that matters: it stops the deal at the only moment a decision actually changes.
   - **Interval backstop** — every `DEAL_PAUSE_EVERY_CARDS` (20, i.e. five cards each), so quiet stretches still get a window.
 
+  Once a joker pair (`MAX_CALL_STRENGTH` = 3) has been called, nothing can outrank it: no further windows open, and when dealing finishes the 30s `TRUMP_SELECTION` window is skipped entirely — the declarer takes the kitty immediately.
+
   Pauses stay at least `DEAL_PAUSE_MIN_GAP_CARDS` (4) apart so a run of trump cards cannot stutter the deal, and the boundary on the final card is skipped because `TRUMP_SELECTION` opens there with its own 30s timer.
 
   **Do not broadcast why a window opened.** The trigger reason is logged but the per-player `game:dealPaused` payload carries `youCanCall` for that player only — telling the table "someone drew a trump card" would leak hand information, announced by `game:dealPaused` and closed by `game:dealResumed`. During a window any player may call trump or pass; the window closes early once everyone has acted, and auto-skips on the deadline. A pass is scoped to its window (`GameState.dealWindowPasses`) — passing now must not stop a player calling later with more cards in hand. `game:dealComplete` ends the phase.

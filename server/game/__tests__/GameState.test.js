@@ -415,3 +415,26 @@ describe('trump call availability', () => {
     expect(game.canCall('p0')).toBe(false);
   });
 });
+
+describe('joker-pair call is final', () => {
+  it('leaves nobody able to call once a joker pair stands', () => {
+    const game = createReadyGame();
+    game.phase = 'TRUMP_SELECTION';
+    game.trumpRank = '2';
+    game.trumpCallStrength = 3;
+    // Even the strongest possible holding cannot beat a standing joker pair.
+    game.hands['p1'] = [new Card('JOKER', 'BJ', 0), new Card('JOKER', 'BJ', 1)];
+    expect(game.bestCallStrength(game.hands['p1'])).toBe(3);
+    expect(game.canCall('p1')).toBe(false);
+  });
+
+  it('rejects a joker-pair call that ties the standing one', () => {
+    const game = createReadyGame();
+    game.phase = 'TRUMP_SELECTION';
+    game.trumpRank = '2';
+    game.trumpCallStrength = 3;
+    game.hands['p1'] = [new Card('JOKER', 'SJ', 0), new Card('JOKER', 'SJ', 1)];
+    const { error } = game.callTrump('p1', ['JOKER_SJ_0', 'JOKER_SJ_1']);
+    expect(error).toMatch(/does not override/);
+  });
+});

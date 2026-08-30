@@ -1,4 +1,4 @@
-const { GAME_PHASES } = require('../game/constants');
+const { MAX_CALL_STRENGTH, GAME_PHASES } = require('../game/constants');
 
 /**
  * Room-related socket events:
@@ -137,6 +137,24 @@ function setupRoomHandlers(io, socket, registry) {
             io.to(p.socketId).emit('game:dealComplete', room.toGameStateFor(p.socketId));
           });
 
+          // Nothing outranks a joker pair, so there is nothing to wait for —
+          // skip the 30s trump window and go straight to the kitty.
+          if (room.game.trumpCallStrength >= MAX_CALL_STRENGTH) {
+            room._clearTrumpTimer();
+            room.game.finishTrumpSelection();
+            room.game.giveKittyToDeclarer();
+            room.game.players.forEach(p => {
+              io.to(p.socketId).emit('game:trumpSelected', {
+                trumpSuit:     room.game.trumpSuit,
+                trumpDeclarer: room.game.trumpDeclarer,
+                auto:          false,
+                ...room.toGameStateFor(p.socketId),
+              });
+            });
+            room.scheduleBotKittyDiscard();
+            return;
+          }
+
           room.scheduleBotTrumpCall();
 
           room.startTrumpTimer(({ kittyResult }) => {
@@ -211,6 +229,24 @@ function setupRoomHandlers(io, socket, registry) {
           room.game.players.forEach(p => {
             io.to(p.socketId).emit('game:dealComplete', room.toGameStateFor(p.socketId));
           });
+
+          // Nothing outranks a joker pair, so there is nothing to wait for —
+          // skip the 30s trump window and go straight to the kitty.
+          if (room.game.trumpCallStrength >= MAX_CALL_STRENGTH) {
+            room._clearTrumpTimer();
+            room.game.finishTrumpSelection();
+            room.game.giveKittyToDeclarer();
+            room.game.players.forEach(p => {
+              io.to(p.socketId).emit('game:trumpSelected', {
+                trumpSuit:     room.game.trumpSuit,
+                trumpDeclarer: room.game.trumpDeclarer,
+                auto:          false,
+                ...room.toGameStateFor(p.socketId),
+              });
+            });
+            room.scheduleBotKittyDiscard();
+            return;
+          }
 
           room.scheduleBotTrumpCall();
 
