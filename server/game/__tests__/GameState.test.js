@@ -314,11 +314,9 @@ describe('GameState', () => {
       const result = game.playCards('p3', ['h_4_0']);
 
       // p0 (attacker, team 0) wins with A — gets the 5 points from p1's card
-      // Plus kitty points × multiplier (last trick)
+      // Attacker winning the last trick "protects" the kitty — no kitty bonus
       expect(result.trickComplete).toBe(true);
-      const kittyPts = game.kitty.reduce((s, c) => s + c.points, 0);
-      const kittyBonus = kittyPts * 2; // single card lead = ×2
-      expect(game.scores[0]).toBe(5 + kittyBonus);
+      expect(game.scores[0]).toBe(5);
     });
   });
 });
