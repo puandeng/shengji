@@ -342,6 +342,7 @@ class GameState {
     this.trumpCallStrength = 0;         // 0=none, 1=single, 2=pair (for bidding mechanic)
     this.trumpDeclareCards = [];        // Card objects shown during trump declaration
     this.attackingTeam  = 0;
+    this.kittyPickerSeat = null;       // Pre-determined kitty picker (null = first round, use trump caller)
     this.teamLevels     = { 0: STARTING_LEVEL, 1: STARTING_LEVEL };
     this.currentTrick   = [];           // [{ socketId, cards: Card[], shape }]
     this.tricks         = [];
@@ -614,12 +615,17 @@ class GameState {
     }
 
     this.trumpSuit         = suit;
-    this.trumpDeclarer     = socketId;
     this.trumpCallStrength = strength;
     this.trumpDeclareCards = cards.map(c => c.toJSON());
 
     const caller = this.getPlayer(socketId);
-    this.attackingTeam = caller.teamIndex;
+
+    // Round 1: trump caller becomes declarer and their team attacks.
+    // Later rounds: kitty picker is pre-determined; calling only sets the suit.
+    if (this.kittyPickerSeat === null) {
+      this.trumpDeclarer = socketId;
+      this.attackingTeam = caller.teamIndex;
+    }
 
     if (this.logger) {
       this.logger.trumpCall({
@@ -741,19 +747,26 @@ class GameState {
     if (this.trumpCallStrength > 0) return;
     if (this.trumpSuit) return;
 
+    // Pick trump suit from kitty or fallback to kitty picker's hand
     const nonJokerKitty = this.kitty.find(c => !c.isJoker);
     if (nonJokerKitty) {
-      this.trumpSuit     = nonJokerKitty.suit;
-      this.trumpDeclarer = null;
-      // Default attacking team stays as-is (team 0)
+      this.trumpSuit = nonJokerKitty.suit;
     } else {
+      const fallbackPlayer = this.kittyPickerSeat !== null
+        ? this.players.find(p => p.seatIndex === this.kittyPickerSeat) || this.players[0]
+        : this.players[0];
+      const hand = this.hands[fallbackPlayer.socketId];
+      const nonJoker = (hand || []).find(c => !c.isJoker);
+      this.trumpSuit = (nonJoker || hand?.[0])?.suit ?? 'S';
+    }
+
+    // Round 1: set declarer to seat 0 if no one called
+    if (this.kittyPickerSeat === null) {
       const firstPlayer = this.players[0];
-      const hand        = this.hands[firstPlayer.socketId];
-      const nonJoker    = (hand || []).find(c => !c.isJoker);
-      this.trumpSuit     = (nonJoker || hand?.[0])?.suit ?? 'S';
       this.trumpDeclarer = firstPlayer.socketId;
       this.attackingTeam = firstPlayer.teamIndex;
     }
+    // Later rounds: trumpDeclarer already set by startNewRound
   }
 
   /** Move from trump selection → kitty phase */
@@ -785,6 +798,8 @@ class GameState {
     if (!this.trumpDeclarer) return { error: 'No trump declarer' };
     const hand = this.hands[this.trumpDeclarer];
     this.kitty.forEach(c => hand.push(c));
+    const declarer = this.getPlayer(this.trumpDeclarer);
+    this.kittyPickerSeat = declarer.seatIndex;
     return { success: true, kittyCards: this.kitty.map(c => c.toJSON()) };
   }
 
@@ -1213,6 +1228,7 @@ class GameState {
       attackingTeam:     this.attackingTeam,
       dealPaused:        this.dealPaused,
       dealWindowIndex:   this.dealWindowIndex,
+      kittyPickerSeat:   this.kittyPickerSeat,
       teamLevels:        { ...this.teamLevels },
       currentTrick:      this.currentTrick.map(e => ({
         socketId: e.socketId,
