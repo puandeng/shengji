@@ -67,7 +67,7 @@ export default function GameBoard() {
     if (!isTrumpPhase) return;
     setSelectedCards(prev => {
       if (prev.includes(card.id)) return prev.filter(id => id !== card.id);
-      if (prev.length >= 2) return prev;          // a call is at most two cards
+      if (prev.length >= 2) return prev;
       return [...prev, card.id];
     });
   }
@@ -116,10 +116,10 @@ export default function GameBoard() {
 
   if (isTrumpPhase && !isDealing) {
     handClickHandler  = handleCallTrump;
-    handSelectionMode = null;
+    handSelectionMode = 'trump';
   } else if (isDealing) {
     handClickHandler  = handleCallTrump;
-    handSelectionMode = null;
+    handSelectionMode = 'trump';
   } else if (isKittyDeclarer) {
     handClickHandler  = toggleKittySelect;
     handSelectionMode = 'kitty';
@@ -332,9 +332,11 @@ export default function GameBoard() {
         {isTrumpPhase && !isDealing && !hasPassed && (
           <div className="trump-actions">
             <p className="prompt-text">
-              {trumpSuit
-                ? <>{SUIT_SYMBOLS[trumpSuit]} {trumpSuit} called — click a stronger combo to override, or pass</>
-                : <>Click a <strong>{trumpRank}</strong> to call trump, or a pair for a stronger call</>
+              {selectedCards.length > 0
+                ? <>{selectedCards.length} card selected — click another for a pair, or call now</>
+                : trumpSuit
+                  ? <>{SUIT_SYMBOLS[trumpSuit]} {trumpSuit} called — click a stronger combo to override, or pass</>
+                  : <>Click a <strong>{trumpRank}</strong> to call trump, or a pair for a stronger call</>
               }
             </p>
             {selectedCards.length > 0 && (

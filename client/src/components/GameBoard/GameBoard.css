@@ -1,9 +1,6 @@
 .gameboard {
   position: relative;
   width: 100vw;
-  /* Fill whatever the flex parent leaves after the dev-mode banner, rather than
-     claiming a full viewport height on top of it — that overflowed the board
-     past the bottom of the screen and clipped the hand. */
   flex: 1;
   min-height: 0;
   display: grid;
