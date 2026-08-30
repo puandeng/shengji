@@ -29,6 +29,7 @@ shengji/
 | `server/game/Card.js` | Card model, jokers, `isTrump()`, `effectiveSuit()`, `trumpOrder()`, `beats()` |
 | `server/game/Deck.js` | Two-deck shuffle + deal into hands & kitty |
 | `server/game/GameState.js` | Core state machine: dealing → trump → kitty → playing → scoring; shape detection, follow-suit enforcement, level progression |
+| `server/game/GameLogger.js` | Per-room append-only game log — JSONL event stream + chess-style notation |
 | `server/game/BotPlayer.js` | Stub bot logic for `DEV_MODE` — trump calls, passes, legal card/combo selection |
 | `server/game/__tests__/` | Jest suite for `Card` and `GameState` (`npm test --workspace=server`) |
 | `server/game/Room.js` | Room wrapper + `RoomRegistry` (in-memory store, code generator) |
@@ -47,9 +48,38 @@ shengji/
 | `client/src/components/` | `Card`, `Hand`, `GameBoard`, `TrickArea`, `PlayerInfo`, `TrumpBanner`, `ScoringModal`, `ChatPanel`, `Notification` |
 | `client/src/sounds.js` | Web Audio synthesised sound effects + localStorage mute toggle |
 
+## Game Logs
+
+Every room writes a complete, replayable record of its games to `logs/` at the repo root (gitignored). Two files per room, written side by side and flushed per event, so an abandoned or crashed game still leaves a usable record:
+
+| File | Audience | Contents |
+|---|---|---|
+| `logs/<CODE>-<timestamp>.jsonl` | agents / tooling | One JSON record per event: `round_start`, `deal`, `trump_call`, `trump_rejected`, `trump_pass`, `trump_final`, `kitty_discard`, `play`, `play_rejected`, `trick_end`, `round_end` |
+| `logs/<CODE>-<timestamp>.log` | humans skimming | Chess-style notation — one line per trick |
+
+Notation: cards are `<suit><rank>` (`S5`, `D10`, `CK`), jokers are `*b` (big) and `*s` (small). Cards in one play are written with no separator (`S5S5` is a pair of 5s) — each token is self-delimiting since it starts with a suit letter or `*`. Jokers deliberately do not use their `BJ`/`SJ` ranks: `SJ` would be indistinguishable from the jack of spades.
+
+```
+ 2. 1:S3  2:S8  3:S10  0:S8  > seat3 [T1 DEF]  table 10pts  credited +0  att 0/80
+      10pts on the table went uncredited — defending team T1 took the trick, and only the attacking team (T0) scores
+```
+
+`trick_end` records both `trickPoints` (points on the table) and `credited` (points that actually reached the attacker score), plus a `reason` string when they differ. That distinction is what makes "I won that trick, where are my points?" answerable from the log alone. The deal record includes every player's full hand, so a round can be replayed exactly.
+
+The logger writes to the repo root and never inside `server/` — nodemon watches `server/` in dev, and log files there would restart the process on every trick. Disable logging with `GAME_LOG=0`.
+
 ## Game Flow
 1. **WAITING** — players join via room code; host starts when 4 are seated (or fewer, with bots, under `DEV_MODE`).
-2. **DEALING** — 2 decks + 4 jokers (108 cards) → 25 per player + 8 kitty. Cards are drip-fed one at a time via `game:cardDealt` every `DEAL_CARD_INTERVAL_MS` (120ms) so the client can animate the deal. Players may call trump with cards already in hand during this phase. `game:dealComplete` ends it.
+2. **DEALING** — 2 decks + 4 jokers (108 cards) → 25 per player + 8 kitty. Cards are drip-fed one at a time via `game:cardDealt` every `DEAL_CARD_INTERVAL_MS` (120ms) so the client can animate the deal. **Slow-motion deal:** the deal halts for a *call window* of `DEAL_PAUSE_MS` (5s) whenever either trigger fires:
+
+  - **A call became possible** — the card just dealt is a joker or a trump-rank card *and* gives its recipient a call that would beat the standing one (`GameState.canCall`, strictly greater since equal strength does not override). This is the trigger that matters: it stops the deal at the only moment a decision actually changes.
+  - **Interval backstop** — every `DEAL_PAUSE_EVERY_CARDS` (20, i.e. five cards each), so quiet stretches still get a window.
+
+  Once a joker pair (`MAX_CALL_STRENGTH` = 3) has been called, nothing can outrank it: no further windows open, and when dealing finishes the 30s `TRUMP_SELECTION` window is skipped entirely — the declarer takes the kitty immediately.
+
+  Pauses stay at least `DEAL_PAUSE_MIN_GAP_CARDS` (4) apart so a run of trump cards cannot stutter the deal, and the boundary on the final card is skipped because `TRUMP_SELECTION` opens there with its own 30s timer.
+
+  **Do not broadcast why a window opened.** The trigger reason is logged but the per-player `game:dealPaused` payload carries `youCanCall` for that player only — telling the table "someone drew a trump card" would leak hand information, announced by `game:dealPaused` and closed by `game:dealResumed`. During a window any player may call trump or pass; the window closes early once everyone has acted, and auto-skips on the deadline. A pass is scoped to its window (`GameState.dealWindowPasses`) — passing now must not stop a player calling later with more cards in hand. `game:dealComplete` ends the phase.
 3. **TRUMP_SELECTION** — 30s window. Players call trump with `game:callTrump` by showing cards: 1 rank card = strength 1, a rank pair = strength 2, a same-type joker pair = strength 3. Higher strength overrides a lower one; equal strength goes to the first caller. A joker-pair call sets `trumpSuit = null` (only trump-rank cards and jokers are trump that round). Players may `game:passTrump`; once all four pass, selection finalises immediately instead of waiting out the timer. On timeout with no call, `autoSelectTrump()` falls back to the first kitty card's suit. Declarer's team becomes attacker.
 4. **KITTY** — declarer picks up the 8 kitty cards and discards 8 back.
 5. **PLAYING** — trick-taking with multi-card plays: single, pair, tractor (consecutive pairs), and throw (1 single + 1 pair, 3 cards). All combo cards must share an effective suit. Must follow the lead suit if held. Trump order: big joker > small joker > in-suit trump-rank > off-suit trump-rank > trump suit by rank > lead suit > off-suit. A throw that gets beaten by the opposing team costs the throwing team 30 points.
@@ -104,6 +134,8 @@ shengji/
 | `player:left` | A player disconnected |
 | `game:started` | Game has started; dealing begins |
 | `game:cardDealt` | One card dealt to this player (animated deal) |
+| `game:dealPaused` | Slow-motion deal halted for a call window (`windowIndex`, `totalWindows`, `deadline`) |
+| `game:dealResumed` | Call window closed; dealing continues |
 | `game:dealComplete` | All 100 cards dealt; moves to `TRUMP_SELECTION` |
 | `game:trumpCalled` | A trump call was made or overridden (includes the declaring cards) |
 | `game:trumpSelected` | Trump finalised; declarer picks up the kitty |
@@ -189,7 +221,8 @@ cd client && npm run dev    # → http://localhost:5173
 Then open `http://localhost:5173`, create a room, and share the 4-letter code with 3 friends.
 
 ### Environment
-- `server/.env` — `PORT` (default 3001), `CLIENT_URL` (CORS origin, default `http://localhost:5173`), `DEV_MODE` (any truthy value lets a room start with <4 players and fills empty seats with bots; exposed to the client via `GET /config`)
+- `server/.env` — `PORT` (default 3001), `CLIENT_URL` (CORS origin, default `http://localhost:5173`), `DEV_MODE` (any truthy value lets a room start with <4 players and fills empty seats with bots; exposed to the client via `GET /config`), `GAME_LOG` (set to `0` to disable game logging)
+- Dealing pace lives in `server/game/constants.js`: `DEAL_CARD_INTERVAL_MS`, `DEAL_PAUSE_EVERY_CARDS`, `DEAL_PAUSE_MS`
 - `client/.env` — server URL for the socket connection
 
 ### Build / Production
