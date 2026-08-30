@@ -436,3 +436,22 @@ describe('joker-pair call is final', () => {
     expect(error).toMatch(/does not override/);
   });
 });
+
+describe('auto-selected trump', () => {
+  it('names a real declarer so the kitty can be picked up', () => {
+    const game = createReadyGame();
+    game.deal();
+    game.finishDealing();
+    game.finishTrumpSelection();          // nobody called — auto-select runs
+
+    expect(game.trumpSuit).toBeTruthy();
+    expect(game.trumpDeclarer).not.toBeNull();
+    expect(game.getPlayer(game.trumpDeclarer)).toBeDefined();
+
+    // The round can actually proceed: the declarer receives the kitty.
+    const before = game.hands[game.trumpDeclarer].length;
+    const result = game.giveKittyToDeclarer();
+    expect(result.error).toBeUndefined();
+    expect(game.hands[game.trumpDeclarer].length).toBe(before + 8);
+  });
+});

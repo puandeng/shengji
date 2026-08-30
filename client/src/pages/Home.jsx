@@ -109,9 +109,15 @@ export default function Home() {
           <h3>How to Play</h3>
           <p>
             200 is a 4-player trick-taking game played in 2 teams of 2.
-            The attacking team tries to collect <strong>5s (5pts)</strong>,{' '}
-            <strong>10s (10pts)</strong>, and <strong>Kings (10pts)</strong>{' '}
-            for a total of 200 points. First team to win 3 rounds wins the match!
+            The attacking team collects <strong>5s (5pts)</strong>,{' '}
+            <strong>10s (10pts)</strong> and <strong>Kings (10pts)</strong> —{' '}
+            200 points in play. Reach the round&rsquo;s target and you climb a
+            level; hold the attackers well short and you climb instead. The
+            bigger the margin, the more levels you take.
+          </p>
+          <p>
+            Both teams start at <strong>2</strong> and climb toward{' '}
+            <strong>A</strong>. First team past <strong>A</strong> wins the match.
           </p>
         </div>
       </div>

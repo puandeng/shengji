@@ -57,6 +57,8 @@ export default function GameBoard() {
   const isTrumpPhase    = phase === 'TRUMP_SELECTION' || isDealing;
   const isKittyDeclarer = isKittyPhase && gameState.trumpDeclarer === myPlayer.socketId;
   const showTrickDisplay = !!completedTrick;
+  // 0 when leading — the leader picks the shape and so the count.
+  const leadCount = currentTrick?.[0]?.cards?.length || 0;
 
   // ── Trump calling ─────────────────────────────────────────────────────────
   // Selecting a card never submits on its own. Auto-submitting the first click
@@ -97,13 +99,16 @@ export default function GameBoard() {
   }
 
   // ── Multi-card play ────────────────────────────────────────────────────────
+  // When following, the lead fixes how many cards everyone plays — there is no
+  // passing and no choosing a different count. Cap the selection at that number
+  // rather than letting an unplayable selection be assembled and refused.
   function togglePlaySelect(card) {
     if (!isMyTurn) return;
-    setSelectedCards(prev =>
-      prev.includes(card.id)
-        ? prev.filter(id => id !== card.id)
-        : [...prev, card.id]
-    );
+    setSelectedCards(prev => {
+      if (prev.includes(card.id)) return prev.filter(id => id !== card.id);
+      if (leadCount && prev.length >= leadCount) return prev;
+      return [...prev, card.id];
+    });
   }
 
   function handlePlaySelected() {
@@ -367,11 +372,16 @@ export default function GameBoard() {
         {isKittyPhase && !isKittyDeclarer && (
           <p className="prompt-text">Waiting for trump declarer to discard to kitty…</p>
         )}
+        {phase === 'PLAYING' && !showTrickDisplay && isMyTurn && leadCount > 0 && selectedCards.length > 0 && (
+          <p className="prompt-text">
+            {selectedCards.length} of {leadCount} selected
+          </p>
+        )}
         {phase === 'PLAYING' && !showTrickDisplay && isMyTurn && selectedCards.length === 0 && (
           <p className="prompt-text">Your turn — select card(s) and press Play</p>
         )}
-        {phase === 'PLAYING' && !showTrickDisplay && isMyTurn && selectedCards.length > 0 && (
-          <p className="prompt-text">{selectedCards.length} card{selectedCards.length !== 1 ? 's' : ''} selected</p>
+        {phase === 'PLAYING' && !showTrickDisplay && isMyTurn && leadCount === 0 && selectedCards.length > 0 && (
+          <p className="prompt-text">{selectedCards.length} card{selectedCards.length !== 1 ? 's' : ''} selected — you are leading</p>
         )}
         {phase === 'PLAYING' && !showTrickDisplay && !isMyTurn && (
           <p className="prompt-text">Waiting for {getPlayer(currentSeat)?.name ?? '…'}…</p>
