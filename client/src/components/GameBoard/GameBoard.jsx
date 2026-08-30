@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
+import { suitLabel } from '../../suits';
 import Card from '../Card/Card';
 import Hand from '../Hand/Hand';
 import TrickArea from '../TrickArea/TrickArea';
@@ -8,7 +9,6 @@ import TrumpBanner from '../TrumpBanner/TrumpBanner';
 import { isMuted, setMuted } from '../../sounds';
 import './GameBoard.css';
 
-const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
 export default function GameBoard() {
   const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, completedTrick, trickWinner, dealPause } = useGame();
@@ -257,30 +257,6 @@ export default function GameBoard() {
             />
           )}
 
-          {/* Attacker point pile with captured cards */}
-          {(phase === 'PLAYING' || showTrickDisplay) && (
-            <div className="gameboard__point-pile">
-              <div className="point-pile__header">
-                <span>Captured pts: </span>
-                <span className={`point-pile__total ${pileTotal >= thresh ? 'point-pile__total--won' : ''}`}>
-                  {pileTotal} / {thresh}
-                </span>
-              </div>
-              <div className="point-pile__bar">
-                <div
-                  className="point-pile__fill"
-                  style={{ width: `${Math.min(100, (pileTotal / thresh) * 100)}%` }}
-                />
-              </div>
-              {(attackerPointPile || []).length > 0 && (
-                <div className="point-pile__cards">
-                  {(attackerPointPile || []).map((card, i) => (
-                    <Card key={card.id || i} card={card} size="sm" />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="gameboard__right">
@@ -298,6 +274,31 @@ export default function GameBoard() {
           </div>
         </div>
       </div>
+
+        {/* Attacker point pile with captured cards */}
+        {(phase === 'PLAYING' || showTrickDisplay) && (
+          <div className="gameboard__point-pile">
+            <div className="point-pile__header">
+              <span>Captured pts: </span>
+              <span className={`point-pile__total ${pileTotal >= thresh ? 'point-pile__total--won' : ''}`}>
+                {pileTotal} / {thresh}
+              </span>
+            </div>
+            <div className="point-pile__bar">
+              <div
+                className="point-pile__fill"
+                style={{ width: `${Math.min(100, (pileTotal / thresh) * 100)}%` }}
+              />
+            </div>
+            {(attackerPointPile || []).length > 0 && (
+              <div className="point-pile__cards">
+                {(attackerPointPile || []).map((card, i) => (
+                  <Card key={card.id || i} card={card} size="sm" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Action prompt */}
       <div className="gameboard__prompt">
@@ -335,7 +336,7 @@ export default function GameBoard() {
               {selectedCards.length > 0
                 ? <>{selectedCards.length} card selected — click another for a pair, or call now</>
                 : trumpSuit
-                  ? <>{SUIT_SYMBOLS[trumpSuit]} {trumpSuit} called — click a stronger combo to override, or pass</>
+                  ? <>{suitLabel(trumpSuit)} called — click a stronger combo to override, or pass</>
                   : <>Click a <strong>{trumpRank}</strong> to call trump, or a pair for a stronger call</>
               }
             </p>
@@ -396,6 +397,7 @@ export default function GameBoard() {
         maxSelection={handMaxSel}
         onPlaySelected={phase === 'PLAYING' && isMyTurn ? handlePlaySelected : undefined}
         newCardIds={newCardIds}
+        capacity={Math.round((gameState.dealTotal || 100) / (players.length || 4))}
       />
     </div>
   );

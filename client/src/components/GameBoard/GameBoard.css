@@ -4,13 +4,14 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto minmax(0, auto);
   grid-template-areas:
     "trump"
     "scores"
     "declare"
     "opposite"
     "sides"
+    "pile"
     "prompt"
     "hand";
   background: var(--color-felt);
@@ -130,6 +131,10 @@
 
 .gameboard__sides {
   grid-area: sides;
+  /* The point pile used to live in the centre column here, overflow this row,
+     and render on top of the prompt (measured: 32px of overlap at 900x800).
+     It has its own grid row now, so this row no longer spills. */
+  min-height: 0;
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -213,6 +218,9 @@
 
 /* Attacker point pile */
 .gameboard__point-pile {
+  grid-area: pile;
+  justify-self: center;
+  max-width: min(100%, 42rem);
   width: 100%;
   max-width: 240px;
   background: rgba(0,0,0,0.3);
