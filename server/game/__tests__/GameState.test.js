@@ -322,3 +322,119 @@ describe('GameState', () => {
     });
   });
 });
+
+describe('follow-suit rejection messages', () => {
+  // Spades led, trump is hearts with rank 2.
+  function leadSpades(followerHand) {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpSuit = 'H';
+    game.trumpRank = '2';
+    game.hands = { p0: [new Card('S', '5', 0)], p1: followerHand, p2: [], p3: [] };
+    game.leadSeat = 0;
+    game.currentSeat = 0;
+    game.playCards('p0', ['S_5_0']);
+    return game;
+  }
+
+  it('says how many lead-suit cards are held, played, and required', () => {
+    const game = leadSpades([new Card('S', '7', 0), new Card('S', '9', 0), new Card('H', '3', 0)]);
+    const { error } = game.playCards('p1', ['H_3_0']);
+    expect(error).toContain('You hold 2 spade cards');
+    expect(error).toContain('played 0');
+    expect(error).toContain('you must play 1');
+  });
+
+  it('explains that a trump-rank card of the lead suit is trump, not the lead suit', () => {
+    const game = leadSpades([new Card('S', '2', 0), new Card('S', '7', 0), new Card('H', '3', 0)]);
+    const { error } = game.playCards('p1', ['H_3_0']);
+    expect(error).toContain('You hold 1 spade card');
+    expect(error).toContain('2 of spades counts as trump, not spades');
+  });
+
+  it('allows trump when every lead-suit-looking card is actually trump', () => {
+    const game = leadSpades([new Card('S', '2', 0), new Card('H', '3', 0)]);
+    expect(game.playCards('p1', ['H_3_0']).error).toBeUndefined();
+  });
+
+  it('names the pair requirement when a pair was led', () => {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpSuit = 'H';
+    game.trumpRank = '2';
+    game.hands = {
+      p0: [new Card('S', '5', 0), new Card('S', '5', 1)],
+      p1: [new Card('S', '7', 0), new Card('S', '7', 1), new Card('S', '9', 0)],
+      p2: [], p3: [],
+    };
+    game.leadSeat = 0;
+    game.currentSeat = 0;
+    game.playCards('p0', ['S_5_0', 'S_5_1']);
+    const { error } = game.playCards('p1', ['S_7_0', 'S_9_0']);
+    expect(error).toContain('A pair was led');
+    expect(error).toContain('spades pair');
+  });
+});
+
+describe('trump call availability', () => {
+  function gameWithRank(rank) {
+    const game = createReadyGame();
+    game.trumpRank = rank;
+    return game;
+  }
+
+  it('rates a single trump-rank card as strength 1', () => {
+    const game = gameWithRank('2');
+    expect(game.bestCallStrength([new Card('S', '2', 0), new Card('H', '9', 0)])).toBe(1);
+  });
+
+  it('rates a same-suit trump-rank pair as strength 2', () => {
+    const game = gameWithRank('2');
+    expect(game.bestCallStrength([new Card('S', '2', 0), new Card('S', '2', 1)])).toBe(2);
+  });
+
+  it('does not rate trump-rank cards of different suits as a pair', () => {
+    const game = gameWithRank('2');
+    expect(game.bestCallStrength([new Card('S', '2', 0), new Card('H', '2', 0)])).toBe(1);
+  });
+
+  it('rates a same-type joker pair as strength 3 but a mixed pair as 0', () => {
+    const game = gameWithRank('2');
+    const small = [new Card('JOKER', 'SJ', 0), new Card('JOKER', 'SJ', 1)];
+    const mixed = [new Card('JOKER', 'SJ', 0), new Card('JOKER', 'BJ', 0)];
+    expect(game.bestCallStrength(small)).toBe(3);
+    expect(game.bestCallStrength(mixed)).toBe(0);
+  });
+
+  it('canCall requires strictly beating the standing call', () => {
+    const game = gameWithRank('2');
+    game.phase = 'TRUMP_SELECTION';
+    game.hands['p0'] = [new Card('S', '2', 0)];
+    expect(game.canCall('p0')).toBe(true);
+    game.trumpCallStrength = 1;           // an equal call already stands
+    expect(game.canCall('p0')).toBe(false);
+  });
+});
+
+describe('joker-pair call is final', () => {
+  it('leaves nobody able to call once a joker pair stands', () => {
+    const game = createReadyGame();
+    game.phase = 'TRUMP_SELECTION';
+    game.trumpRank = '2';
+    game.trumpCallStrength = 3;
+    // Even the strongest possible holding cannot beat a standing joker pair.
+    game.hands['p1'] = [new Card('JOKER', 'BJ', 0), new Card('JOKER', 'BJ', 1)];
+    expect(game.bestCallStrength(game.hands['p1'])).toBe(3);
+    expect(game.canCall('p1')).toBe(false);
+  });
+
+  it('rejects a joker-pair call that ties the standing one', () => {
+    const game = createReadyGame();
+    game.phase = 'TRUMP_SELECTION';
+    game.trumpRank = '2';
+    game.trumpCallStrength = 3;
+    game.hands['p1'] = [new Card('JOKER', 'SJ', 0), new Card('JOKER', 'SJ', 1)];
+    const { error } = game.callTrump('p1', ['JOKER_SJ_0', 'JOKER_SJ_1']);
+    expect(error).toMatch(/does not override/);
+  });
+});

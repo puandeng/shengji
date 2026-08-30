@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const GameState = require('./GameState');
 const BotPlayer = require('./BotPlayer');
 const { GameLogger } = require('./GameLogger');
-const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, TRICK_DISPLAY_DELAY_MS } = require('./constants');
+const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, DEAL_PAUSE_EVERY_CARDS, DEAL_PAUSE_MS, DEAL_PAUSE_MIN_GAP_CARDS, MAX_CALL_STRENGTH, TRICK_DISPLAY_DELAY_MS } = require('./constants');
 
 /**
  * Room encapsulates a single game lobby + game session.
@@ -85,12 +85,39 @@ class Room {
    * Calls `onDealCard(entry, index)` for each card dealt,
    * and `onDealComplete()` when all cards are dealt.
    */
-  startAnimatedDeal(onDealCard, onDealComplete) {
+  startAnimatedDeal(onDealCard, onDealComplete, onDealPause, onDealResume) {
     if (!this.game.dealQueue || this.game.phase !== GAME_PHASES.DEALING) return;
 
     this._clearDealTimer();
-    const queue = this.game.dealQueue;
+    const queue        = this.game.dealQueue;
     let idx = 0;
+    let lastPauseAt = 0;
+
+    const resume = () => {
+      if (!this.game.dealPaused) return;
+      this._clearDealWindowTimer();
+      this.game.closeDealWindow();
+      onDealResume?.({ windowIndex: this.game.dealWindowIndex });
+      this._dealTimer = setTimeout(dealNext, DEAL_CARD_INTERVAL_MS);
+    };
+    this._resumeDeal = resume;
+
+    const pause = (trigger) => {
+      const { windowIndex } = this.game.openDealWindow();
+      const deadline = Date.now() + DEAL_PAUSE_MS;
+      lastPauseAt = idx;
+      this.logger.dealWindow({ windowIndex, trigger, dealtCount: idx, totalCards: queue.length });
+      onDealPause?.({
+        windowIndex,
+        trigger,                       // 'card' | 'interval' — never says whose card
+        deadline,
+        durationMs: DEAL_PAUSE_MS,
+        dealtCount: idx,
+        totalCards: queue.length,
+      });
+      this.scheduleBotTrumpCall();
+      this._dealWindowTimer = setTimeout(resume, DEAL_PAUSE_MS);
+    };
 
     const dealNext = () => {
       if (idx >= queue.length) {
@@ -104,9 +131,24 @@ class Room {
       onDealCard(entry, idx);
       idx++;
 
-      // Every 4 cards (one full round), let bots try to call trump
-      if (idx % 4 === 0 && this.game.phase === GAME_PHASES.DEALING) {
-        this.scheduleBotTrumpCall();
+      // Pause the moment a dealt card makes a winning call possible for whoever
+      // received it — that is the only moment the decision actually changes —
+      // and on a fixed interval as a backstop so quiet stretches still get a
+      // window. Never pause on the final card: dealing is done and
+      // TRUMP_SELECTION opens its own window there.
+      const enablesCall = (entry.card.isJoker || entry.card.rank === this.game.trumpRank)
+        && this.game.canCall(entry.socketId);
+      const atInterval  = idx % DEAL_PAUSE_EVERY_CARDS === 0;
+      const gapRespected = idx - lastPauseAt >= DEAL_PAUSE_MIN_GAP_CARDS;
+
+      // A joker pair cannot be beaten, so once one stands there is nothing left
+      // to ask anyone — deal the rest out without stopping.
+      const stillContestable = this.game.trumpCallStrength < MAX_CALL_STRENGTH;
+
+      if (stillContestable && (enablesCall || atInterval) && gapRespected && idx < queue.length
+          && this.game.phase === GAME_PHASES.DEALING) {
+        pause(enablesCall ? 'card' : 'interval');
+        return;
       }
 
       this._dealTimer = setTimeout(dealNext, DEAL_CARD_INTERVAL_MS);
@@ -115,11 +157,24 @@ class Room {
     dealNext();
   }
 
+  /** Resume a paused deal early — called once every player has acted. */
+  resumeDealIfAllActed() {
+    if (this.game.dealPaused && this.game.allActedThisWindow()) this._resumeDeal?.();
+  }
+
+  _clearDealWindowTimer() {
+    if (this._dealWindowTimer) {
+      clearTimeout(this._dealWindowTimer);
+      this._dealWindowTimer = null;
+    }
+  }
+
   _clearDealTimer() {
     if (this._dealTimer) {
       clearTimeout(this._dealTimer);
       this._dealTimer = null;
     }
+    this._clearDealWindowTimer();
   }
 
   /** Start the trump-selection countdown timer */
@@ -223,8 +278,14 @@ class Room {
 
         const cardIds = BotPlayer.chooseTrumpCall(hand, this.game.trumpRank, this.game.trumpCallStrength);
         if (!cardIds) {
-          // Bot can't call — pass instead (but don't pass during dealing; wait until trump selection)
-          if (this.game.phase === GAME_PHASES.DEALING) return;
+          // During dealing, a bot only passes the open window — and only once,
+          // otherwise every dealt card re-scheduled another identical pass.
+          if (this.game.phase === GAME_PHASES.DEALING) {
+            if (!this.game.dealPaused) return;
+            this.game.passTrump(bot.socketId);
+            this.resumeDealIfAllActed();
+            return;
+          }
 
           const passResult = this.game.passTrump(bot.socketId);
           if (passResult.allPassed) {

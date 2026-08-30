@@ -30,6 +30,9 @@ function setupGameHandlers(io, socket, registry) {
         });
       });
 
+      // A call during a slow-motion deal window counts as that player acting.
+      room.resumeDealIfAllActed();
+
       callback?.({ success: true });
 
     } catch (err) {
@@ -64,7 +67,11 @@ function setupGameHandlers(io, socket, registry) {
         room.scheduleBotKittyDiscard();
       }
 
-      callback?.({ success: true, allPassed: result.allPassed });
+      // Passing a deal window resumes dealing early once everyone has acted,
+      // rather than making the table wait out the full timer.
+      room.resumeDealIfAllActed();
+
+      callback?.({ success: true, allPassed: result.allPassed, windowPass: result.windowPass });
 
     } catch (err) {
       console.error('[game:passTrump]', err);

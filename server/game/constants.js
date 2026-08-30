@@ -114,6 +114,11 @@ const LEVEL_THRESHOLDS = {
 // Once a team has been at the rank in a prior round, it can be skipped freely.
 const MANDATORY_STOP_RANKS = new Set(['5', '10', 'K', 'A']);
 
+// Highest possible trump call: a same-type joker pair. Nothing outranks it, so
+// once one stands there is nothing left to decide — stop pausing the deal and
+// stop waiting out the trump timer.
+const MAX_CALL_STRENGTH = 3;
+
 // Trump declaration time limit (seconds)
 const TRUMP_DECLARATION_TIMEOUT = 30;
 
@@ -122,6 +127,20 @@ const BOT_PLAY_DELAY_MS = 700;
 
 // Delay between each card dealt during animated dealing (ms)
 const DEAL_CARD_INTERVAL_MS = 120;
+
+// Slow-motion dealing: after every N cards dealt (N/4 cards to each player) the
+// deal pauses so every player gets an explicit, unhurried chance to call trump
+// or pass. 20 = 5 cards each, giving 5 decision windows across the deal.
+const DEAL_PAUSE_EVERY_CARDS = 20;
+
+// How long each pause window stays open before auto-skipping (ms)
+const DEAL_PAUSE_MS = 5000;
+
+// A window also opens the moment a dealt card lets someone make a call that
+// would beat the standing one. Without a floor, a run of trump-rank cards would
+// stop the deal several times in a row, so pauses stay at least this many cards
+// apart (4 = one full round of the table).
+const DEAL_PAUSE_MIN_GAP_CARDS = 4;
 
 // Delay after the last card in a trick before clearing (ms) — lets everyone see the result
 const TRICK_DISPLAY_DELAY_MS = 2500;
@@ -144,8 +163,12 @@ module.exports = {
   STARTING_LEVEL,
   LEVEL_THRESHOLDS,
   MANDATORY_STOP_RANKS,
+  MAX_CALL_STRENGTH,
   TRUMP_DECLARATION_TIMEOUT,
   BOT_PLAY_DELAY_MS,
   DEAL_CARD_INTERVAL_MS,
+  DEAL_PAUSE_EVERY_CARDS,
+  DEAL_PAUSE_MS,
+  DEAL_PAUSE_MIN_GAP_CARDS,
   TRICK_DISPLAY_DELAY_MS,
 };

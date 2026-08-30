@@ -11,8 +11,9 @@ import './GameBoard.css';
 const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
 export default function GameBoard() {
-  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, completedTrick, trickWinner } = useGame();
+  const { gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards, error, newCardIds, completedTrick, trickWinner, dealPause } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
+  const [secondsLeft, setSecondsLeft]     = useState(0);
   const [hasPassed, setHasPassed] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
 
@@ -38,6 +39,17 @@ export default function GameBoard() {
   const leftSeat     = (mySeat + 3) % 4;
   const rightSeat    = (mySeat + 1) % 4;
 
+  // Each pause window is a fresh decision — a pass only skips the window it was
+  // made in, so the prompt has to come back when the next one opens.
+  useEffect(() => {
+    if (!dealPause) return;
+    setHasPassed(false);
+    const tick = () => setSecondsLeft(Math.max(0, Math.ceil((dealPause.deadline - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [dealPause?.windowIndex]);
+
   const getPlayer = (seat) => players.find(p => p.seatIndex === seat);
 
   const isMyTurn        = currentSeat === mySeat && phase === 'PLAYING';
@@ -47,26 +59,27 @@ export default function GameBoard() {
   const showTrickDisplay = !!completedTrick;
 
   // ── Trump calling ─────────────────────────────────────────────────────────
+  // Selecting a card never submits on its own. Auto-submitting the first click
+  // made a pair impossible to assemble: the single went to the server before a
+  // second card could be picked, and the resulting strength-1 call then blocked
+  // the strength-2 one it should have become.
   function handleCallTrump(card) {
     if (!isTrumpPhase) return;
-    const alreadySelected = selectedCards.includes(card.id);
-    if (alreadySelected) {
-      // Deselect
-      setSelectedCards(prev => prev.filter(id => id !== card.id));
-    } else if (selectedCards.length < 2) {
-      const newSel = [...selectedCards, card.id];
-      // Auto-submit on first valid selection (single or joker pair)
-      const isJoker = card.isJoker || card.suit === 'JOKER';
-      if (newSel.length === 1 && !isJoker) {
-        // Single non-joker call — submit immediately
-        callTrump(newSel).then(() => setSelectedCards([])).catch(() => {});
-      } else if (newSel.length === 2) {
-        // Pair — submit
-        callTrump(newSel).then(() => setSelectedCards([])).catch(() => {});
-      } else {
-        setSelectedCards(newSel);
-      }
-    }
+    setSelectedCards(prev => {
+      if (prev.includes(card.id)) return prev.filter(id => id !== card.id);
+      if (prev.length >= 2) return prev;          // a call is at most two cards
+      return [...prev, card.id];
+    });
+  }
+
+  function handleSubmitTrumpCall() {
+    if (selectedCards.length === 0) return;
+    callTrump(selectedCards).then(() => setSelectedCards([])).catch(() => {});
+  }
+
+  function handlePassTrump() {
+    setSelectedCards([]);
+    passTrump().then(() => setHasPassed(true)).catch(() => {});
   }
 
   // ── Kitty discard ──────────────────────────────────────────────────────────
@@ -289,21 +302,32 @@ export default function GameBoard() {
       {/* Action prompt */}
       <div className="gameboard__prompt">
         {error && <p className="error-text">{error}</p>}
-        {isDealing && !hasPassed && (
-          <div className="trump-actions">
+        {isDealing && dealPause && !hasPassed && (
+          <div className="trump-actions trump-actions--paused">
+            <span className={`deal-window-badge${dealPause.youCanCall ? ' deal-window-badge--can-call' : ''}`}>
+              {dealPause.youCanCall ? 'You can call!' : `Call window ${dealPause.windowIndex}`}
+            </span>
             <p className="prompt-text">
-              Cards are being dealt — click a <strong>{trumpRank}</strong> to call trump
+              {dealPause.youCanCall
+                ? <>Deal paused — pick a <strong>{trumpRank}</strong> to call{selectedCards.length === 1 ? ', or a matching second card for a stronger pair call' : ''}</>
+                : <>Deal paused — nothing to call with yet</>}
             </p>
-            <button
-              className="btn-secondary"
-              onClick={() => { passTrump().then(() => setHasPassed(true)).catch(() => {}); }}
-            >
+            {selectedCards.length > 0 && (
+              <button className="btn-primary" onClick={handleSubmitTrumpCall}>
+                Call trump ({selectedCards.length === 2 ? 'pair' : '1 card'})
+              </button>
+            )}
+            <button className="btn-secondary" onClick={handlePassTrump}>
               Pass
             </button>
+            <span className="deal-window-timer">{secondsLeft}s</span>
           </div>
         )}
-        {isDealing && hasPassed && (
-          <p className="prompt-text">Cards being dealt… you passed on trump</p>
+        {isDealing && dealPause && hasPassed && (
+          <p className="prompt-text">Passed this window — dealing resumes in {secondsLeft}s</p>
+        )}
+        {isDealing && !dealPause && (
+          <p className="prompt-text">Dealing… next call window shortly</p>
         )}
         {isTrumpPhase && !isDealing && !hasPassed && (
           <div className="trump-actions">
@@ -313,10 +337,12 @@ export default function GameBoard() {
                 : <>Click a <strong>{trumpRank}</strong> to call trump, or a pair for a stronger call</>
               }
             </p>
-            <button
-              className="btn-secondary"
-              onClick={() => { passTrump().then(() => setHasPassed(true)).catch(() => {}); }}
-            >
+            {selectedCards.length > 0 && (
+              <button className="btn-primary" onClick={handleSubmitTrumpCall}>
+                Call trump ({selectedCards.length === 2 ? 'pair' : '1 card'})
+              </button>
+            )}
+            <button className="btn-secondary" onClick={handlePassTrump}>
               Pass
             </button>
           </div>

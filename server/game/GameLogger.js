@@ -122,6 +122,12 @@ class GameLogger {
         hands.forEach(h => this.note(`hand ${h.seatIndex}  ${shortList(h.cards)}`));
     }
 
+    /** A slow-motion deal pause window opened. `trigger` never names a player. */
+    dealWindow({ windowIndex, trigger, dealtCount, totalCards }) {
+        this.event('deal_window', { windowIndex, trigger, dealtCount, totalCards });
+        this.note(`-- call window ${windowIndex} opened at ${dealtCount}/${totalCards} dealt (${trigger === 'card' ? 'a call became possible' : 'interval'})`);
+    }
+
     trumpCall({ seatIndex, name, cards, strength, trumpSuit, attackingTeam }) {
         this.event('trump_call', { seatIndex, name, cards, strength, trumpSuit, attackingTeam });
         this.note(`trump call: seat${seatIndex} ${shortPlay(cards)} → ${suitLabel(trumpSuit)} (strength ${strength}, attackers T${attackingTeam})`);
@@ -132,9 +138,10 @@ class GameLogger {
         this.note(`trump call REJECTED: seat${seatIndex} ${cardIds.join(',')} — ${error}`);
     }
 
-    trumpPass({ seatIndex, name, allPassed }) {
-        this.event('trump_pass', { seatIndex, name, allPassed });
-        this.note(`trump pass: seat${seatIndex}${allPassed ? ' (all passed)' : ''}`);
+    trumpPass({ seatIndex, name, allPassed, windowIndex }) {
+        this.event('trump_pass', { seatIndex, name, allPassed, windowIndex });
+        const where = windowIndex ? ` [call window ${windowIndex}]` : '';
+        this.note(`trump pass: seat${seatIndex}${where}${allPassed ? ' (all passed)' : ''}`);
     }
 
     trumpFinal({ trumpSuit, trumpRank, declarerSeat, attackingTeam, threshold, auto }) {
