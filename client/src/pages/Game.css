@@ -1,6 +1,10 @@
 .game-root {
   width: 100vw;
-  height: 100vh;
+  /* dvh, not vh: on mobile Safari and with the macOS dock present, vh is the
+     larger "no browser chrome" height and the hand ends up clipped. */
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
   background: var(--color-felt);
@@ -30,6 +34,7 @@
 }
 
 .dev-mode-indicator {
+  flex: 0 0 auto;
   background: #ff9800;
   color: #000;
   text-align: center;

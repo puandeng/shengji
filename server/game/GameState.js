@@ -2,6 +2,7 @@ const Deck = require('./Deck');
 const Card = require('./Card');
 const {
   GAME_PHASES,
+  SUIT_NAMES,
   TEAM_ASSIGNMENTS,
   PLAYERS_PER_ROOM,
   CARDS_PER_PLAYER,
@@ -329,6 +330,7 @@ function bestCard(cards, trumpSuit, trumpRank) {
 class GameState {
   constructor(roomId) {
     this.roomId         = roomId;
+    this.logger         = null;         // GameLogger, attached by Room
     this.devMode        = false;
     this.phase          = GAME_PHASES.WAITING;
     this.players        = [];
@@ -352,6 +354,12 @@ class GameState {
     this.trumpTimer     = null;
     this.roundNumber    = 1;
     this.trumpPasses    = new Set();      // socketIds that have passed on trump calling
+    // Deal-window passes are scoped to a single slow-motion pause window and are
+    // cleared when the next window opens — passing now must not stop a player
+    // from calling later, once they have seen more of their hand.
+    this.dealWindowPasses = new Set();
+    this.dealWindowIndex  = 0;
+    this.dealPaused       = false;
     // Track ranks each team has visited (for mandatory stop rank logic)
     this.visitedRanks   = { 0: new Set([STARTING_LEVEL]), 1: new Set([STARTING_LEVEL]) };
   }
@@ -421,6 +429,12 @@ class GameState {
     return this.players.find(p => p.connected === false && p.name === name);
   }
 
+  /** Seat index for a socketId, or null. Used for log records. */
+  _seat(socketId) {
+    const p = this.getPlayer(socketId);
+    return p ? p.seatIndex : null;
+  }
+
   getPlayer(socketId) {
     return this.players.find(p => p.socketId === socketId);
   }
@@ -468,10 +482,30 @@ class GameState {
     this.trumpCallStrength = 0;
     this.trumpDeclareCards = [];
     this.trumpPasses       = new Set();
+    this.dealWindowPasses  = new Set();
+    this.dealWindowIndex   = 0;
+    this.dealPaused        = false;
     this.currentTrick      = [];
     this.tricks            = [];
     this.scores            = { 0: 0, 1: 0 };
     this.attackerPointPile = [];
+
+    if (this.logger) {
+      this.logger.roundStart({
+        roundNumber:   this.roundNumber,
+        players:       this.players.map(p => ({ seatIndex: p.seatIndex, name: p.name, teamIndex: p.teamIndex, isBot: !!p.isBot })),
+        teamLevels:    { ...this.teamLevels },
+        trumpRank:     this.trumpRank,
+        attackingTeam: this.attackingTeam,
+      });
+      this.logger.deal({
+        hands: this.players.map(p => ({
+          seatIndex: p.seatIndex,
+          cards:     this.hands[p.socketId].map(c => c.toJSON()),
+        })),
+        kitty: this.kitty.map(c => c.toJSON()),
+      });
+    }
 
     return { success: true };
   }
@@ -587,6 +621,17 @@ class GameState {
     const caller = this.getPlayer(socketId);
     this.attackingTeam = caller.teamIndex;
 
+    if (this.logger) {
+      this.logger.trumpCall({
+        seatIndex:     caller.seatIndex,
+        name:          caller.name,
+        cards:         this.trumpDeclareCards,
+        strength,
+        trumpSuit:     this.trumpSuit,
+        attackingTeam: this.attackingTeam,
+      });
+    }
+
     return {
       success:      true,
       trumpSuit:    this.trumpSuit,
@@ -606,9 +651,85 @@ class GameState {
     }
     const player = this.getPlayer(socketId);
     if (!player) return { error: 'Player not found' };
+
+    // During dealing, a pass only skips the current pause window.
+    if (this.phase === GAME_PHASES.DEALING) {
+      if (this.dealWindowPasses.has(socketId)) return { success: true, windowPass: true, allActed: this.allActedThisWindow() };
+      this.dealWindowPasses.add(socketId);
+      const allActed = this.allActedThisWindow();
+      if (this.logger) {
+        this.logger.trumpPass({ seatIndex: player.seatIndex, name: player.name, allPassed: false, windowIndex: this.dealWindowIndex });
+      }
+      return { success: true, windowPass: true, allActed };
+    }
+
+    if (this.trumpPasses.has(socketId)) {
+      return { success: true, allPassed: this.players.every(p => this.trumpPasses.has(p.socketId)) };
+    }
     this.trumpPasses.add(socketId);
     const allPassed = this.players.every(p => this.trumpPasses.has(p.socketId));
+    if (this.logger) {
+      this.logger.trumpPass({ seatIndex: player.seatIndex, name: player.name, allPassed });
+    }
     return { success: true, allPassed };
+  }
+
+  /**
+   * Strongest trump call these cards could make: 3 = same-type joker pair,
+   * 2 = trump-rank pair in one suit, 1 = single trump-rank card, 0 = none.
+   */
+  bestCallStrength(cards) {
+    if (!cards || cards.length === 0) return 0;
+    let smallJokers = 0;
+    let bigJokers   = 0;
+    const rankBySuit = {};
+
+    for (const c of cards) {
+      if (c.isSmallJoker)      smallJokers += 1;
+      else if (c.isBigJoker)   bigJokers   += 1;
+      else if (c.rank === this.trumpRank) rankBySuit[c.suit] = (rankBySuit[c.suit] || 0) + 1;
+    }
+
+    if (smallJokers >= 2 || bigJokers >= 2) return 3;
+    if (Object.values(rankBySuit).some(n => n >= 2)) return 2;
+    if (Object.keys(rankBySuit).length > 0) return 1;
+    return 0;
+  }
+
+  /**
+   * Could this player call right now and have it stand? Equal strength does not
+   * override (first caller wins), so the bar is strictly greater.
+   */
+  canCall(socketId) {
+    const hand = this.phase === GAME_PHASES.DEALING
+      ? this.getDealtHand(socketId)
+      : this.hands[socketId];
+    return this.bestCallStrength(hand) > this.trumpCallStrength;
+  }
+
+  /**
+   * Open a new slow-motion deal pause window. Clears the previous window's
+   * passes so everyone gets a fresh decision with the cards they now hold.
+   */
+  openDealWindow() {
+    this.dealWindowIndex += 1;
+    this.dealWindowPasses = new Set();
+    this.dealPaused       = true;
+    return { windowIndex: this.dealWindowIndex };
+  }
+
+  closeDealWindow() {
+    this.dealPaused = false;
+  }
+
+  /**
+   * Everyone has acted this window if they have passed it, or already hold the
+   * current winning call (no reason to ask them again).
+   */
+  allActedThisWindow() {
+    return this.players.every(p =>
+      this.dealWindowPasses.has(p.socketId) || p.socketId === this.trumpDeclarer
+    );
   }
 
   /**
@@ -637,9 +758,22 @@ class GameState {
 
   /** Move from trump selection → kitty phase */
   finishTrumpSelection() {
-    if (this.trumpCallStrength === 0) this.autoSelectTrump();
+    const auto = this.trumpCallStrength === 0;
+    if (auto) this.autoSelectTrump();
     this.trumpDeclareCards = [];
     this.phase = GAME_PHASES.KITTY;
+
+    if (this.logger) {
+      this.logger.trumpFinal({
+        trumpSuit:     this.trumpSuit,
+        trumpRank:     this.trumpRank,
+        declarerSeat:  this._seat(this.trumpDeclarer),
+        attackingTeam: this.attackingTeam,
+        threshold:     LEVEL_THRESHOLDS[this.trumpRank],
+        auto,
+      });
+    }
+
     return { success: true };
   }
 
@@ -670,6 +804,9 @@ class GameState {
     this.kitty = discarded;
 
     const declarer      = this.getPlayer(socketId);
+    if (this.logger) {
+      this.logger.kittyDiscard({ seatIndex: declarer.seatIndex, cards: discarded.map(c => c.toJSON()) });
+    }
     this.leadSeat       = declarer.seatIndex;
     this.currentSeat    = declarer.seatIndex;
     this.phase          = GAME_PHASES.PLAYING;
@@ -723,6 +860,17 @@ class GameState {
 
     this.currentTrick.push({ socketId, cards, shape });
 
+    if (this.logger) {
+      const p = this.getPlayer(socketId);
+      this.logger.play({
+        seatIndex: p.seatIndex,
+        name:      p.name,
+        cards:     cards.map(c => c.toJSON()),
+        shape,
+        leadSeat:  this.leadSeat,
+      });
+    }
+
     if (this.currentTrick.length < PLAYERS_PER_ROOM) {
       this._advanceSeat();
       return { success: true, trickComplete: false };
@@ -762,17 +910,17 @@ class GameState {
     // Player must contribute as many lead-suit cards as possible (up to n)
     const maxCanPlay = Math.min(info.total, n);
     if (playedInLeadSuit < maxCanPlay) {
-      return { error: `Must play as many ${leadEffSuit === 'TRUMP' ? 'trump' : leadEffSuit} cards as possible` };
+      return { error: this._followSuitError(hand, leadEffSuit, info.total, playedInLeadSuit, maxCanPlay, n) };
     }
 
     // If player has enough lead-suit cards to fill the whole play (info.total >= n),
     // additionally check shape requirements: must match the best shape available.
     if (info.total >= n) {
       if (leadEntry.shape === 'pair' && info.pairCount > 0 && shape !== 'pair') {
-        return { error: 'Must play a pair when you have one in the lead suit' };
+        return { error: `A pair was led and you hold ${info.pairCount} ${this._suitPlural(leadEffSuit)} pair(s) — you must play one of them, not two odd cards.` };
       }
       if (leadEntry.shape === 'tractor' && info.tractorPairCount * 2 >= n && shape !== 'tractor') {
-        return { error: 'Must play a tractor when you can form one in the lead suit' };
+        return { error: `A tractor (${n / 2} consecutive pairs) was led and you can form one in ${this._suitPlural(leadEffSuit)} — you must play it.` };
       }
       // For throws: must include a pair if you have one in the lead suit
       if (leadEntry.shape === 'throw' && info.pairCount > 0) {
@@ -787,12 +935,59 @@ class GameState {
         });
         const hasPair = Object.values(pairGroups).some(count => count >= 2);
         if (!hasPair) {
-          return { error: 'Must play a pair in the lead suit when you have one' };
+          return { error: `A throw (single + pair) was led and you hold ${info.pairCount} ${this._suitPlural(leadEffSuit)} pair(s) — your play must include one of them.` };
         }
       }
     }
 
     return null;
+  }
+
+  /**
+   * Suit names for messages. SUIT_NAMES is plural ('Spades'), but most of these
+   * sentences need it as an adjective ('2 spade cards'), so expose both forms.
+   */
+  _suitPlural(effSuit) {
+    if (effSuit === 'TRUMP') return 'trump';
+    return (SUIT_NAMES[effSuit] || effSuit).toLowerCase();
+  }
+
+  _suitWord(effSuit) {
+    return this._suitPlural(effSuit).replace(/s$/, '');
+  }
+
+  /**
+   * Follow-suit rejections are the most confusing moment in the game, because
+   * "what counts as a spade" is not what the card says: trump-rank cards and
+   * jokers are trump regardless of their printed suit. So say exactly how many
+   * the player holds, how many they must play, and — when it applies — why some
+   * cards that look like the lead suit do not count.
+   */
+  _followSuitError(hand, leadEffSuit, held, played, required, leadCount) {
+    const word   = this._suitWord(leadEffSuit);     // 'spade'  — adjective
+    const plural = this._suitPlural(leadEffSuit);    // 'spades' — noun
+    const label  = leadEffSuit === 'TRUMP' ? 'Trump' : (SUIT_NAMES[leadEffSuit] || leadEffSuit);
+    const s      = n => (n === 1 ? '' : 's');
+
+    let msg;
+    if (required === leadCount) {
+      msg = `${label} led. You hold ${held} ${word} card${s(held)} and played ${played} — you must play ${required}. `
+          + `You can only play trump or another suit once you are out of ${plural}.`;
+    } else {
+      msg = `${label} led. You hold only ${held} ${word} card${s(held)}, so you must play all ${required} of them `
+          + `and fill the remaining ${leadCount - required} with anything — you played ${played}.`;
+    }
+
+    // Cards whose printed suit matches the lead but which are actually trump.
+    if (leadEffSuit !== 'TRUMP') {
+      const lookalikes = hand.filter(c =>
+        c.suit === leadEffSuit && c.effectiveSuit(this.trumpSuit, this.trumpRank) !== leadEffSuit
+      );
+      if (lookalikes.length > 0) {
+        msg += ` (Your ${lookalikes.map(c => `${c.rank} of ${plural}`).join(', ')} counts as trump, not ${plural}.)`;
+      }
+    }
+    return msg;
   }
 
   _advanceSeat() {
@@ -828,16 +1023,19 @@ class GameState {
     );
 
     // Only credit attacking team
-    let pointsScored = 0;
+    let pointsScored    = 0;
+    let kittyPoints     = 0;
+    let kittyMultiplier = 0;
+    let kittyBonus      = 0;
     if (winnerPlayer.teamIndex === this.attackingTeam) {
       pointsScored = trickPoints;
 
       if (isLastTrick) {
         // Kitty multiplier: × (2 × number of cards in winning play)
-        const winCardsCount = winnerEntry.cards.length;
-        const multiplier    = 2 * winCardsCount;
-        const kittyPoints   = this.kitty.reduce((s, c) => s + c.points, 0);
-        pointsScored        += kittyPoints * multiplier;
+        kittyMultiplier = 2 * winnerEntry.cards.length;
+        kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
+        kittyBonus      = kittyPoints * kittyMultiplier;
+        pointsScored   += kittyBonus;
       }
 
       this.scores[this.attackingTeam] += pointsScored;
@@ -853,6 +1051,44 @@ class GameState {
     // Apply throw penalty
     if (throwPenalty !== 0) {
       this.scores[this.attackingTeam] = Math.max(0, this.scores[this.attackingTeam] + throwPenalty);
+    }
+
+    if (this.logger) {
+      const attackerWon = winnerPlayer.teamIndex === this.attackingTeam;
+      let reason = null;
+      if (!attackerWon && trickPoints > 0) {
+        reason = `${trickPoints}pts on the table went uncredited — defending team T${winnerPlayer.teamIndex} took the trick, and only the attacking team (T${this.attackingTeam}) scores`;
+      } else if (!attackerWon) {
+        reason = `defending team T${winnerPlayer.teamIndex} took the trick (no points on the table)`;
+      }
+      this.logger.trickEnd({
+        plays: this.currentTrick.map(e => {
+          const p = this.getPlayer(e.socketId);
+          return {
+            seatIndex: p ? p.seatIndex : null,
+            name:      p ? p.name : null,
+            teamIndex: p ? p.teamIndex : null,
+            cards:     e.cards.map(c => c.toJSON()),
+            shape:     e.shape,
+          };
+        }),
+        leadSeat:      leadPlayer ? leadPlayer.seatIndex : null,
+        winnerSeat:    winnerPlayer.seatIndex,
+        winnerTeam:    winnerPlayer.teamIndex,
+        attackingTeam: this.attackingTeam,
+        trumpSuit:     this.trumpSuit,
+        trumpRank:     this.trumpRank,
+        trickPoints,
+        credited:      pointsScored,
+        reason,
+        kittyPoints,
+        kittyMultiplier,
+        kittyBonus,
+        throwPenalty,
+        scores:        { ...this.scores },
+        threshold:     LEVEL_THRESHOLDS[this.trumpRank],
+        isLastTrick,
+      });
     }
 
     const completedTrick = {
@@ -926,6 +1162,21 @@ class GameState {
       this.roundScores[defendingTeam] += 1;
     }
 
+    if (this.logger) {
+      this.logger.roundEnd({
+        roundNumber:    this.roundNumber,
+        attackingTeam:  this.attackingTeam,
+        attackingScore,
+        threshold,
+        attackingWon,
+        advancingTeam,
+        levelsAdvanced,
+        teamLevels:     { ...this.teamLevels },
+        gameOver,
+        winner:         this.winner,
+      });
+    }
+
     return {
       success:        true,
       roundOver:      true,
@@ -960,6 +1211,8 @@ class GameState {
       trumpCallStrength: this.trumpCallStrength,
       trumpDeclareCards: this.trumpDeclareCards,
       attackingTeam:     this.attackingTeam,
+      dealPaused:        this.dealPaused,
+      dealWindowIndex:   this.dealWindowIndex,
       teamLevels:        { ...this.teamLevels },
       currentTrick:      this.currentTrick.map(e => ({
         socketId: e.socketId,
