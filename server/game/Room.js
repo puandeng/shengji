@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const GameState = require('./GameState');
 const BotPlayer = require('./BotPlayer');
 const { GameLogger } = require('./GameLogger');
-const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, DEAL_PAUSE_EVERY_CARDS, DEAL_PAUSE_MS, TRICK_DISPLAY_DELAY_MS } = require('./constants');
+const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, DEAL_PAUSE_EVERY_CARDS, DEAL_PAUSE_MS, DEAL_PAUSE_MIN_GAP_CARDS, MAX_CALL_STRENGTH, TRICK_DISPLAY_DELAY_MS } = require('./constants');
 
 /**
  * Room encapsulates a single game lobby + game session.
@@ -90,8 +90,8 @@ class Room {
 
     this._clearDealTimer();
     const queue        = this.game.dealQueue;
-    const totalWindows = Math.floor(queue.length / DEAL_PAUSE_EVERY_CARDS);
     let idx = 0;
+    let lastPauseAt = 0;
 
     const resume = () => {
       if (!this.game.dealPaused) return;
@@ -102,12 +102,14 @@ class Room {
     };
     this._resumeDeal = resume;
 
-    const pause = () => {
+    const pause = (trigger) => {
       const { windowIndex } = this.game.openDealWindow();
       const deadline = Date.now() + DEAL_PAUSE_MS;
+      lastPauseAt = idx;
+      this.logger.dealWindow({ windowIndex, trigger, dealtCount: idx, totalCards: queue.length });
       onDealPause?.({
         windowIndex,
-        totalWindows,
+        trigger,                       // 'card' | 'interval' — never says whose card
         deadline,
         durationMs: DEAL_PAUSE_MS,
         dealtCount: idx,
@@ -129,11 +131,23 @@ class Room {
       onDealCard(entry, idx);
       idx++;
 
-      // Pause on window boundaries so every player gets an unhurried, explicit
-      // chance to call trump. Never pause on the final card — dealing is done
-      // and TRUMP_SELECTION opens its own window.
-      if (idx % DEAL_PAUSE_EVERY_CARDS === 0 && idx < queue.length && this.game.phase === GAME_PHASES.DEALING) {
-        pause();
+      // Pause the moment a dealt card makes a winning call possible for whoever
+      // received it — that is the only moment the decision actually changes —
+      // and on a fixed interval as a backstop so quiet stretches still get a
+      // window. Never pause on the final card: dealing is done and
+      // TRUMP_SELECTION opens its own window there.
+      const enablesCall = (entry.card.isJoker || entry.card.rank === this.game.trumpRank)
+        && this.game.canCall(entry.socketId);
+      const atInterval  = idx % DEAL_PAUSE_EVERY_CARDS === 0;
+      const gapRespected = idx - lastPauseAt >= DEAL_PAUSE_MIN_GAP_CARDS;
+
+      // A joker pair cannot be beaten, so once one stands there is nothing left
+      // to ask anyone — deal the rest out without stopping.
+      const stillContestable = this.game.trumpCallStrength < MAX_CALL_STRENGTH;
+
+      if (stillContestable && (enablesCall || atInterval) && gapRespected && idx < queue.length
+          && this.game.phase === GAME_PHASES.DEALING) {
+        pause(enablesCall ? 'card' : 'interval');
         return;
       }
 

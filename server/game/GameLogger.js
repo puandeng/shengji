@@ -122,6 +122,12 @@ class GameLogger {
         hands.forEach(h => this.note(`hand ${h.seatIndex}  ${shortList(h.cards)}`));
     }
 
+    /** A slow-motion deal pause window opened. `trigger` never names a player. */
+    dealWindow({ windowIndex, trigger, dealtCount, totalCards }) {
+        this.event('deal_window', { windowIndex, trigger, dealtCount, totalCards });
+        this.note(`-- call window ${windowIndex} opened at ${dealtCount}/${totalCards} dealt (${trigger === 'card' ? 'a call became possible' : 'interval'})`);
+    }
+
     trumpCall({ seatIndex, name, cards, strength, trumpSuit, attackingTeam }) {
         this.event('trump_call', { seatIndex, name, cards, strength, trumpSuit, attackingTeam });
         this.note(`trump call: seat${seatIndex} ${shortPlay(cards)} → ${suitLabel(trumpSuit)} (strength ${strength}, attackers T${attackingTeam})`);
