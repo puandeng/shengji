@@ -56,3 +56,5 @@ Condensed; full rationale for each item is in git history and the PRs that lande
 - Fixed: kitty discard UI hardcoded 4, `ScoringModal` hardcoded `>= 100`, jokers not grouped with trump when sorting, dev-mode banner overlapping the trump banner.
 - Fixed: trump pair selection — auto-submit prevented selecting a second card; now uses toggle + explicit submit button.
 - Fixed: hand/play button overlapping macOS dock — `flex:1` layout with `env(safe-area-inset-bottom)` padding.
+- Fixed: play button still cut off — grid row `minmax(0, 1fr)` for sides, prompt `min-height: 0`.
+- Kitty rotation and attack persistence across rounds — `kittyPickerSeat` tracks rotation, `callTrump()` only sets trump suit after round 1.

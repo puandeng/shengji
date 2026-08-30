@@ -243,18 +243,42 @@ class Room {
     if (this.game.phase !== GAME_PHASES.SCORING) return { error: 'Not in scoring phase' };
     this.game.roundNumber++;
 
-    // Loser of previous round attacks next
-    const prevAttacking = this.game.attackingTeam;
-    const threshold     = LEVEL_THRESHOLDS[this.game.trumpRank];
-    const prevWon       = this.game.scores[prevAttacking] >= threshold;
-    if (!prevWon) {
+    const prevAttacking    = this.game.attackingTeam;
+    const prevKittySeat    = this.game.kittyPickerSeat;
+    const threshold        = LEVEL_THRESHOLDS[this.game.trumpRank];
+    const attackingWon     = this.game.scores[prevAttacking] >= threshold;
+
+    let nextKittySeat;
+
+    if (attackingWon) {
+      // Attacking team stays on attack; kitty rotates to the partner
+      // Team 0 = seats 0&2, Team 1 = seats 1&3 → partner is (seat + 2) % 4
+      nextKittySeat = (prevKittySeat + 2) % 4;
+    } else {
+      // Defending team becomes attackers
       this.game.attackingTeam = prevAttacking === 0 ? 1 : 0;
+      // Player to the right of previous kitty picker picks up kitty
+      nextKittySeat = (prevKittySeat + 1) % 4;
     }
 
     // Trump rank for next round = attacking team's current level
     this.game.trumpRank = this.game.teamLevels[this.game.attackingTeam];
 
-    return this.game.deal();
+    // Pre-assign kitty picker — they will be trumpDeclarer after trump selection
+    this.game.kittyPickerSeat = nextKittySeat;
+
+    const result = this.game.deal();
+    if (result.error) return result;
+
+    // Set pre-determined kitty picker as the trumpDeclarer
+    // Trump calling can still change the suit, but this player picks up the kitty
+    const kittyPlayer = this.game.players.find(p => p.seatIndex === nextKittySeat);
+    if (kittyPlayer) {
+      this.game.trumpDeclarer = kittyPlayer.socketId;
+      this.game.attackingTeam = kittyPlayer.teamIndex;
+    }
+
+    return result;
   }
 
   // ─────────────────────────────────────────────
