@@ -29,8 +29,9 @@ export default function TrumpBanner({ trumpSuit, trumpRank, trumpCallStrength, a
   }
 
   const isRed    = RED_SUITS.has(trumpSuit);
-  const teamName = `Team ${(attackingTeam ?? 0) + 1}`;
-  const callStr  = trumpCallStrength ? ` (${STRENGTH_LABEL[trumpCallStrength] ?? ''} call)` : '';
+  const atkTeam = `Team ${(attackingTeam ?? 0) + 1}`;
+  const defTeam = `Team ${((attackingTeam ?? 0) === 0 ? 1 : 0) + 1}`;
+  const callStr = trumpCallStrength ? ` (${STRENGTH_LABEL[trumpCallStrength] ?? ''} call)` : '';
 
   return (
     <div className="trump-banner">
@@ -49,7 +50,7 @@ export default function TrumpBanner({ trumpSuit, trumpRank, trumpCallStrength, a
       )}
       <span className="trump-banner__divider">|</span>
       <span className="trump-banner__attacking">
-        ⚔️ {teamName} attacking
+        🛡️ {defTeam} defending · ⚔️ {atkTeam} attacking
       </span>
     </div>
   );

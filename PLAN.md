@@ -9,19 +9,12 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 ## Open
 
 ### Refactor
-- [ ] **Swap attacking/defending team semantics.** The team that calls trump and plays first is the *defending* team (they protect the kitty and try to prevent the other team from scoring). The other team is the *attacking* team (they try to collect points to reach threshold). Currently the codebase has this backwards: `attackingTeam` is set to the trump caller's team. Rename throughout server and client so the labels match traditional Sheng Ji terminology. This refactor includes:
-  - Swap which team accumulates points (non-caller should accumulate, not caller)
-  - Fix the threshold check (non-caller's score vs threshold, not caller's)
-  - Level advancement — defenders hold: attackers scored 0 → defenders +3, attackers < threshold−40 → +2, else +1
-  - Level advancement — attackers break through: at threshold → +0 (role swap only), ≥ threshold+40 → +1, ≥ threshold+80 → +2, ≥ threshold+120 → +3
-  - Round transitions: defenders hold → advance and keep defending. Attackers break through → become new defenders
-  - Rename `attackingTeam` / `defendingTeam` / `attackingWon` / `attackerPointPile` etc. across server + client
-  - Update UI labels (ATK/DEF badges, scoring modal, notifications)
+- [x] **Swap attacking/defending team semantics.** `attackingTeam` now points to the non-caller (the team that accumulates points). Added `defendingTeam` getter. Fixed `callTrump()`, `autoSelectTrump()`, `startNewRound()`, level advancement, jack demotion, kitty scoring, round transitions, and UI labels.
 
 ### Bugs
-- [ ] **Trump auto-select can deadlock the round.** `autoSelectTrump()` picks a suit from the kitty but sets `trumpDeclarer = null`. `giveKittyToDeclarer()` then returns `{ error: 'No trump declarer' }`, and both callers (`Room.scheduleBotTrumpCall()` on all-pass, and the trump timer path) ignore the error. Nobody holds the kitty, nobody can discard, and the game sits in `KITTY` forever. Reproduced with `GAME_LOG` + a headless 4-bot round where no player held a trump-rank card. Fix: fall back to a real seat as declarer (seat 0, or the last player to act) instead of `null`.
-- [ ] **Home page "How to play" copy is stale.** It still says "First team to win 3 rounds wins the match!" — the win condition is level progression 2→A. Same drift that was just fixed in `CLAUDE.md`.
-- [ ] **~~Bots spam `game:passTrump` during dealing.~~** Fixed by the slow-motion deal — bots now act once per call window instead of on every dealt card. A live 4-bot round logged 14 `trump_pass` events across 4 seats (seat 3 passed six times), including a pass from the seat that had already made a winning strength-3 call. `scheduleBotTrumpCall()` re-fires as cards are dealt and re-passes each time. `trumpPasses` is a `Set`, so game logic is unaffected — but the log is noisy and the `(all passed)` marker prints while a live call stands, which misleads anyone reviewing the log. Fix: skip bots that have already passed or currently hold the winning call.
+- [x] **Trump auto-select can deadlock the round.** `giveKittyToDeclarer()` now falls back to the kitty picker or seat 0 if `trumpDeclarer` is somehow null.
+- [x] **Home page "How to play" copy is stale.** Updated to describe level progression and team roles.
+- [x] **Bots spam `game:passTrump` during dealing.** `scheduleBotTrumpCall()` now skips bots that have already passed the current window or that hold the winning call.
 - [x] **Can't select more than one card for trump declaration.** Fixed: `handleCallTrump()` is now a pure toggle (max 2 cards) and a `Call trump (1 card / pair)` button submits, matching the kitty-discard and play flows. The old auto-submit sent the single to the server before a second card could be picked, and the resulting strength-1 call then blocked the strength-2 one it should have become.
 - [x] **Hand and play button overlap the macOS dock.** `GameBoard.css` and `Game.css` use `height: 100vh` with no bottom inset, so the hand row and play button sit under the dock. Fixed: flex layout with `env(safe-area-inset-bottom)` padding.
 

@@ -26,7 +26,7 @@ export default function ScoringModal() {
         {isGameOver ? (
           <div className="scoring-winner">
             <div className="scoring-winner__badge">
-              Team {(winner ?? 0) + 1} wins the match!
+              Team {(winner ?? 0) + 1} wins!
             </div>
           </div>
         ) : (

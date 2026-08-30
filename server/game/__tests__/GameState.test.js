@@ -23,6 +23,7 @@ function createPlayingGame(trumpSuit = 'S', trumpRank = '2') {
   game.trumpRank = trumpRank;
   game.trumpDeclarer = 'p0';
   game.trumpCallStrength = 1;
+  game.attackingTeam = 1; // p0 (team 0) called → defends; team 1 attacks
   game.finishTrumpSelection();
   game.giveKittyToDeclarer();
   const hand = game.hands['p0'];
@@ -293,9 +294,40 @@ describe('GameState', () => {
   describe('scoring', () => {
     it('only credits attacking team with points', () => {
       const game = createPlayingGame('S', '2');
-      game.attackingTeam = 0; // p0 (seat 0) and p2 (seat 2) are attackers
+      // p0 called trump → p0's team (0) defends. Team 1 attacks.
+      game.attackingTeam = 1; // p1 (seat 1) and p3 (seat 3) are attackers
 
-      // Give each player one card; p0 (attacker) leads and wins with a point card
+      // p1 (attacker) leads and wins with a point card
+      game.hands['p0'] = [new Card('H', '3', 0)];
+      game.hands['p0'][0].id = 'h_3_0';
+      game.hands['p1'] = [new Card('H', 'A', 0)];
+      game.hands['p1'][0].id = 'h_a_0';
+      game.hands['p2'] = [new Card('H', '5', 0)]; // 5 points
+      game.hands['p2'][0].id = 'h_5_0';
+      game.hands['p3'] = [new Card('H', '4', 0)];
+      game.hands['p3'][0].id = 'h_4_0';
+
+      game.currentSeat = 1;
+      game.leadSeat = 1;
+
+      game.playCards('p1', ['h_a_0']);
+      game.playCards('p2', ['h_5_0']);
+      game.playCards('p3', ['h_4_0']);
+      const result = game.playCards('p0', ['h_3_0']);
+
+      // p1 (attacker, team 1) wins with A — gets 5 pts from p2's card
+      // Attacker winning the last trick → kitty bonus added
+      expect(result.trickComplete).toBe(true);
+      const kittyPoints = game.kitty.reduce((s, c) => s + c.points, 0);
+      const kittyBonus = kittyPoints * (2 * 1); // single card play
+      expect(game.scores[1]).toBe(5 + kittyBonus);
+    });
+
+    it('does not credit defender with points', () => {
+      const game = createPlayingGame('S', '2');
+      game.attackingTeam = 1;
+
+      // p0 (defender) leads and wins, point cards on table
       game.hands['p0'] = [new Card('H', 'A', 0)];
       game.hands['p0'][0].id = 'h_a_0';
       game.hands['p1'] = [new Card('H', '5', 0)]; // 5 points
@@ -313,10 +345,10 @@ describe('GameState', () => {
       game.playCards('p2', ['h_3_0']);
       const result = game.playCards('p3', ['h_4_0']);
 
-      // p0 (attacker, team 0) wins with A — gets the 5 points from p1's card
-      // Attacker winning the last trick "protects" the kitty — no kitty bonus
+      // p0 (defender, team 0) wins — defender never scores
       expect(result.trickComplete).toBe(true);
-      expect(game.scores[0]).toBe(5);
+      expect(game.scores[0]).toBe(0);
+      expect(game.scores[1]).toBe(0);
     });
   });
 });

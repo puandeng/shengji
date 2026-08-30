@@ -6,13 +6,16 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Proxy API requests to the backend during development
       '/socket.io': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         ws: true,
       },
       '/health': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/config': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },

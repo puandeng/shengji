@@ -310,18 +310,22 @@ function bestCard(cards, trumpSuit, trumpRank) {
 /**
  * GameState manages all core game logic for one room.
  *
- * Scoring rules:
+ * Team roles:
+ *  - Trump caller's team = DEFENDING team (picks up kitty, blocks scoring).
+ *  - Other team = ATTACKING team (accumulates points, tries to reach threshold).
+ *
+ * Scoring:
  *  - Only the attacking team accumulates points.
  *  - Defending team wins by blocking — never by scoring.
- *  - Attackers need ≥ LEVEL_THRESHOLDS[trumpRank] to win the round.
- *  - The trump-calling team (attackingTeam) is the defender and "protects" the
- *    kitty by winning the last trick (no bonus). When the non-caller team wins
- *    the last trick, kitty points × (2 × cards in winning play) are added.
+ *  - Attackers need ≥ LEVEL_THRESHOLDS[trumpRank] to break through.
+ *  - Defending team winning last trick protects kitty (no bonus). Attacking team
+ *    winning last trick → kitty pts × (2 × cards in winning play) added.
  *
  * Level progression:
  *  - Each team has a level ('2'..'A'). Starting level: '2'.
- *  - Winning a round advances the winning team's level by 1–3 based on margin.
- *  - The trump rank for the next round = attacking team's current level.
+ *  - Defenders hold → advance +1/+2/+3 and keep defending.
+ *  - Attackers break through → become new defenders; +0/+1/+2/+3 based on margin.
+ *  - Trump rank = defending team's current level.
  *  - First team to level past 'A' wins the match.
  *
  * Multi-card plays: singles, pairs, tractors, throws.
@@ -340,7 +344,7 @@ class GameState {
     this.trumpDeclarer  = null;
     this.trumpCallStrength = 0;         // 0=none, 1=single, 2=pair (for bidding mechanic)
     this.trumpDeclareCards = [];        // Card objects shown during trump declaration
-    this.attackingTeam  = 0;
+    this.attackingTeam  = 1;            // Non-caller team; swapped when trump is called
     this.kittyPickerSeat = null;       // Pre-determined kitty picker (null = first round, use trump caller)
     this.teamLevels     = { 0: STARTING_LEVEL, 1: STARTING_LEVEL };
     this.currentTrick   = [];           // [{ socketId, cards: Card[], shape }]
@@ -362,6 +366,10 @@ class GameState {
     this.dealPaused       = false;
     // Track ranks each team has visited (for mandatory stop rank logic)
     this.visitedRanks   = { 0: new Set([STARTING_LEVEL]), 1: new Set([STARTING_LEVEL]) };
+  }
+
+  get defendingTeam() {
+    return this.attackingTeam === 0 ? 1 : 0;
   }
 
   // ─────────────────────────────────────────────
@@ -619,11 +627,12 @@ class GameState {
 
     const caller = this.getPlayer(socketId);
 
-    // Round 1: trump caller becomes declarer and their team attacks.
+    // Round 1: trump caller becomes declarer and their team DEFENDS.
+    // The other team is the attacking team.
     // Later rounds: kitty picker is pre-determined; calling only sets the suit.
     if (this.kittyPickerSeat === null) {
       this.trumpDeclarer = socketId;
-      this.attackingTeam = caller.teamIndex;
+      this.attackingTeam = caller.teamIndex === 0 ? 1 : 0;
     }
 
     if (this.logger) {
@@ -759,11 +768,11 @@ class GameState {
       this.trumpSuit = (nonJoker || hand?.[0])?.suit ?? 'S';
     }
 
-    // Round 1: set declarer to seat 0 if no one called
+    // Round 1: set declarer to seat 0 if no one called (their team defends)
     if (this.kittyPickerSeat === null) {
       const firstPlayer = this.players[0];
       this.trumpDeclarer = firstPlayer.socketId;
-      this.attackingTeam = firstPlayer.teamIndex;
+      this.attackingTeam = firstPlayer.teamIndex === 0 ? 1 : 0;
     }
     // Later rounds: trumpDeclarer already set by startNewRound
   }
@@ -794,7 +803,17 @@ class GameState {
   // ─────────────────────────────────────────────
 
   giveKittyToDeclarer() {
-    if (!this.trumpDeclarer) return { error: 'No trump declarer' };
+    if (!this.trumpDeclarer) {
+      const fallback = this.kittyPickerSeat !== null
+        ? this.players.find(p => p.seatIndex === this.kittyPickerSeat)
+        : this.players[0];
+      if (fallback) {
+        this.trumpDeclarer = fallback.socketId;
+        this.attackingTeam = fallback.teamIndex === 0 ? 1 : 0;
+      } else {
+        return { error: 'No trump declarer' };
+      }
+    }
     const hand = this.hands[this.trumpDeclarer];
     this.kitty.forEach(c => hand.push(c));
     const declarer = this.getPlayer(this.trumpDeclarer);
@@ -1036,7 +1055,7 @@ class GameState {
       (sum, e) => sum + e.cards.reduce((s, c) => s + c.points, 0), 0
     );
 
-    // Only credit attacking team
+    // Only credit attacking team (non-caller)
     let pointsScored    = 0;
     let kittyPoints     = 0;
     let kittyMultiplier = 0;
@@ -1044,6 +1063,16 @@ class GameState {
     const attackerWonTrick = winnerPlayer.teamIndex === this.attackingTeam;
     if (attackerWonTrick) {
       pointsScored = trickPoints;
+
+      // Kitty: attacking team wins last trick → kitty pts × multiplier added.
+      // Defending team winning last trick protects the kitty (no bonus).
+      if (isLastTrick) {
+        kittyMultiplier = 2 * winnerEntry.cards.length;
+        kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
+        kittyBonus      = kittyPoints * kittyMultiplier;
+        pointsScored   += kittyBonus;
+      }
+
       this.scores[this.attackingTeam] += pointsScored;
 
       // Add point cards to the attacker's visible pile
@@ -1052,16 +1081,6 @@ class GameState {
           if (c.points > 0) this.attackerPointPile.push(c);
         });
       });
-    }
-
-    // Kitty multiplier: the trump-calling team (attackingTeam) is the defender
-    // and "protects" the kitty by winning the last trick. When the non-caller
-    // team wins the last trick, kitty points × multiplier are added to the score.
-    if (isLastTrick && !attackerWonTrick) {
-      kittyMultiplier = 2 * winnerEntry.cards.length;
-      kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
-      kittyBonus      = kittyPoints * kittyMultiplier;
-      this.scores[this.attackingTeam] += kittyBonus;
     }
 
     // Apply throw penalty
@@ -1137,56 +1156,60 @@ class GameState {
     this.phase = GAME_PHASES.SCORING;
 
     const attackingScore = this.scores[this.attackingTeam];
-    const defendingTeam  = this.attackingTeam === 0 ? 1 : 0;
     const threshold      = LEVEL_THRESHOLDS[this.trumpRank];
     const attackingWon   = attackingScore >= threshold;
 
-    // Level advancement
-    // NOTE: variable names are inverted vs traditional Sheng Ji. In code,
-    // attackingTeam = trump caller = DEFENDING team in traditional terms.
-    // The full rename + scoring refactor is tracked in PLAN.md.
     let levelsAdvanced = 0;
     let advancingTeam;
 
     if (attackingWon) {
+      // Attackers broke through — they advance (and will become new defenders)
       advancingTeam  = this.attackingTeam;
-      levelsAdvanced = attackingScore >= threshold + 80 ? 3
-                     : attackingScore >= threshold + 40 ? 2
-                     : 1;
+      levelsAdvanced = attackingScore >= threshold + 120 ? 3
+                     : attackingScore >= threshold + 80  ? 2
+                     : attackingScore >= threshold + 40  ? 1
+                     : 0; // bare threshold → role swap only, no level advance
     } else {
-      advancingTeam  = defendingTeam;
+      // Defenders held — they advance and keep defending
+      advancingTeam  = this.defendingTeam;
       const shortfall = threshold - attackingScore;
       levelsAdvanced  = attackingScore === 0 ? 3
                       : shortfall > 40       ? 2
                       : 1;
     }
 
-    // Jack demotion: if attackers are at level J and defenders won the last
-    // trick with a Jack card, attackers are demoted back to level 2.
+    // Jack demotion: defending team at level J, attacker wins last trick with
+    // a Jack card → defenders demoted back to level 2.
     let jackDemotion = false;
-    if (!attackingWon && this.teamLevels[this.attackingTeam] === 'J') {
+    if (!attackingWon && this.teamLevels[this.defendingTeam] === 'J') {
       const lastTrick = this.tricks[this.tricks.length - 1];
       if (lastTrick) {
         const lastWinner = this.getPlayer(lastTrick.winner);
-        if (lastWinner && lastWinner.teamIndex !== this.attackingTeam) {
+        if (lastWinner && lastWinner.teamIndex === this.attackingTeam) {
           const winnerPlay = lastTrick.cards.find(e => e.socketId === lastTrick.winner);
           const hasJack = winnerPlay && winnerPlay.cards.some(c => c.rank === 'J');
           if (hasJack) {
             jackDemotion = true;
-            this.teamLevels[this.attackingTeam] = STARTING_LEVEL;
+            this.teamLevels[this.defendingTeam] = STARTING_LEVEL;
           }
         }
       }
     }
 
-    const newLevel = advanceLevel(this.teamLevels[advancingTeam], levelsAdvanced, this.visitedRanks[advancingTeam]);
-    let gameOver   = false;
+    let newLevel;
+    let gameOver = false;
+
+    if (levelsAdvanced === 0) {
+      newLevel = this.teamLevels[advancingTeam];
+    } else {
+      newLevel = advanceLevel(this.teamLevels[advancingTeam], levelsAdvanced, this.visitedRanks[advancingTeam]);
+    }
 
     if (newLevel === null) {
       gameOver    = true;
       this.phase  = GAME_PHASES.GAME_OVER;
       this.winner = advancingTeam;
-    } else {
+    } else if (levelsAdvanced > 0) {
       this.teamLevels[advancingTeam] = newLevel;
       this.visitedRanks[advancingTeam].add(newLevel);
     }
@@ -1195,7 +1218,7 @@ class GameState {
     if (attackingWon) {
       this.roundScores[this.attackingTeam] += 1;
     } else {
-      this.roundScores[defendingTeam] += 1;
+      this.roundScores[this.defendingTeam] += 1;
     }
 
     if (this.logger) {
