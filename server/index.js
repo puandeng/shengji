@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { setupSocketHandlers } = require('./socket');
@@ -7,14 +8,18 @@ const { setupSocketHandlers } = require('./socket');
 const app = express();
 const server = http.createServer(app);
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const io = new Server(server, {
-  cors: {
+  cors: isProduction ? undefined : {
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
     methods: ['GET', 'POST'],
   },
 });
 
-app.use(cors());
+if (!isProduction) {
+  app.use(cors());
+}
 app.use(express.json());
 
 // Health check endpoint
@@ -29,6 +34,15 @@ app.get('/config', (req, res) => {
 
 // Set up all socket handlers
 setupSocketHandlers(io);
+
+// In production, serve the built client
+if (isProduction) {
+  const clientDist = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
