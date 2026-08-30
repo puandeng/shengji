@@ -57,7 +57,7 @@ Every room writes a complete, replayable record of its games to `logs/` at the r
 | `logs/<CODE>-<timestamp>.jsonl` | agents / tooling | One JSON record per event: `round_start`, `deal`, `trump_call`, `trump_rejected`, `trump_pass`, `trump_final`, `kitty_discard`, `play`, `play_rejected`, `trick_end`, `round_end` |
 | `logs/<CODE>-<timestamp>.log` | humans skimming | Chess-style notation — one line per trick |
 
-Notation: cards are `<suit><rank>` (`S5`, `D10`, `CK`), jokers are `BJ` / `SJ`. Cards in one play are written with no separator (`S5S5` is a pair of 5s) — each token is self-delimiting since it starts with a suit letter or is `BJ`/`SJ`.
+Notation: cards are `<suit><rank>` (`S5`, `D10`, `CK`), jokers are `*b` (big) and `*s` (small). Cards in one play are written with no separator (`S5S5` is a pair of 5s) — each token is self-delimiting since it starts with a suit letter or `*`. Jokers deliberately do not use their `BJ`/`SJ` ranks: `SJ` would be indistinguishable from the jack of spades.
 
 ```
  2. 1:S3  2:S8  3:S10  0:S8  > seat3 [T1 DEF]  table 10pts  credited +0  att 0/80

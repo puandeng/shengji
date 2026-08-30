@@ -8,10 +8,19 @@ const { SUIT_SYMBOLS } = require('./constants');
 // every trick.
 const LOG_DIR = path.join(__dirname, '..', '..', 'logs');
 
-/** Compact card notation: S5, D10, CK, BJ (big joker), SJ (small joker). */
+/**
+ * Compact card notation: S5, D10, CK, *s (small joker), *b (big joker).
+ *
+ * Jokers deliberately do NOT use their rank ('SJ'/'BJ') — 'SJ' would collide
+ * with the jack of spades, which also renders suit-first as 'SJ'. A leading '*'
+ * can never be a suit, so joker tokens stay unambiguous.
+ */
 function short(card) {
     if (!card) return '??';
-    if (card.isJoker || card.suit === 'JOKER') return card.rank;
+    if (card.isJoker || card.suit === 'JOKER') {
+        const big = card.isBigJoker !== undefined ? card.isBigJoker : card.rank === 'BJ';
+        return big ? '*b' : '*s';
+    }
     return `${card.suit}${card.rank}`;
 }
 
@@ -98,7 +107,7 @@ class GameLogger {
         if (roundNumber === 1) {
             this.note(`# Sheng Ji game log — room ${this.roomCode}`);
             this.note(`# started ${new Date().toISOString()}`);
-            this.note('# cards: <suit><rank> (S5, D10, CK); BJ = big joker, SJ = small joker');
+            this.note('# cards: <suit><rank> (S5, D10, CK); *b = big joker, *s = small joker');
             this.note('# a play with no separator is one combo: S5S5 = pair of 5s');
             this.note('');
         }
