@@ -28,16 +28,14 @@ function advanceLevel(currentLevel, steps, visitedRanks = new Set()) {
   let newIdx = idx + steps;
   if (newIdx >= LEVEL_ORDER.length) return null; // Past A → team wins
 
-  // Check for mandatory stop ranks between current and target (exclusive of current)
   for (let i = idx + 1; i < newIdx; i++) {
     const rank = LEVEL_ORDER[i];
     if (MANDATORY_STOP_RANKS.has(rank) && !visitedRanks.has(rank)) {
-      newIdx = i; // Stop at the first unvisited mandatory rank
+      newIdx = i;
       break;
     }
   }
 
-  // Also check the target itself — if it's past A after stop, cap it
   if (newIdx >= LEVEL_ORDER.length) return null;
   return LEVEL_ORDER[newIdx];
 }
@@ -316,8 +314,9 @@ function bestCard(cards, trumpSuit, trumpRank) {
  *  - Only the attacking team accumulates points.
  *  - Defending team wins by blocking — never by scoring.
  *  - Attackers need ≥ LEVEL_THRESHOLDS[trumpRank] to win the round.
- *  - Kitty goes to whoever wins the last trick; if attackers win, they get
- *    kitty points × (2 × cards in winning play). If defenders win, no kitty bonus.
+ *  - The trump-calling team (attackingTeam) is the defender and "protects" the
+ *    kitty by winning the last trick (no bonus). When the non-caller team wins
+ *    the last trick, kitty points × (2 × cards in winning play) are added.
  *
  * Level progression:
  *  - Each team has a level ('2'..'A'). Starting level: '2'.
@@ -1042,17 +1041,9 @@ class GameState {
     let kittyPoints     = 0;
     let kittyMultiplier = 0;
     let kittyBonus      = 0;
-    if (winnerPlayer.teamIndex === this.attackingTeam) {
+    const attackerWonTrick = winnerPlayer.teamIndex === this.attackingTeam;
+    if (attackerWonTrick) {
       pointsScored = trickPoints;
-
-      if (isLastTrick) {
-        // Kitty multiplier: × (2 × number of cards in winning play)
-        kittyMultiplier = 2 * winnerEntry.cards.length;
-        kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
-        kittyBonus      = kittyPoints * kittyMultiplier;
-        pointsScored   += kittyBonus;
-      }
-
       this.scores[this.attackingTeam] += pointsScored;
 
       // Add point cards to the attacker's visible pile
@@ -1061,6 +1052,16 @@ class GameState {
           if (c.points > 0) this.attackerPointPile.push(c);
         });
       });
+    }
+
+    // Kitty multiplier: the trump-calling team (attackingTeam) is the defender
+    // and "protects" the kitty by winning the last trick. When the non-caller
+    // team wins the last trick, kitty points × multiplier are added to the score.
+    if (isLastTrick && !attackerWonTrick) {
+      kittyMultiplier = 2 * winnerEntry.cards.length;
+      kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
+      kittyBonus      = kittyPoints * kittyMultiplier;
+      this.scores[this.attackingTeam] += kittyBonus;
     }
 
     // Apply throw penalty
@@ -1140,7 +1141,10 @@ class GameState {
     const threshold      = LEVEL_THRESHOLDS[this.trumpRank];
     const attackingWon   = attackingScore >= threshold;
 
-    // Level advancement — attacker margin determines how many levels they advance
+    // Level advancement
+    // NOTE: variable names are inverted vs traditional Sheng Ji. In code,
+    // attackingTeam = trump caller = DEFENDING team in traditional terms.
+    // The full rename + scoring refactor is tracked in PLAN.md.
     let levelsAdvanced = 0;
     let advancingTeam;
 
@@ -1157,11 +1161,28 @@ class GameState {
                       : 1;
     }
 
+    // Jack demotion: if attackers are at level J and defenders won the last
+    // trick with a Jack card, attackers are demoted back to level 2.
+    let jackDemotion = false;
+    if (!attackingWon && this.teamLevels[this.attackingTeam] === 'J') {
+      const lastTrick = this.tricks[this.tricks.length - 1];
+      if (lastTrick) {
+        const lastWinner = this.getPlayer(lastTrick.winner);
+        if (lastWinner && lastWinner.teamIndex !== this.attackingTeam) {
+          const winnerPlay = lastTrick.cards.find(e => e.socketId === lastTrick.winner);
+          const hasJack = winnerPlay && winnerPlay.cards.some(c => c.rank === 'J');
+          if (hasJack) {
+            jackDemotion = true;
+            this.teamLevels[this.attackingTeam] = STARTING_LEVEL;
+          }
+        }
+      }
+    }
+
     const newLevel = advanceLevel(this.teamLevels[advancingTeam], levelsAdvanced, this.visitedRanks[advancingTeam]);
     let gameOver   = false;
 
     if (newLevel === null) {
-      // Team levelled past A — they win the match
       gameOver    = true;
       this.phase  = GAME_PHASES.GAME_OVER;
       this.winner = advancingTeam;
@@ -1201,6 +1222,7 @@ class GameState {
       threshold,
       levelsAdvanced,
       advancingTeam,
+      jackDemotion,
       teamLevels:     { ...this.teamLevels },
       scores:         this.scores,
       roundScores:    this.roundScores,
