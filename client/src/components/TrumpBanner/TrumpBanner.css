@@ -20,7 +20,7 @@
 .trump-banner__label {
   color: var(--color-text-muted);
   text-transform: uppercase;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   letter-spacing: 1px;
 }
 
@@ -50,11 +50,11 @@
   .trump-banner {
     gap: 0.3rem;
     padding: 0.2rem 0.6rem;
-    font-size: 0.7rem;
+    font-size: var(--text-xs);
   }
 
   .trump-banner__label {
-    font-size: 0.55rem;
+    font-size: var(--text-xs);
   }
 
   .trump-banner__suit {
@@ -63,6 +63,6 @@
   }
 
   .trump-banner__attacking {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
   }
 }

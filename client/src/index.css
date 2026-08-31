@@ -17,8 +17,32 @@
   --color-team0:      #3498db;
   --color-team1:      #e74c3c;
   --color-text:       #f0f0f0;
-  --color-text-muted: #aaa;
+  /* #aaa gives 5.06:1 on the dark panels it was chosen against, but only
+     3.47:1 on the felt — and most of the board is felt, so nearly every muted
+     label on the table failed AA. This reads ~6:1 on felt. */
+  --color-text-muted: #cfd6cc;
+  --color-text-dim:   #aab3a8;   /* only for panel backgrounds, never on felt */
+
+  /* One blue and one red per team. There were three blues and two reds in play
+     for two teams, so "the blue one" meant nothing. */
+  --color-team0:      #4aa3e0;
+  --color-team1:      #ef5350;
+
+  /* Type scale. The board had 22 chrome styles, 11 of them under 11px, and the
+     largest label on it was 13.6px. Five steps, floor at 12px, and one display
+     step reserved for the two facts that actually matter: whose turn it is, and
+     how far the attackers are from the target. */
+  --text-xs:          0.75rem;   /* 12px — smallest permitted */
+  --text-sm:          0.8125rem; /* 13px */
+  --text-md:          0.9375rem; /* 15px */
+  --text-lg:          1.125rem;  /* 18px */
+  --text-display:     1.5rem;    /* 24px — the score, and nothing else */
+
+  /* Three radii, not ten. */
+  --radius-sm:        3px;
   --radius:           8px;
+  --radius-pill:      999px;
+
   --shadow:           0 4px 12px rgba(0,0,0,0.4);
 }
 

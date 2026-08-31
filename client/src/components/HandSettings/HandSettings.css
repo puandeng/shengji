@@ -54,7 +54,7 @@
 }
 
 .hand-settings__label {
-    font-size: 0.58rem;
+    font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--color-gold);
@@ -62,7 +62,7 @@
 }
 
 .hand-settings__hint {
-    font-size: 0.55rem;
+    font-size: var(--text-xs);
     color: var(--color-text-muted);
 }
 
@@ -93,7 +93,7 @@
 .hand-settings__seg-btn {
     flex: 1;
     padding: 0.28rem 0.2rem;
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
     line-height: 1.1;
     border-radius: 4px;
     background: rgba(255, 255, 255, 0.07);
@@ -110,7 +110,7 @@
 
 .hand-settings__reset {
     padding: 0.28rem;
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
     border-radius: 4px;
     background: transparent;
     color: var(--color-text-muted);
@@ -121,7 +121,7 @@
     .hand-settings__toggle {
         width: 18px;
         height: 22px;
-        font-size: 0.7rem;
+        font-size: var(--text-xs);
     }
 
     .hand-settings__panel {
