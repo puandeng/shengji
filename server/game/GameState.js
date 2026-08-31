@@ -1172,6 +1172,17 @@ class GameState {
     return msg;
   }
 
+  /**
+   * Who is currently winning the partial trick, or null if nobody has played.
+   * Bots need this to tell "my partner is taking it" from "the opponents are",
+   * which is the difference between feeding points and hoarding them.
+   */
+  currentTrickWinner() {
+    if (this.currentTrick.length === 0) return null;
+    const winner = resolveTrickWinner(this.currentTrick, this.trumpSuit, this.trumpRank);
+    return winner ? winner.socketId : null;
+  }
+
   _advanceSeat() {
     this.currentSeat = (this.currentSeat + 1) % PLAYERS_PER_ROOM;
   }

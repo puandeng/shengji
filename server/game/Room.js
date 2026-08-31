@@ -384,7 +384,20 @@ class Room {
     if (!this._shouldAutoPlay(socketId)) return;
 
     const hand = this.game.hands[socketId];
-    const cardIds = BotPlayer.chooseLegalCards(hand, this.game.currentTrick, this.game.trumpSuit, this.game.trumpRank);
+    // Give the bot the two facts it needs to play with any judgement: whether
+    // its own partner is currently taking the trick, and what is at stake.
+    const me            = this.game.getPlayer(socketId);
+    const winnerId      = this.game.currentTrickWinner();
+    const winner        = winnerId ? this.game.getPlayer(winnerId) : null;
+    const partnerWinning = !!(me && winner && winner.socketId !== socketId && winner.teamIndex === me.teamIndex);
+    const trickPoints   = this.game.currentTrick.reduce(
+      (sum, e) => sum + e.cards.reduce((s, c) => s + c.points, 0), 0
+    );
+
+    const cardIds = BotPlayer.chooseLegalCards(
+      hand, this.game.currentTrick, this.game.trumpSuit, this.game.trumpRank,
+      { partnerWinning, trickPoints }
+    );
     if (!cardIds || cardIds.length === 0) return;
 
     const result = this.game.playCards(socketId, cardIds);
@@ -443,7 +456,7 @@ class Room {
 
     const timer = setTimeout(() => {
       const hand = this.game.hands[this.game.trumpDeclarer];
-      const cardIds = BotPlayer.chooseKittyDiscard(hand, KITTY_SIZE);
+      const cardIds = BotPlayer.chooseKittyDiscard(hand, KITTY_SIZE, this.game.trumpSuit, this.game.trumpRank);
       const result = this.game.discardToKitty(this.game.trumpDeclarer, cardIds);
       if (result.error) {
         console.error(`[Bot] Kitty discard error: ${result.error}`);
