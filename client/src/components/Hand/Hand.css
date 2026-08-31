@@ -47,7 +47,7 @@
 }
 
 .hand__row-label {
-  font-size: 0.55rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--color-gold);
@@ -142,7 +142,7 @@
   }
 
   .hand__row-label {
-    font-size: 0.45rem;
+    font-size: var(--text-xs);
   }
 
   .hand__play-btn-row {

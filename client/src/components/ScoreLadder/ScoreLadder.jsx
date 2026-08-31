@@ -82,7 +82,7 @@ export default function ScoreLadder({ score = 0, bands, threshold, pointsRemaini
           <span className="ladder__now-lead">Ends here:</span>{' '}
           {TEAM_NAME[current.team] ?? current.team} +{current.levels}
         </span>
-        <span className="ladder__score">{score} pts</span>
+        <span className="ladder__score">{score}<span className="ladder__score-unit"> pts</span></span>
         {remaining != null && (
           <span className="ladder__remaining" title="Points still on the table, kitty included">
             {remaining} left
@@ -120,12 +120,10 @@ export default function ScoreLadder({ score = 0, bands, threshold, pointsRemaini
         </div>
       </div>
 
+      {/* The six-number tick scale rendered at 7.7px and said less than the
+          band labels above it. One number matters: what the attackers need. */}
       <div className="ladder__scale">
-        {usable.map((band, i) => (
-          <span key={`s-${band.min}`} className="ladder__tick" style={{ width: `${widths[i] * 100}%` }}>
-            {band.min}
-          </span>
-        ))}
+        <span className="ladder__target">Target {threshold}</span>
       </div>
 
       <div className="ladder__deltas">

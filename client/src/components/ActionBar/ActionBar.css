@@ -32,7 +32,7 @@
 }
 
 .action-bar__detail {
-  font-size: 0.66rem;
+  font-size: var(--text-xs);
   line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -76,7 +76,7 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
   color: var(--color-text-muted);
   padding: 0.22rem 0.6rem;
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
@@ -92,15 +92,15 @@
     padding: 0.1rem 0.25rem;
   }
 
-  .action-bar__status { font-size: 0.72rem; }
-  .action-bar__detail { font-size: 0.6rem; }
+  .action-bar__status { font-size: var(--text-sm); }
+  .action-bar__detail { font-size: var(--text-xs); }
 
   .action-bar__btn {
     padding: 0.25rem 0.6rem;
-    font-size: 0.72rem;
+    font-size: var(--text-sm);
   }
 
-  .action-bar__ghost { font-size: 0.62rem; }
+  .action-bar__ghost { font-size: var(--text-xs); }
 }
 
 /* Actions hold the centre column; the aside trails in the third so neither can
