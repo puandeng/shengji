@@ -69,7 +69,14 @@ class Room {
   fillWithBots() {
     const currentCount = this.game.players.length;
     for (let i = currentCount; i < PLAYERS_PER_ROOM; i++) {
-      this.game.addPlayer(BotPlayer.generateBotId(i), BotPlayer.generateBotName(i));
+      const socketId = BotPlayer.generateBotId(i);
+      this.game.addPlayer(socketId, BotPlayer.generateBotName(i));
+      // Mark the seat. The log already had an isBot field, but nothing ever
+      // set it, so every game read back as four humans — which makes the logs
+      // useless for training, since you cannot tell which actions came from a
+      // policy worth imitating and which came from the placeholder bot.
+      const seated = this.game.getPlayer(socketId);
+      if (seated) seated.isBot = true;
     }
   }
 

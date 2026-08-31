@@ -983,6 +983,11 @@ class GameState {
       if (err) return err;
     }
 
+    // Captured before the hand is mutated: a decision record needs the state
+    // the actor was choosing from.
+    const handBefore = this.logger ? hand.map(c => c.id) : null;
+    const legalBefore = this.logger ? this.playableCardIds(socketId) : null;
+
     // Remove played cards from hand
     cardIds.forEach(id => {
       const idx = hand.findIndex(c => c.id === id);
@@ -996,9 +1001,15 @@ class GameState {
       this.logger.play({
         seatIndex: p.seatIndex,
         name:      p.name,
+        isBot:     !!p.isBot,
         cards:     cards.map(c => c.toJSON()),
         shape,
         leadSeat:  this.leadSeat,
+        // The choice that was available, not just the one taken. Without it a
+        // training pipeline has to re-derive legality by reimplementing the
+        // rules, or replay every game through the server to recover the mask.
+        legalCardIds: legalBefore,
+        handBefore,
       });
     }
 
