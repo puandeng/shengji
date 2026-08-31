@@ -141,3 +141,32 @@
   font-size: 0.875rem;
   font-style: italic;
 }
+
+.scoring-result__why {
+    margin: 0.4rem 0 0;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--color-text-muted);
+}
+
+.scoring-kitty { margin-top: 0.9rem; }
+
+.scoring-kitty h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-muted);
+}
+
+.scoring-kitty__cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.scoring-outcome {
+    margin: 0.8rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}

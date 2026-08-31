@@ -278,14 +278,25 @@ export default function GameBoard() {
     // ── Kitty discard ──
     if (isKittyPhase) {
       const blocked = isKittyDeclarer ? null : 'Only the trump declarer discards';
+      const buriedPoints = (myHand || [])
+        .filter(c => selectedCards.includes(c.id))
+        .reduce((n, c) => n + (c.points || 0), 0);
       return {
         status: isKittyDeclarer
           ? `${selCount} of 8 selected`
           : `Waiting for ${players.find(p => p.socketId === gameState.trumpDeclarer)?.name ?? 'the declarer'}…`,
+        // The bury is the highest-leverage decision in the round and the
+        // readout counted cards while ignoring points — a player buried 45
+        // points and was told only "8 of 8 selected", then paid 90 for it
+        // twenty-five tricks later.
         detail: isKittyDeclarer
-          ? (selCount === 8 ? 'Ready to bury' : 'Pick the 8 cards to bury in the kitty')
+          ? (buriedPoints > 0
+              ? `Burying ${buriedPoints} points — if the attackers take the last trick they collect these at 2× or more`
+              : (selCount === 8 ? 'Ready to bury — no points in the kitty' : 'Pick the 8 cards to bury in the kitty'))
           : 'They are burying 8 cards in the kitty',
-        detailTone: isKittyDeclarer && selCount === 8 ? 'good' : 'muted',
+        detailTone: isKittyDeclarer
+          ? (buriedPoints > 0 ? 'bad' : (selCount === 8 ? 'good' : 'muted'))
+          : 'muted',
         actions: [
           {
             key: 'discard',

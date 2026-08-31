@@ -427,6 +427,19 @@ class Room {
           roundOver:      !!result.roundOver,
           gameOver:       !!result.gameOver,
           attackingWon:   result.attackingWon,
+          // The round result has to travel with the round, or the modal cannot
+          // account for its own numbers: a player saw 65 pts on the board and
+          // 155 in the modal, with the 90-point kitty capture invisible.
+          roundResult:    result.roundOver ? {
+            attackingTeam:  result.attackingTeam,
+            attackingWon:   result.attackingWon,
+            threshold:      result.threshold,
+            tablePoints:    result.tablePoints,
+            kittyResult:    result.kittyResult,
+            levelsAdvanced: result.levelsAdvanced,
+            advancingTeam:  result.advancingTeam,
+            jackDemotion:   result.jackDemotion,
+          } : null,
           scores:         result.scores || this.game.scores,
           roundScores:    result.roundScores || this.game.roundScores,
           winnerTeam:     result.winner,

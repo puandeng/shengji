@@ -198,6 +198,8 @@ class GameLogger {
             const fate = kittyBonus === 0
                 ? 'protected by the declarers — their own bury, so it pays nobody'
                 : `+${kittyBonus} to the attackers — they captured the declarers' bury`;
+            // kittyPoints is now computed on every last trick, so a protected
+            // bury reports its real value instead of logging as 0pts.
             this.note(`      last trick: kitty ${kittyPoints}pts × ${kittyMultiplier} → ${fate}`);
         }
     }
