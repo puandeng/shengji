@@ -138,10 +138,17 @@ function isTractor(cards, trumpSuit, trumpRank) {
  * For non-trump cards: normal rank value (used for non-trump suit tractors).
  */
 function tractorValue(card, trumpSuit, trumpRank) {
-  if (!card.isTrump(trumpSuit, trumpRank)) return card.rankValue;
-
   const RANK_ORDER = require('./constants').RANK_ORDER;
   const trumpRankVal = (trumpRank !== null) ? (RANK_ORDER[trumpRank] || 0) : 0;
+
+  if (!card.isTrump(trumpSuit, trumpRank)) {
+    // The trump rank is missing from every side suit as well — those cards are
+    // trump, not part of the suit's sequence — so the ranks either side of it
+    // are adjacent. Without this shift, roughly one adjacency per side suit
+    // silently stopped being a tractor once the trump rank was 5 or higher.
+    const rv = card.rankValue;
+    return rv < trumpRankVal ? rv : rv - 1;
+  }
 
   if (card.isBigJoker)  return 1003;
   if (card.isSmallJoker) return 1002;
@@ -252,6 +259,12 @@ function beatsTrickEntry(challenger, current, leadShape, leadEffSuit, trumpSuit,
 
   // For throws: compare the pair components, then single components
   if (leadShape === 'throw') {
+    // The challenger has to answer with the same structure. Without this, three
+    // unmatched trumps took a throw off the table, because splitThrowComponents
+    // falls back to cards[0]/cards[1] when there is no genuine 1+2 split.
+    if (challenger.shape !== 'throw') return false;
+    if (current.shape !== 'throw')    return true;
+
     const chalComps = splitThrowComponents(challenger.cards, trumpSuit, trumpRank);
     const curComps  = splitThrowComponents(current.cards, trumpSuit, trumpRank);
     if (!chalComps || !curComps) return false;
@@ -276,6 +289,16 @@ function beatsTrickEntry(challenger, current, leadShape, leadEffSuit, trumpSuit,
  * Split a 3-card throw into its single and pair components.
  * Returns { singleCard, pairCard } where pairCard is one of the pair cards (for comparison).
  */
+/** How many matched pairs (same suit AND rank) a set of cards contains. */
+function countPairsIn(cards) {
+  const groups = {};
+  cards.forEach(c => {
+    const key = `${c.suit}_${c.rank}`;
+    groups[key] = (groups[key] || 0) + 1;
+  });
+  return Object.values(groups).reduce((n, count) => n + Math.floor(count / 2), 0);
+}
+
 function splitThrowComponents(cards, trumpSuit, trumpRank) {
   if (cards.length !== 3) return null;
 
@@ -1068,6 +1091,15 @@ class GameState {
     if (info.total >= n) {
       if (leadEntry.shape === 'pair' && info.pairCount > 0 && shape !== 'pair') {
         return { error: `A pair was led and you hold ${info.pairCount} ${this._suitPlural(leadEffSuit)} pair(s) — you must play one of them, not two odd cards.` };
+      }
+      // A follower who cannot form the tractor must still contribute as many
+      // pairs as the lead contains before resorting to loose singles.
+      if (leadEntry.shape === 'tractor' && info.tractorPairCount * 2 < n && info.pairCount > 0) {
+        const playedPairs = countPairsIn(playedCards);
+        const requiredPairs = Math.min(info.pairCount, n / 2);
+        if (playedPairs < requiredPairs) {
+          return { error: `A tractor was led. You hold ${info.pairCount} ${this._suitPlural(leadEffSuit)} pair(s) and must play ${requiredPairs} of them — you played ${playedPairs}.` };
+        }
       }
       if (leadEntry.shape === 'tractor' && info.tractorPairCount * 2 >= n && shape !== 'tractor') {
         return { error: `A tractor (${n / 2} consecutive pairs) was led and you can form one in ${this._suitPlural(leadEffSuit)} — you must play it.` };

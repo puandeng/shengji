@@ -681,3 +681,56 @@ describe('mandatory stops cannot be skipped by overshooting', () => {
     expect(advanceFrom('A', 200, ['2', 'A']).gameOver).toBe(true);
   });
 });
+
+describe('combo rules', () => {
+  function table(trumpSuit, trumpRank, hands) {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpSuit = trumpSuit;
+    game.trumpRank = trumpRank;
+    game.kitty = [];
+    game.hands = hands;
+    game.leadSeat = 0;
+    game.currentSeat = 0;
+    return game;
+  }
+
+  it('treats ranks either side of the trump rank as adjacent in a side suit', () => {
+    // Trump is spades with rank 5, so 5♥ is trump and 4♥/6♥ are neighbours.
+    const game = table('S', '5', {
+      p0: [new Card('H', '4', 0), new Card('H', '4', 1), new Card('H', '6', 0), new Card('H', '6', 1)],
+      p1: [], p2: [], p3: [],
+    });
+    expect(game.previewPlay('p0', game.hands.p0.map(c => c.id)).shape).toBe('tractor');
+  });
+
+  it('does not let three unmatched trumps beat a throw', () => {
+    const game = table('S', '2', {
+      p0: [new Card('H', 'A', 0), new Card('H', 'K', 0), new Card('H', 'K', 1)],
+      p1: [new Card('S', '3', 0), new Card('S', '4', 0), new Card('S', '9', 0)],
+      p2: [new Card('D', '3', 0), new Card('D', '4', 0), new Card('D', '5', 0)],
+      p3: [new Card('C', '3', 0), new Card('C', '4', 0), new Card('C', '5', 0)],
+    });
+    ['p0', 'p1', 'p2', 'p3'].forEach(id => game.playCards(id, game.hands[id].map(c => c.id)));
+    const winner = game.tricks[0].winner;
+    expect(game.getPlayer(winner).seatIndex).toBe(0);   // the thrower keeps it
+  });
+
+  it('makes a follower contribute their pair when a tractor is led', () => {
+    const game = table('S', '2', {
+      p0: [new Card('H', '5', 0), new Card('H', '5', 1), new Card('H', '6', 0), new Card('H', '6', 1)],
+      p1: [new Card('H', '9', 0), new Card('H', '9', 1), new Card('H', '7', 0), new Card('H', 'Q', 0), new Card('H', 'J', 0)],
+      p2: [], p3: [],
+    });
+    game.playCards('p0', game.hands.p0.map(c => c.id));
+
+    const h = game.hands.p1;
+    const broken = [h[0], h[2], h[3], h[4]].map(c => c.id);   // one 9 + three odd
+    const kept   = [h[0], h[1], h[2], h[3]].map(c => c.id);   // the pair + two odd
+
+    const refused = game.previewPlay('p1', broken);
+    expect(refused.legal).toBe(false);
+    expect(refused.reason).toMatch(/must play 1 of them/i);
+    expect(game.previewPlay('p1', kept).legal).toBe(true);
+  });
+});
