@@ -27,6 +27,7 @@ const INITIAL_STATE = {
   chatMessages:  [],
   devMode:       false,
   newCardIds:    [],       // Card IDs that were just drawn (for animation)
+  kittyCardIds:  [],       // the 8 cards the kitty gave the declarer, until buried
   completedTrick: null,
   trickWinner:    null,
   lastTrick:      null,    // { cards, winner } — survives the freeze so it can be reopened on demand
@@ -73,7 +74,14 @@ function reducer(state, action) {
       return {
         ...state,
         gameState: state.gameState
-          ? { ...state.gameState, currentTrick: action.payload.trick, currentSeat: action.payload.currentSeat }
+          ? {
+              ...state.gameState,
+              currentTrick: action.payload.trick,
+              currentSeat: action.payload.currentSeat,
+              // The legal set changes with every card played, so carry it here
+              // rather than leaving the dimming frozen at trick start.
+              playableCardIds: action.payload.playableCardIds ?? state.gameState.playableCardIds,
+            }
           : state.gameState,
         completedTrick: null,
       };
@@ -95,6 +103,12 @@ function reducer(state, action) {
 
     case 'SET_DEV_MODE':
       return { ...state, devMode: action.payload };
+
+    case 'SET_KITTY_CARDS':
+      return { ...state, kittyCardIds: action.payload };
+
+    case 'CLEAR_KITTY_CARDS':
+      return { ...state, kittyCardIds: [] };
 
     case 'SET_NEW_CARDS':
       return { ...state, newCardIds: action.payload };
@@ -259,6 +273,11 @@ export function GameProvider({ children }) {
       if (addedIds.length > 0) {
         dispatch({ type: 'SET_NEW_CARDS', payload: addedIds });
         setTimeout(() => dispatch({ type: 'CLEAR_NEW_CARDS' }), 1000);
+        // The draw animation lasted a second and then the 8 kitty cards were
+        // indistinguishable from the 25 you were dealt — so you could not tell
+        // what the kitty gave you, or put back what you had just taken. Mark
+        // them until the bury is submitted.
+        dispatch({ type: 'SET_KITTY_CARDS', payload: addedIds });
       }
 
       const finalSuit = gameState.trumpSuit ? suitLabel(gameState.trumpSuit) : 'no trump';
@@ -268,7 +287,10 @@ export function GameProvider({ children }) {
       dispatch({ type: 'SET_NOTIFICATION', payload: msg });
       setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
     });
-    on('game:kittyDiscarded', (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
+    on('game:kittyDiscarded', (gameState)        => {
+      dispatch({ type: 'GAME_STATE', payload: gameState });
+      dispatch({ type: 'CLEAR_KITTY_CARDS' });
+    });
     on('game:cardDealt',      (data)             => dispatch({ type: 'CARD_DEALT', payload: data }));
     on('game:dealComplete',   (gameState)        => dispatch({ type: 'DEAL_COMPLETE', payload: gameState }));
     on('game:dealPaused',     (data)             => dispatch({ type: 'DEAL_PAUSED', payload: data }));

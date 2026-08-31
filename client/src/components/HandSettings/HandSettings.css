@@ -128,3 +128,8 @@
         width: 162px;
     }
 }
+
+/* The sort toggle measured 18x22 — smaller than a fingertip. */
+@media (max-width: 480px) {
+    .hand-settings__toggle { min-width: 44px; min-height: 44px; }
+}

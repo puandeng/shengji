@@ -1,7 +1,10 @@
+/* The chat button is position:fixed over a grid area it knows nothing about,
+   so it sat on top of the hand — covering three cards, and overlapping the
+   hand-sort toggle. Lifted clear of the hand's own height. */
 .chat-panel {
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
+  bottom: calc(var(--hand-height, 130px) + 0.75rem);
+  right: 0.75rem;
   z-index: 40;
 }
 

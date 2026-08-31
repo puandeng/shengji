@@ -162,17 +162,24 @@ function setupGameHandlers(io, socket, registry) {
           setTimeout(() => room.scheduleBotPlay(), TRICK_DISPLAY_DELAY_MS);
         }
       } else {
-        io.to(room.code).emit('game:cardsPlayed', {
-          socketId:    socket.id,
-          cardIds,
-          cards:       result.cards || [],
-          shape:       result.shape || 'single',
-          currentSeat: room.game.currentSeat,
-          trick:       room.game.currentTrick.map(e => ({
-            socketId: e.socketId,
-            cards:    e.cards.map(c => c.toJSON()),
-            shape:    e.shape,
-          })),
+        // Per-player, not a room broadcast: the legal-follow set is different
+        // for each seat, and without it the client's card dimming stays frozen
+        // at whatever the legal set was when the trick opened.
+        const trickView = room.game.currentTrick.map(e => ({
+          socketId: e.socketId,
+          cards:    e.cards.map(c => c.toJSON()),
+          shape:    e.shape,
+        }));
+        room.game.players.forEach(p => {
+          io.to(p.socketId).emit('game:cardsPlayed', {
+            socketId:    socket.id,
+            cardIds,
+            cards:       result.cards || [],
+            shape:       result.shape || 'single',
+            currentSeat: room.game.currentSeat,
+            trick:       trickView,
+            playableCardIds: room.game.playableCardIds(p.socketId),
+          });
         });
         room.scheduleBotPlay();
       }

@@ -130,11 +130,13 @@ export default function Hand({
   newCardIds = [],
   capacity = 25,
   playableIds = null,
+  kittyIds = [],
 }) {
   const newIdSet = new Set(newCardIds);
   // Which cards can legally begin a play, straight from the server. Null means
   // "no restriction known", so nothing is dimmed.
   const playableSet = playableIds ? new Set(playableIds) : null;
+  const kittySet    = new Set(kittyIds);
   const [prefs, updatePrefs] = useHandPrefs();
   const narrow = useNarrowCards();
 
@@ -148,6 +150,9 @@ export default function Hand({
     const ro = new ResizeObserver(([entry]) => {
       const w = entry.contentRect.width;
       if (w > 0) setAvailWidth(w);
+      // Fixed overlays (chat) sit above the hand rather than on top of it.
+      const h = el.closest('.hand')?.getBoundingClientRect().height;
+      if (h) document.documentElement.style.setProperty('--hand-height', `${Math.round(h)}px`);
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -251,12 +256,14 @@ export default function Hand({
           const isTrumpCard   = isCardTrump(card, trumpSuit, trumpRank);
           const isDrawing     = newIdSet.has(card.id);
           const isUnplayable  = !!playableSet && !playableSet.has(card.id);
+          const fromKitty     = kittySet.has(card.id);
 
           const slotClasses = [
             'hand__card-slot',
             gutter       ? 'hand__card-slot--gutter'     : '',
             major        ? 'hand__card-slot--major'      : '',
             isUnplayable ? 'hand__card-slot--unplayable' : '',
+            fromKitty    ? 'hand__card-slot--kitty'       : '',
             isDrawing ? 'hand__card-slot--drawing'  : '',
           ].filter(Boolean).join(' ');
 

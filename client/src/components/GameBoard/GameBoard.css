@@ -89,12 +89,10 @@
   background: rgba(240, 192, 64, 0.1);
   border: 1px solid rgba(240, 192, 64, 0.3);
   border-radius: 8px;
-  animation: declare-glow 1.5s ease-in-out infinite alternate;
+  /* No infinite pulse here: this box is ~95% empty felt, and it was the only
+     animated thing on a board whose trick resolution had no motion at all. */
 }
 
-@keyframes declare-glow {
-  0%   { box-shadow: 0 0 4px rgba(240, 192, 64, 0.2); }
-  100% { box-shadow: 0 0 12px rgba(240, 192, 64, 0.4); }
 }
 
 .trump-declare__label {
