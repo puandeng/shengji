@@ -412,6 +412,7 @@ class GameState {
     this.players        = [];
     this.hands          = {};           // { socketId: Card[] }
     this.kitty          = [];           // Card[]
+    this.kittyResult    = null;         // revealed bury + arithmetic, set at round end
     this.trumpSuit      = null;
     this.trumpRank      = STARTING_LEVEL;
     this.trumpDeclarer  = null;
@@ -569,6 +570,7 @@ class GameState {
     this.tricks            = [];
     this.scores            = { 0: 0, 1: 0 };
     this.attackerPointPile = [];
+    this.kittyResult       = null;
     this.pointsPlayed      = 0;
 
     if (this.logger) {
@@ -1264,11 +1266,26 @@ class GameState {
     // team holds the last trick, the kitty is protected and pays nobody. The
     // declarer can therefore never profit from their own bury — burying point
     // cards is a risk, which is the whole tension of the discard.
-    if (isLastTrick && attackerWonTrick) {
+    if (isLastTrick) {
+      // Compute the kitty's value either way. It used to be calculated only
+      // inside the paying branch, so a bury worth 20 logged as "kitty 0pts"
+      // whenever the declarers held the last trick.
       kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
       kittyMultiplier = 2 * winnerEntry.cards.length;
-      kittyBonus      = kittyPoints * kittyMultiplier;
-      this.scores[this.attackingTeam] += kittyBonus;
+      if (attackerWonTrick) {
+        kittyBonus = kittyPoints * kittyMultiplier;
+        this.scores[this.attackingTeam] += kittyBonus;
+      }
+      // The round has to be able to explain its own arithmetic: a player saw
+      // 65 pts on the board and 155 in the modal with nothing accounting for
+      // the difference.
+      this.kittyResult = {
+        cards:      this.kitty.map(c => c.toJSON()),
+        points:     kittyPoints,
+        multiplier: kittyMultiplier,
+        bonus:      kittyBonus,
+        captured:   attackerWonTrick,
+      };
     }
 
     // Apply throw penalty
@@ -1460,6 +1477,8 @@ class GameState {
       levelsAdvanced,
       advancingTeam,
       jackDemotion,
+      kittyResult:    this.kittyResult,
+      tablePoints:    Math.max(0, attackingScore - ((this.kittyResult && this.kittyResult.bonus) || 0)),
       teamLevels:     { ...this.teamLevels },
       scores:         this.scores,
       roundScores:    this.roundScores,

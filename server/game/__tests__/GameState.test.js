@@ -734,3 +734,46 @@ describe('combo rules', () => {
     expect(game.previewPlay('p1', kept).legal).toBe(true);
   });
 });
+
+describe('the round explains its own arithmetic', () => {
+  function lastTrick(attackersWinIt) {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpSuit = 'S';
+    game.trumpRank = '2';
+    game.attackingTeam = 0;
+    game.scores = { 0: 100, 1: 0 };
+    game.kitty = [new Card('H', 'K', 0), new Card('D', 'K', 0)];   // 20 buried
+    const ace = new Card('H', 'A', 0);
+    const low = () => new Card('H', '3', 1);
+    game.hands = {
+      p0: [attackersWinIt ? ace : low()],
+      p1: [attackersWinIt ? low() : ace],
+      p2: [new Card('H', '4', 0)],
+      p3: [new Card('H', '6', 0)],
+    };
+    ['p0', 'p1', 'p2', 'p3'].forEach((id, i) => { game.hands[id][0].id = `k${i}`; });
+    game.leadSeat = 0;
+    game.currentSeat = 0;
+    let res;
+    ['p0', 'p1', 'p2', 'p3'].forEach((id, i) => { res = game.playCards(id, [`k${i}`]); });
+    return res;
+  }
+
+  it('reveals the buried cards and the multiplier when the attackers capture it', () => {
+    const res = lastTrick(true);
+    expect(res.kittyResult.captured).toBe(true);
+    expect(res.kittyResult.points).toBe(20);
+    expect(res.kittyResult.multiplier).toBe(2);
+    expect(res.kittyResult.bonus).toBe(40);
+    expect(res.kittyResult.cards).toHaveLength(2);
+    expect(res.tablePoints).toBe(100);          // score 140 minus the 40 bonus
+  });
+
+  it('still reports the kitty value when the declarers protect it', () => {
+    const res = lastTrick(false);
+    expect(res.kittyResult.captured).toBe(false);
+    expect(res.kittyResult.points).toBe(20);    // was reported as 0 before
+    expect(res.kittyResult.bonus).toBe(0);
+  });
+});
