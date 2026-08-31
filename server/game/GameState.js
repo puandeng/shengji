@@ -1339,6 +1339,19 @@ class GameState {
       })),
       winner:   winnerEntry.socketId,
       points:   pointsScored,
+      // A trick worth 25 points going to the defenders produced no words at
+      // all. The explanation already existed — it just went to the log file.
+      summary: (() => {
+        const who = winnerPlayer.name;
+        const role = attackerWonTrick ? 'attackers' : 'defenders';
+        if (trickPoints === 0) return `${who} takes the trick for the ${role} — no points on the table.`;
+        return attackerWonTrick
+          ? `${who} takes the trick for the attackers — ${trickPoints} points banked.`
+          : `${who} takes the trick for the defenders — ${trickPoints} points denied, since only the attackers score.`;
+      })(),
+      trickPoints,
+      credited: pointsScored,
+      winnerTeam: winnerPlayer.teamIndex,
     };
     this.tricks.push(completedTrick);
 

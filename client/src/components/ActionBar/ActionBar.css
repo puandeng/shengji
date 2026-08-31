@@ -1,12 +1,14 @@
+/* A three-column grid, not centred flex. Centring meant the buttons slid
+   sideways by however wide the readout happened to be — measured at 254px when
+   a refusal wrapped to three lines, dragging the whole board with it. The
+   readout now has its own column and the verbs never move. The reserved height
+   covers a three-line reason, so the bar does not grow either. */
 .action-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
   gap: 0.6rem;
-  flex-wrap: wrap;
-  /* Held at a constant height so the board does not shift every time a verb
-     becomes available or a reason appears. */
-  min-height: 2.4rem;
+  min-height: 3.1rem;
   padding: 0.15rem 0.5rem;
   max-width: 100%;
 }
@@ -19,9 +21,8 @@
   text-align: right;
   /* Server reasons are full sentences. Cap and wrap them here, or one long
      refusal pushes the buttons off the edge of the board. */
-  flex: 0 1 auto;
   min-width: 0;
-  max-width: min(60ch, 58vw);
+  justify-self: end;
 }
 
 .action-bar__status {
@@ -101,3 +102,8 @@
 
   .action-bar__ghost { font-size: 0.62rem; }
 }
+
+/* Actions hold the centre column; the aside trails in the third so neither can
+   push the primary verb off its position. */
+.action-bar__actions { justify-self: center; }
+.action-bar__aside   { justify-self: start; min-width: 0; }
