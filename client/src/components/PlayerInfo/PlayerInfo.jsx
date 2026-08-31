@@ -4,7 +4,10 @@ import './PlayerInfo.css';
 
 const TEAM_COLORS = ['var(--color-team0)', 'var(--color-team1)'];
 
-export default function PlayerInfo({ player, cardCount = 0, isActive, trumpSuit, attackingTeam, vertical }) {
+// No cardCount here on purpose: every player plays the lead count every trick,
+// so all four hands are always equal and a per-seat number says nothing. The
+// single "cards left" figure lives on the round line instead.
+export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam, vertical }) {
   if (!player) {
     return (
       <div className={`player-info player-info--empty ${vertical ? 'player-info--vertical' : ''}`}>
