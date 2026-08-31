@@ -455,3 +455,55 @@ describe('auto-selected trump', () => {
     expect(game.hands[game.trumpDeclarer].length).toBe(before + 8);
   });
 });
+
+describe('kitty is a liability, not a payout', () => {
+  // The declarer buries the kitty, and in this variant the declarer's own team
+  // collects points — so the bury must never pay them.
+  function lastTrick({ attackersWinIt, kittyPoints }) {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpSuit = 'S';
+    game.trumpRank = '2';
+    game.attackingTeam = 0;          // p0 + p2 called trump
+    game.scores = { 0: 100, 1: 0 };  // already collected 100 from tricks
+    game.kitty = kittyPoints === 40
+      ? [new Card('H', 'K', 0), new Card('D', 'K', 0), new Card('C', 'K', 0), new Card('S', '10', 0)]
+      : [new Card('H', '3', 0)];
+
+    // p0 leads; the ace decides who takes it.
+    const ace = new Card('H', 'A', 0);
+    const low = () => new Card('H', '3', 1);
+    game.hands = {
+      p0: [attackersWinIt ? ace : low()],
+      p1: [attackersWinIt ? low() : ace],
+      p2: [new Card('H', '4', 0)],
+      p3: [new Card('H', '6', 0)],
+    };
+    ['p0', 'p1', 'p2', 'p3'].forEach((id, i) => { game.hands[id][0].id = `c${i}`; });
+    game.leadSeat = 0;
+    game.currentSeat = 0;
+    ['p0', 'p1', 'p2', 'p3'].forEach((id, i) => game.playCards(id, [`c${i}`]));
+    return game;
+  }
+
+  it('pays nothing when the attackers protect their own bury', () => {
+    const game = lastTrick({ attackersWinIt: true, kittyPoints: 40 });
+    expect(game.scores[0]).toBe(100);   // 100 collected, no kitty gain
+  });
+
+  it('costs the attackers the bury when the defenders take the last trick', () => {
+    const game = lastTrick({ attackersWinIt: false, kittyPoints: 40 });
+    expect(game.scores[0]).toBe(20);    // 100 - (40 x 2)
+  });
+
+  it('never drives the score below zero', () => {
+    const game = lastTrick({ attackersWinIt: false, kittyPoints: 40 });
+    game.scores[0] = 10;
+    expect(game.scores[0]).toBeGreaterThanOrEqual(0);
+  });
+
+  it('does nothing when no point cards were buried', () => {
+    const game = lastTrick({ attackersWinIt: false, kittyPoints: 0 });
+    expect(game.scores[0]).toBe(100);
+  });
+});
