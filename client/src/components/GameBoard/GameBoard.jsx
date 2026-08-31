@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useGame } from '../../context/GameContext';
 import { suitLabel } from '../../suits';
 import Card from '../Card/Card';
@@ -40,14 +40,19 @@ export default function GameBoard() {
   // so without measuring, a four-card trick overflows the row on a short window
   // and paints over the ladder below it. Measure the row itself, not the centre
   // column: the column is sized by its own content, which would be circular.
-  const sidesRef = useRef(null);
   const [sidesHeight, setSidesHeight] = useState(0);
-  useEffect(() => {
-    const el = sidesRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
+  const roRef = useRef(null);
+  // A callback ref, not useRef + useEffect([]): the effect ran once against
+  // whichever node existed at mount, so when React swapped the row's node the
+  // observer kept watching a detached element and the height stayed at its
+  // initial 0 — which pinned the trick at its smallest size forever.
+  const sidesRef = useCallback(node => {
+    if (roRef.current) { roRef.current.disconnect(); roRef.current = null; }
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    setSidesHeight(node.getBoundingClientRect().height);
     const ro = new ResizeObserver(([entry]) => setSidesHeight(entry.contentRect.height));
-    ro.observe(el);
-    return () => ro.disconnect();
+    ro.observe(node);
+    roRef.current = ro;
   }, []);
 
   // On a short window the row above eats the trick's space with a decorative
