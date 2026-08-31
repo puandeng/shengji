@@ -8,6 +8,31 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 
 ## Open
 
+### From the three-lens UX audit — implemented
+All findings from the review are addressed. Highlights, with the evidence that they were real:
+
+- [x] **Mandatory stops were skippable.** `advanceLevel` returned "match won" before scanning, so Q+3 took the match past K and A. Now Q+3 stops at K, K+2 at A; a team already at A still wins.
+- [x] **Jack demotion punished the wrong team** after the role swap — it keyed off `attackingTeam` and could only fire in rounds that were not J rounds.
+- [x] **The level ladder was one step generous** at every attacker band versus the ladder documented here. Making the threshold now takes the bank and earns no level.
+- [x] **Three combo rules**: side-suit tractors ignored the trump-rank gap; a scattered ruff beat a throw; followers could break pairs against a tractor lead.
+- [x] **Round-2 trump calling**: an opponent could name the declarer's suit, and the board captioned the declarer's name over cards somebody else revealed.
+- [x] **Bots played by array position.** They buried their own jokers and points every round, trumped their partner's winners, never led a pair, and called no-trump reflexively. All four fixed; verified a live bury of `S3 C6 S7 C8 C9 CJ SJ CQ` — no trump, no jokers, no points.
+- [x] **The hand took two rows** and starved the trick. One row now; sides 255→379px, trick cards 42×60→62×88. The row-height ResizeObserver was also attached to a stale node, pinning the trick at its smallest size regardless.
+- [x] **Type had no scale**: 22 chrome styles, 11 under 11px, largest label 13.6px. Now 5 sizes, none under 12px, score at 24px. `--color-text-muted` failed AA on felt (3.47:1) and was fixed.
+- [x] **Legality was invisible.** Cards that cannot follow are dimmed, driven by a server-computed set; the mid-trick broadcasts now carry it per seat.
+- [x] **The kitty was invisible at both ends** — no point total while burying, no reveal when it swung the round by 90.
+- [x] **The action bar moved 254px** when a refusal wrapped. Pinned to a grid.
+- [x] Point badge moved off the occluded corner; roles no longer shown before they exist; no-trump rounds no longer read "Waiting for trump declaration…" for 25 tricks; trick results are narrated; in-game help panel added; tap targets meet 24px (44px mobile).
+
+### Still open
+- [ ] **Trick review has no seat attribution** — the last-trick panel shows four cards without saying who played what.
+- [ ] **Lobby polish** — team panels are 162px and 154px tall so their bottoms do not align; the room code uses a face that appears nowhere else.
+- [ ] **Button styles have not been consolidated** — four styles at three heights remain.
+- [ ] **Cards are not keyboard reachable.** They are `div`s with `onClick`; the accessibility tree contains no cards.
+- [ ] **Round 2+ has never been played to completion.** The handover now has unit tests, but no full two-round game has been observed end to end.
+
+
+
 ### Kitty bury
 - [x] **The bury mechanism already existed** — `giveKittyToDeclarer()` takes the declarer 25 → 33, `discardToKitty()` takes 8 cards of their choosing back to 25, gated to the declarer and to exactly 8. Three tests now pin it, including that the buried cards are the ones chosen and that they leave the hand.
 - [x] **Humans practically never became declarer, so nobody ever saw it.** Bots called 700ms into a 5s window (`BOT_PLAY_DELAY_MS * (i+1)`), and since an equal-strength call never overrides, any bot holding a trump-rank card declared before a human could finish reading their hand. Bots now deliberate `BOT_CALL_REACTION_MS` (2500ms) before calling, leaving the human first refusal; a bot can still override with a genuinely stronger call.
