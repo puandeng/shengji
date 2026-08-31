@@ -8,6 +8,7 @@ import PlayerInfo from '../PlayerInfo/PlayerInfo';
 import TrumpBanner from '../TrumpBanner/TrumpBanner';
 import ScoreLadder from '../ScoreLadder/ScoreLadder';
 import ActionBar from '../ActionBar/ActionBar';
+import HelpPanel from '../HelpPanel/HelpPanel';
 import usePlayPreview from './usePlayPreview';
 import { isMuted, setMuted } from '../../sounds';
 import './GameBoard.css';
@@ -16,7 +17,7 @@ import './GameBoard.css';
 export default function GameBoard() {
   const {
     gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards,
-    previewPlay, error, newCardIds, completedTrick, trickWinner, trickSummary, trickCredited, lastTrick, dealPause,
+    previewPlay, error, newCardIds, completedTrick, trickWinner, trickSummary, trickCredited, lastTrick, dealPause, kittyCardIds,
   } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
   const [secondsLeft, setSecondsLeft]     = useState(0);
@@ -432,6 +433,8 @@ export default function GameBoard() {
         {muted ? '🔇' : '🔊'}
       </button>
 
+      <HelpPanel trumpRank={trumpRank} threshold={thresh} />
+
       <TrumpBanner
         trumpSuit={trumpSuit}
         trumpRank={trumpRank}
@@ -650,6 +653,7 @@ export default function GameBoard() {
         newCardIds={newCardIds}
         capacity={Math.round((gameState.dealTotal || 100) / (players.length || 4))}
         playableIds={isMyTurn && !showTrickDisplay ? gameState.playableCardIds : null}
+        kittyIds={isKittyPhase ? kittyCardIds : []}
       />
     </div>
   );

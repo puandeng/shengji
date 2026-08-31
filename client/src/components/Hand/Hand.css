@@ -212,3 +212,10 @@
 .hand__cards > .hand__card-slot--unplayable .card:hover {
     transform: none;
 }
+
+/* The 8 cards the kitty just handed you, marked until the bury is submitted —
+   otherwise they are indistinguishable from the 25 you were dealt and you
+   cannot put back what you just took. */
+.hand__cards > .hand__card-slot--kitty .card {
+    box-shadow: 0 0 0 2px var(--color-gold), 0 2px 8px rgba(0, 0, 0, 0.45);
+}

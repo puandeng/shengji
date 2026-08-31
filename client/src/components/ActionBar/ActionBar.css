@@ -107,3 +107,28 @@
    push the primary verb off its position. */
 .action-bar__actions { justify-self: center; }
 .action-bar__aside   { justify-self: start; min-width: 0; }
+
+/* Tap targets. Measured at 43x21 for the primary verb on mobile and 51x24 on
+   desktop — under WCAG 2.2's 24x24 floor everywhere, and about a fifth of the
+   44x44 iOS target on a phone. */
+.action-bar__btn {
+    min-height: 32px;
+    min-width: 64px;
+}
+
+@media (max-width: 480px) {
+    .action-bar__btn {
+        min-height: 44px;
+        min-width: 72px;
+        font-size: var(--text-sm);
+    }
+
+    .action-bar {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 0.35rem;
+    }
+
+    .action-bar__readout,
+    .action-bar__actions,
+    .action-bar__aside { justify-self: center; }
+}

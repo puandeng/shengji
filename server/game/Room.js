@@ -458,6 +458,10 @@ class Room {
             card:     e.cards[0]?.toJSON(),
             shape:    e.shape,
           })),
+          // Which of this player's cards can legally follow what is now on the
+          // table. Without it the client only learned the legal set at the
+          // start of a trick, so the dimming never updated as the trick filled.
+          playableCardIds: this.game.playableCardIds(p.socketId),
         });
       });
     }
