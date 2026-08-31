@@ -24,6 +24,35 @@ All findings from the review are addressed. Highlights, with the evidence that t
 - [x] **The action bar moved 254px** when a refusal wrapped. Pinned to a grid.
 - [x] Point badge moved off the occluded corner; roles no longer shown before they exist; no-trump rounds no longer read "Waiting for trump declaration…" for 25 tricks; trick results are narrated; in-game help panel added; tap targets meet 24px (44px mobile).
 
+### AI agent (planned)
+The playing logic is to be learned rather than hand-written; `BotPlayer` is a
+placeholder. Division of labour:
+
+- **Logs are for reviewing games**, not for training. `logs/*.jsonl` records who
+  acted (`isBot`), the actor's hand, the legal subset the rules allowed, and the
+  action taken — enough to ask "why that card" of any decision after the fact.
+- **The simulator is for learning the rules and strategy.** `server/game/GameState.js`
+  is already a complete, deterministic, I/O-free engine, so self-play runs at
+  process speed rather than being gated on animation delays and bot timers, and
+  reaches positions no logged game ever will.
+
+- [ ] **Headless self-play harness.** A seeded runner that plays N games in-process
+  against `GameState` (no sockets, no delays) and emits transitions — state, legal
+  action mask, action, reward. `GameState.playableCardIds()` already provides the
+  mask; `_finishRound()` provides the reward via `levelBands()`.
+- [ ] **Reproducibility.** `Deck` shuffles without a seed today, so a run cannot be
+  replayed exactly. Thread a seed through `deal()` before generating training data.
+- [ ] **Then swap `BotPlayer` for the learned policy** behind the same interface
+  (`chooseLegalCards`, `chooseTrumpCall`, `chooseKittyDiscard`), so dev mode and
+  disconnect auto-play pick it up unchanged.
+
+**Prerequisite, and the reason ordering matters:** an agent trained against a wrong
+engine learns the wrong game. Three combo rules were broken until this week (a
+scattered ruff beat a throw, side-suit tractors ignored the trump-rank gap,
+followers could break pairs against a tractor lead) and the level ladder could skip
+mandatory stops. Rules correctness should be considered settled — and covered by
+tests — before any training run is worth the compute.
+
 ### Still open
 - [ ] **Trick review has no seat attribution** — the last-trick panel shows four cards without saying who played what.
 - [ ] **Lobby polish** — team panels are 162px and 154px tall so their bottoms do not align; the room code uses a face that appears nowhere else.
