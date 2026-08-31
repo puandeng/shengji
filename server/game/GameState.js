@@ -25,19 +25,24 @@ const {
  * Returns null if the team has won (levelled past A).
  */
 function advanceLevel(currentLevel, steps, visitedRanks = new Set()) {
-  const idx = LEVEL_ORDER.indexOf(currentLevel);
-  let newIdx = idx + steps;
-  if (newIdx >= LEVEL_ORDER.length) return null; // Past A → team wins
+  const idx  = LEVEL_ORDER.indexOf(currentLevel);
+  const last = LEVEL_ORDER.length - 1;
 
-  for (let i = idx + 1; i < newIdx; i++) {
+  // Scan for a mandatory stop BEFORE deciding the advance overshoots the top.
+  // Returning early on overshoot let a big win at Q skip straight past K and A
+  // and take the match — the stops exist precisely to force a win *at* A.
+  // Clamp to the last rank so the scan covers every rank actually passed.
+  let newIdx = Math.min(idx + steps, last + 1);
+  const scanTo = Math.min(newIdx, last);
+
+  for (let i = idx + 1; i <= scanTo; i++) {
     const rank = LEVEL_ORDER[i];
     if (MANDATORY_STOP_RANKS.has(rank) && !visitedRanks.has(rank)) {
-      newIdx = i;
-      break;
+      return LEVEL_ORDER[i];
     }
   }
 
-  if (newIdx >= LEVEL_ORDER.length) return null;
+  if (newIdx > last) return null; // Past A with no unvisited stop → team wins
   return LEVEL_ORDER[newIdx];
 }
 
@@ -348,6 +353,8 @@ function shapeLabel(cards, shape) {
 
 // Level gains step every 40 points either side of the round threshold, so the
 // whole ladder slides when the threshold does (80 for levels 2–K, 120 at A).
+const CALL_NAMES = { 1: 'single trump-rank card', 2: 'pair of trump-rank cards', 3: 'joker pair' };
+
 const BAND_WIDTH = 40;
 
 // ─────────────────────────────────────────────
@@ -387,6 +394,7 @@ class GameState {
     this.trumpDeclarer  = null;
     this.trumpCallStrength = 0;         // 0=none, 1=single, 2=pair (for bidding mechanic)
     this.trumpDeclareCards = [];        // Card objects shown during trump declaration
+    this.trumpCallerSeat   = null;      // seat that revealed them (≠ declarer in rounds 2+)
     this.attackingTeam  = 0;
     this.kittyPickerSeat = null;       // Pre-determined kitty picker (null = first round, use trump caller)
     this.teamLevels     = { 0: STARTING_LEVEL, 1: STARTING_LEVEL };
@@ -529,6 +537,7 @@ class GameState {
     this.trumpDeclarer     = null;
     this.trumpCallStrength = 0;
     this.trumpDeclareCards = [];
+    this.trumpCallerSeat   = null;
     this.trumpPasses       = new Set();
     this.dealWindowPasses  = new Set();
     this.dealWindowIndex   = 0;
@@ -659,14 +668,37 @@ class GameState {
     }
 
     if (strength <= this.trumpCallStrength) {
-      return { error: `Call strength ${strength} does not override current call (strength ${this.trumpCallStrength})` };
+      const beats = strength === 1
+        ? 'A pair of trump-rank cards in one suit, or a matched joker pair, would take it.'
+        : strength === 2
+          ? 'Only a matched joker pair beats a pair.'
+          : 'A joker pair is the highest call there is.';
+      return {
+        error: this.trumpCallStrength === strength
+          ? `A ${CALL_NAMES[strength]} already stands and the first caller keeps it. ${beats}`
+          : `A ${CALL_NAMES[this.trumpCallStrength]} already stands, which beats your ${CALL_NAMES[strength]}. ${beats}`,
+      };
+    }
+
+    const caller = this.getPlayer(socketId);
+
+    // From round 2 the declarer is pre-assigned, and the rank being played is
+    // their team's level. Letting an opponent name the suit would hand the
+    // declarer whichever trump they are weakest in — no ruleset allows it.
+    if (this.kittyPickerSeat !== null) {
+      const declarer = this.getPlayer(this.trumpDeclarer);
+      if (declarer && caller.teamIndex !== declarer.teamIndex) {
+        return { error: 'Only the declaring team names trump this round — they are defending their own level.' };
+      }
     }
 
     this.trumpSuit         = suit;
     this.trumpCallStrength = strength;
     this.trumpDeclareCards = cards.map(c => c.toJSON());
-
-    const caller = this.getPlayer(socketId);
+    // Who actually revealed the cards, which is not always the declarer from
+    // round 2 onward — the board used to caption the declarer's name over
+    // somebody else's cards.
+    this.trumpCallerSeat   = caller.seatIndex;
 
     // Round 1: the trump caller becomes the declarer. Declaring means
     // *defending* — they take the kitty and deny points — so the attacking
@@ -1253,9 +1285,14 @@ class GameState {
       { min: 0,                  max: 0,                      team: 'defenders', levels: 3 },
       { min: 1,                  max: t - BAND_WIDTH - 1,     team: 'defenders', levels: 2 },
       { min: t - BAND_WIDTH,     max: t - 1,                  team: 'defenders', levels: 1 },
-      { min: t,                  max: t + BAND_WIDTH - 1,     team: 'attackers', levels: 1 },
-      { min: t + BAND_WIDTH,     max: t + 2 * BAND_WIDTH - 1, team: 'attackers', levels: 2 },
-      { min: t + 2 * BAND_WIDTH, max: TOTAL_POINTS,           team: 'attackers', levels: 3 },
+      // Making the threshold takes the bank but earns no level — the attackers
+      // become the declarers and that is the reward. Levels come from the
+      // margin above it. Every attacker band used to be one step generous,
+      // which contradicted the ladder documented in PLAN.md.
+      { min: t,                  max: t + BAND_WIDTH - 1,     team: 'attackers', levels: 0 },
+      { min: t + BAND_WIDTH,     max: t + 2 * BAND_WIDTH - 1, team: 'attackers', levels: 1 },
+      { min: t + 2 * BAND_WIDTH, max: t + 3 * BAND_WIDTH - 1, team: 'attackers', levels: 2 },
+      { min: t + 3 * BAND_WIDTH, max: TOTAL_POINTS,           team: 'attackers', levels: 3 },
     ]
       .map(b => ({ ...b, max: Math.min(b.max, TOTAL_POINTS) }))
       .filter(b => b.min <= b.max);
@@ -1284,19 +1321,28 @@ class GameState {
     const advancingTeam  = attackingWon ? this.attackingTeam : defendingTeam;
     const levelsAdvanced = band.levels;
 
-    // Jack demotion: if attackers are at level J and defenders won the last
-    // trick with a Jack card, attackers are demoted back to level 2.
+    // Jack demotion. The rank being played is the DECLARING team's level, so a
+    // "J round" is trumpRank === 'J'. If the attackers take the last trick with
+    // a Jack, the declaring team is knocked back to the starting level.
+    //
+    // This previously keyed off teamLevels[attackingTeam] and demoted the
+    // attackers — correct only while attackingTeam meant the declarer, before
+    // the roles were swapped. It could fire in rounds that were not J rounds
+    // and never fired in ones that were.
     let jackDemotion = false;
-    if (!attackingWon && this.teamLevels[this.attackingTeam] === 'J') {
+    if (this.trumpRank === 'J') {
       const lastTrick = this.tricks[this.tricks.length - 1];
       if (lastTrick) {
         const lastWinner = this.getPlayer(lastTrick.winner);
-        if (lastWinner && lastWinner.teamIndex !== this.attackingTeam) {
+        if (lastWinner && lastWinner.teamIndex === this.attackingTeam) {
           const winnerPlay = lastTrick.cards.find(e => e.socketId === lastTrick.winner);
           const hasJack = winnerPlay && winnerPlay.cards.some(c => c.rank === 'J');
           if (hasJack) {
             jackDemotion = true;
-            this.teamLevels[this.attackingTeam] = STARTING_LEVEL;
+            this.teamLevels[defendingTeam] = STARTING_LEVEL;
+            // A demotion that leaves the visited stops behind is nearly free —
+            // the team would re-skip 5/10/K on the way back up.
+            this.visitedRanks[defendingTeam] = new Set([STARTING_LEVEL]);
           }
         }
       }
@@ -1368,6 +1414,7 @@ class GameState {
       trumpSuit:         this.trumpSuit,
       trumpRank:         this.trumpRank,
       trumpDeclarer:     this.trumpDeclarer,
+      trumpCallerSeat:   this.trumpCallerSeat,
       trumpCallStrength: this.trumpCallStrength,
       trumpDeclareCards: this.trumpDeclareCards,
       attackingTeam:     this.attackingTeam,

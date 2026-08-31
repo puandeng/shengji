@@ -196,8 +196,8 @@ class GameLogger {
         if (throwPenalty) this.note(`      throw penalty applied: ${throwPenalty > 0 ? '+' : ''}${throwPenalty}`);
         if (isLastTrick) {
             const fate = kittyBonus === 0
-                ? 'protected by attackers (no gain — it was their own bury)'
-                : `${kittyBonus} to attackers — captured by defenders`;
+                ? 'protected by the declarers — their own bury, so it pays nobody'
+                : `+${kittyBonus} to the attackers — they captured the declarers' bury`;
             this.note(`      last trick: kitty ${kittyPoints}pts × ${kittyMultiplier} → ${fate}`);
         }
     }

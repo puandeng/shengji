@@ -183,6 +183,9 @@ export default function GameBoard() {
 
   // Point pile summary
   const pileTotal = (attackerPointPile || []).reduce((s, c) => s + (c.points || 0), 0);
+  // The authoritative round score: captured cards plus the kitty capture and any
+  // throw penalty. pileTotal is only the visible pile of cards.
+  const attackerScore = scores?.[attackingTeam] ?? pileTotal;
   const thresh    = threshold ?? 80;
   const myRole    = attackingTeam == null
     ? null
@@ -432,7 +435,11 @@ export default function GameBoard() {
       {(trumpDeclareCards || []).length > 0 && (isTrumpPhase) && (
         <div className="gameboard__trump-declare">
           <span className="trump-declare__label">
-            {players.find(p => p.socketId === gameState.trumpDeclarer)?.name ?? 'Player'} declared:
+            {/* The revealer, not the declarer. From round 2 the declarer is
+                pre-assigned to the kitty picker, so captioning their name over
+                somebody else's cards credited the call to the wrong player. */}
+            {(players.find(p => p.seatIndex === gameState.trumpCallerSeat)
+              ?? players.find(p => p.socketId === gameState.trumpDeclarer))?.name ?? 'Player'} called:
           </span>
           <div className="trump-declare__cards">
             {trumpDeclareCards.map((card, i) => (
@@ -556,8 +563,11 @@ export default function GameBoard() {
         {/* Where the round stands: every level band, not a bar to one threshold */}
         {(phase === 'PLAYING' || showTrickDisplay) && (
           <div className="gameboard__point-pile">
+            {/* score is the authoritative round score, not pileTotal: it also
+                carries the kitty capture and the throw penalty, so the pile
+                alone could sit a whole band away from how the round resolves. */}
             <ScoreLadder
-              score={pileTotal}
+              score={attackerScore}
               bands={levelBands}
               threshold={thresh}
               pointsRemaining={pointsRemaining}
