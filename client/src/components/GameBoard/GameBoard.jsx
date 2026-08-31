@@ -427,7 +427,12 @@ export default function GameBoard() {
           isAttacking={attackingTeam === 0}
           teamIdx={0}
         />
-        <span className="gameboard__round">Round {gameState.roundNumber || 1}</span>
+        <span className="gameboard__round">
+          Round {gameState.roundNumber || 1}
+          {(myHand || []).length > 0 && phase === 'PLAYING' && (
+            <> · {(myHand || []).length} card{(myHand || []).length === 1 ? '' : 's'} left</>
+          )}
+        </span>
         <LevelCard
           label="Team 2"
           level={gameState.teamLevels?.[1] ?? '2'}
@@ -613,6 +618,7 @@ export default function GameBoard() {
         maxSelection={handMaxSel}
         newCardIds={newCardIds}
         capacity={Math.round((gameState.dealTotal || 100) / (players.length || 4))}
+        playableIds={isMyTurn && !showTrickDisplay ? gameState.playableCardIds : null}
       />
     </div>
   );

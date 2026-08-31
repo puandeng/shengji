@@ -82,6 +82,18 @@
 .ladder__band--current.ladder__band--defenders { background: rgba(66, 165, 245, 0.75); }
 .ladder__band--current.ladder__band--attackers { background: rgba(239, 83, 80, 0.75); }
 
+/* Which half of the ladder is YOURS. The class was applied in JSX but had no
+   rule at all, so the one cue that makes the ladder readable never rendered —
+   six bands of +3 +2 +1 +1 +2 +3 with nothing saying which end you want. */
+.ladder__band--mine {
+  box-shadow: inset 0 2px 0 var(--color-gold);
+}
+
+.ladder__band--mine .ladder__band-level {
+  color: var(--color-gold);
+  font-weight: 800;
+}
+
 .ladder__band--current {
   opacity: 1;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);

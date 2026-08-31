@@ -1173,6 +1173,31 @@ class GameState {
   }
 
   /**
+   * Which of this player's cards could begin a legal play right now.
+   *
+   * The client had no way to show legality on the cards themselves, so every
+   * illegal card looked exactly as playable as a legal one and the rules were
+   * taught only by a refusal after the fact. Computed here rather than on the
+   * client: a second copy of the follow-suit rule would drift.
+   */
+  playableCardIds(socketId) {
+    const hand = this.hands[socketId] || [];
+    const all  = hand.map(c => c.id);
+    if (this.phase !== GAME_PHASES.PLAYING) return all;
+    if (this.currentTrick.length === 0) return all;          // leading: anything
+
+    const leadEntry   = this.currentTrick[0];
+    const n           = leadEntry.cards.length;
+    const leadEffSuit = leadEntry.cards[0].effectiveSuit(this.trumpSuit, this.trumpRank);
+    const suitCards   = hand.filter(c => c.effectiveSuit(this.trumpSuit, this.trumpRank) === leadEffSuit);
+
+    // Holding enough of the lead suit, the play must come entirely from it.
+    // Holding some but not enough, the rest is filled with anything, so every
+    // card can legitimately appear in the play.
+    return suitCards.length >= n ? suitCards.map(c => c.id) : all;
+  }
+
+  /**
    * Who is currently winning the partial trick, or null if nobody has played.
    * Bots need this to tell "my partner is taking it" from "the opponents are",
    * which is the difference between feeding points and hoarding them.
@@ -1487,6 +1512,8 @@ class GameState {
 
   toPlayerJSON(socketId) {
     const full = this.toFullJSON();
+    // Per-player by definition — it is derived from this player's own hand.
+    full.playableCardIds = this.playableCardIds(socketId);
 
     if (this.phase === GAME_PHASES.DEALING) {
       full.myHand     = this.getDealtHand(socketId).map(c => c.toJSON());

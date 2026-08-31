@@ -129,8 +129,12 @@ export default function Hand({
   onPlaySelected,
   newCardIds = [],
   capacity = 25,
+  playableIds = null,
 }) {
   const newIdSet = new Set(newCardIds);
+  // Which cards can legally begin a play, straight from the server. Null means
+  // "no restriction known", so nothing is dimmed.
+  const playableSet = playableIds ? new Set(playableIds) : null;
   const [prefs, updatePrefs] = useHandPrefs();
   const narrow = useNarrowCards();
 
@@ -246,11 +250,13 @@ export default function Hand({
           const isHighlighted = card.points > 0;
           const isTrumpCard   = isCardTrump(card, trumpSuit, trumpRank);
           const isDrawing     = newIdSet.has(card.id);
+          const isUnplayable  = !!playableSet && !playableSet.has(card.id);
 
           const slotClasses = [
             'hand__card-slot',
-            gutter    ? 'hand__card-slot--gutter'   : '',
-            major     ? 'hand__card-slot--major'    : '',
+            gutter       ? 'hand__card-slot--gutter'     : '',
+            major        ? 'hand__card-slot--major'      : '',
+            isUnplayable ? 'hand__card-slot--unplayable' : '',
             isDrawing ? 'hand__card-slot--drawing'  : '',
           ].filter(Boolean).join(' ');
 
