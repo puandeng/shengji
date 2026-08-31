@@ -507,3 +507,62 @@ describe('kitty is a liability, not a payout', () => {
     expect(game.scores[0]).toBe(100);
   });
 });
+
+describe('kitty bury — the declarer swaps 8 cards', () => {
+  it('gives the declarer the kitty, then takes back 8 of their choosing', () => {
+    const game = createReadyGame();
+    game.deal();
+    game.finishDealing();
+
+    // p1 calls trump, so p1 is the declarer (a human here, not a bot).
+    const rankCard = game.hands['p1'].find(c => c.rank === game.trumpRank && !c.isJoker);
+    if (rankCard) {
+      expect(game.callTrump('p1', [rankCard.id]).success).toBe(true);
+    }
+    game.finishTrumpSelection();
+
+    const declarer = game.trumpDeclarer;
+    expect(declarer).not.toBeNull();
+    expect(game.hands[declarer]).toHaveLength(25);
+
+    // Picking up the kitty takes the hand to 33.
+    expect(game.giveKittyToDeclarer().error).toBeUndefined();
+    expect(game.hands[declarer]).toHaveLength(33);
+
+    // The declarer chooses which 8 go back — here, the 8 highest-point cards,
+    // which is exactly the choice the kitty rule has to make risky.
+    const chosen = [...game.hands[declarer]]
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 8);
+    const chosenIds = chosen.map(c => c.id);
+
+    expect(game.discardToKitty(declarer, chosenIds).error).toBeUndefined();
+    expect(game.hands[declarer]).toHaveLength(25);
+    expect(game.phase).toBe('PLAYING');
+
+    // The buried cards are the ones the declarer picked, and they left the hand.
+    expect(game.kitty.map(c => c.id).sort()).toEqual(chosenIds.sort());
+    chosenIds.forEach(id => {
+      expect(game.hands[declarer].some(c => c.id === id)).toBe(false);
+    });
+  });
+
+  it('refuses a bury that is not exactly 8 cards', () => {
+    const game = createPlayingGame('S', '2');
+    game.phase = 'KITTY';
+    const declarer = game.trumpDeclarer;
+    const ids = game.hands[declarer].slice(0, 7).map(c => c.id);
+    expect(game.discardToKitty(declarer, ids).error).toMatch(/exactly 8/);
+  });
+
+  it('refuses a bury from anyone but the declarer', () => {
+    const game = createReadyGame();
+    game.deal();
+    game.finishDealing();
+    game.finishTrumpSelection();
+    game.giveKittyToDeclarer();
+    const notDeclarer = game.players.find(p => p.socketId !== game.trumpDeclarer).socketId;
+    const ids = game.hands[notDeclarer].slice(0, 8).map(c => c.id);
+    expect(game.discardToKitty(notDeclarer, ids).error).toMatch(/declarer/i);
+  });
+});

@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const GameState = require('./GameState');
 const BotPlayer = require('./BotPlayer');
 const { GameLogger } = require('./GameLogger');
-const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, DEAL_PAUSE_EVERY_CARDS, DEAL_PAUSE_MS, DEAL_PAUSE_MIN_GAP_CARDS, MAX_CALL_STRENGTH, TRICK_DISPLAY_DELAY_MS } = require('./constants');
+const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, BOT_CALL_REACTION_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, DEAL_PAUSE_EVERY_CARDS, DEAL_PAUSE_MS, DEAL_PAUSE_MIN_GAP_CARDS, MAX_CALL_STRENGTH, TRICK_DISPLAY_DELAY_MS } = require('./constants');
 
 /**
  * Room encapsulates a single game lobby + game session.
@@ -289,7 +289,8 @@ class Room {
   scheduleBotTrumpCall() {
     if (this.game.phase !== GAME_PHASES.TRUMP_SELECTION && this.game.phase !== GAME_PHASES.DEALING) return;
 
-    // Stagger bot calls with a short delay so it feels natural
+    // Bots deliberate for about half the call window before declaring, so a
+    // human gets first refusal on their own call (see BOT_CALL_REACTION_MS).
     const botPlayers = this.game.players.filter(p => BotPlayer.isBot(p.socketId));
     botPlayers.forEach((bot, i) => {
       const timer = setTimeout(() => {
@@ -347,7 +348,7 @@ class Room {
             });
           });
         }
-      }, BOT_PLAY_DELAY_MS * (i + 1)); // Stagger: 700ms, 1400ms, 2100ms
+      }, BOT_CALL_REACTION_MS + 300 * i); // 2500ms, 2800ms, 3100ms — inside the 5s window
       this._botTimers.push(timer);
     });
   }
