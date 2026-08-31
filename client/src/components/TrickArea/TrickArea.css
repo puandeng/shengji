@@ -229,3 +229,30 @@
 
   .trick-area__combo--lg .card + .card { margin-left: -30px; }
 }
+
+/* A resolved trick went from four cards to zero in a single frame — the one
+   moment that should tell you who took what had no motion at all. While the
+   trick is frozen the losing plays recede and the winner's lifts, so the eye
+   is pulled to the seat that took it before the table clears. */
+.trick-area--frozen .trick-area__slot:not(.trick-area__slot--winner) .trick-area__combo {
+    animation: trick-yield 420ms ease-out both;
+    animation-delay: 220ms;
+}
+
+.trick-area--frozen .trick-area__slot--winner .trick-area__combo {
+    animation: trick-claim 420ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    animation-delay: 220ms;
+}
+
+@keyframes trick-yield {
+    to { transform: scale(0.82); opacity: 0.35; }
+}
+
+@keyframes trick-claim {
+    50% { transform: scale(1.1); }
+    to  { transform: scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .trick-area--frozen .trick-area__slot .trick-area__combo { animation: none; }
+}
