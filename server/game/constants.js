@@ -125,6 +125,14 @@ const TRUMP_DECLARATION_TIMEOUT = 30;
 // Delay before a bot auto-plays (ms) — gives humans time to follow the action
 const BOT_PLAY_DELAY_MS = 700;
 
+// How long a bot deliberates before calling trump (ms). Bots used to call
+// 700ms into a 5s window, and since an equal-strength call never overrides,
+// any bot holding a trump-rank card declared before a human could finish
+// reading their hand — so a human practically never became declarer, and
+// never saw the kitty. Bots now think for roughly half the window, leaving
+// the human first refusal; a bot can still override with a stronger call.
+const BOT_CALL_REACTION_MS = 2500;
+
 // Delay between each card dealt during animated dealing (ms)
 const DEAL_CARD_INTERVAL_MS = 120;
 
@@ -166,6 +174,7 @@ module.exports = {
   MAX_CALL_STRENGTH,
   TRUMP_DECLARATION_TIMEOUT,
   BOT_PLAY_DELAY_MS,
+  BOT_CALL_REACTION_MS,
   DEAL_CARD_INTERVAL_MS,
   DEAL_PAUSE_EVERY_CARDS,
   DEAL_PAUSE_MS,
