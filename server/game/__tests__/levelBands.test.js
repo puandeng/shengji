@@ -20,9 +20,12 @@ describe('levelBands', () => {
       [0,   0,   'defenders', 3],
       [1,   39,  'defenders', 2],
       [40,  79,  'defenders', 1],
-      [80,  119, 'attackers', 1],
-      [120, 159, 'attackers', 2],
-      [160, 200, 'attackers', 3],
+      // Making the threshold takes the bank but earns no level; levels come
+      // from the margin above it (PLAN.md).
+      [80,  119, 'attackers', 0],
+      [120, 159, 'attackers', 1],
+      [160, 199, 'attackers', 2],
+      [200, 200, 'attackers', 3],
     ]);
   });
 
@@ -31,9 +34,9 @@ describe('levelBands', () => {
       [0,   0,   'defenders', 3],
       [1,   79,  'defenders', 2],
       [80,  119, 'defenders', 1],
-      [120, 159, 'attackers', 1],
-      [160, 199, 'attackers', 2],
-      [200, 200, 'attackers', 3],
+      [120, 159, 'attackers', 0],
+      [160, 199, 'attackers', 1],
+      [200, 200, 'attackers', 2],
     ]);
   });
 
