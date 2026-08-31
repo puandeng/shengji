@@ -179,3 +179,10 @@
 .hand__cards .card--selected .card__corner--top-left {
     text-shadow: 0 0 6px rgba(0, 0, 0, .35);
 }
+
+/* No trump suit declared yet — the row holds only rank-trumps and jokers, so
+   soften the label rather than asserting a suit that does not exist. */
+.hand__row-label--pending {
+  opacity: 0.55;
+  font-style: italic;
+}
