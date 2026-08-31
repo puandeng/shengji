@@ -16,7 +16,7 @@ import './GameBoard.css';
 export default function GameBoard() {
   const {
     gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards,
-    previewPlay, error, newCardIds, completedTrick, trickWinner, lastTrick, dealPause,
+    previewPlay, error, newCardIds, completedTrick, trickWinner, trickSummary, trickCredited, lastTrick, dealPause,
   } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
   const [secondsLeft, setSecondsLeft]     = useState(0);
@@ -192,7 +192,12 @@ export default function GameBoard() {
   // throw penalty. pileTotal is only the visible pile of cards.
   const attackerScore = scores?.[attackingTeam] ?? pileTotal;
   const thresh    = threshold ?? 80;
-  const myRole    = attackingTeam == null
+  // attackingTeam defaults to 0, so it is not evidence that roles exist yet.
+  // Until a call lands the sides are genuinely undecided, and showing ATK/DEF
+  // during the deal only to flip them mid-deal taught the player nothing.
+  const rolesDecided = (gameState.trumpCallStrength ?? 0) > 0
+    || ['KITTY', 'PLAYING', 'SCORING', 'GAME_OVER'].includes(phase);
+  const myRole    = !rolesDecided || attackingTeam == null
     ? null
     : (myPlayer.teamIndex === attackingTeam ? 'attackers' : 'defenders');
 
@@ -329,12 +334,18 @@ export default function GameBoard() {
       let detail;
       let detailTone = 'muted';
 
-      if (!isMyTurn) {
-        status = showTrickDisplay
-          ? 'Trick complete'
-          : `Waiting for ${getPlayer(currentSeat)?.name ?? '…'}…`;
-        statusTone = showTrickDisplay ? 'gold' : 'muted';
-        detail = required > 0 && !showTrickDisplay
+      if (showTrickDisplay) {
+        // Narrate the trick. "Trick complete" said nothing about who took it,
+        // what it was worth, or — the part players kept asking about — why a
+        // trick full of points sometimes credits nobody.
+        status     = 'Trick complete';
+        statusTone = 'gold';
+        detail     = trickSummary ?? null;
+        detailTone = trickCredited > 0 ? 'good' : 'muted';
+      } else if (!isMyTurn) {
+        status = `Waiting for ${getPlayer(currentSeat)?.name ?? '…'}…`;
+        statusTone = 'muted';
+        detail = required > 0
           ? `${required} card${required !== 1 ? 's' : ''} to follow`
           : null;
       } else if (required > 0) {
@@ -425,7 +436,7 @@ export default function GameBoard() {
         trumpSuit={trumpSuit}
         trumpRank={trumpRank}
         trumpCallStrength={trumpCallStrength}
-        attackingTeam={attackingTeam}
+        attackingTeam={rolesDecided ? attackingTeam : undefined}
         players={players}
         phase={phase}
       />
@@ -476,7 +487,7 @@ export default function GameBoard() {
           player={getPlayer(oppositeSeat)}
           isActive={currentSeat === oppositeSeat}
           trumpSuit={trumpSuit}
-          attackingTeam={attackingTeam}
+          attackingTeam={rolesDecided ? attackingTeam : undefined}
         />
         {!hideOppBacks && (
           <div className="gameboard__opp-cards">
@@ -494,7 +505,7 @@ export default function GameBoard() {
             player={getPlayer(leftSeat)}
             isActive={currentSeat === leftSeat}
             trumpSuit={trumpSuit}
-            attackingTeam={attackingTeam}
+            attackingTeam={rolesDecided ? attackingTeam : undefined}
             vertical
           />
           <div className="gameboard__side-cards">
@@ -570,7 +581,7 @@ export default function GameBoard() {
             player={getPlayer(rightSeat)}
             isActive={currentSeat === rightSeat}
             trumpSuit={trumpSuit}
-            attackingTeam={attackingTeam}
+            attackingTeam={rolesDecided ? attackingTeam : undefined}
             vertical
           />
           <div className="gameboard__side-cards">
@@ -610,10 +621,19 @@ export default function GameBoard() {
         <ActionBar {...bar} />
       </div>
 
-      {/* Team role badge */}
-      {phase !== 'TRUMP_SELECTION' && attackingTeam != null && (
-        <div className={`gameboard__team-role ${myPlayer.teamIndex === attackingTeam ? 'gameboard__team-role--attacking' : 'gameboard__team-role--defending'}`}>
-          {myPlayer.teamIndex === attackingTeam ? 'ATTACKING' : 'DEFENDING'}
+      {/* One role statement, from the player's own seat. "Declaring means
+          defending" is the single most confusing thing about this game, so say
+          it rather than leaving four badges to be reconciled. */}
+      {rolesDecided && myRole && (
+        <div
+          className={`gameboard__team-role gameboard__team-role--${myRole === 'attackers' ? 'attacking' : 'defending'}`}
+          title={myRole === 'attackers'
+            ? `Your team collects 5s, 10s and Kings. Reach ${thresh} points to take the bank.`
+            : `Your team declared, so you hold the kitty and deny points. Keep the attackers under ${thresh}.`}
+        >
+          {myRole === 'attackers'
+            ? <>You are <strong>attacking</strong> — collect {thresh} points</>
+            : <>You are <strong>defending</strong> — deny them {thresh} points</>}
         </div>
       )}
 

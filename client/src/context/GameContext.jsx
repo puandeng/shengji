@@ -31,6 +31,8 @@ const INITIAL_STATE = {
   trickWinner:    null,
   lastTrick:      null,    // { cards, winner } — survives the freeze so it can be reopened on demand
   roundResult:    null,    // how the last round resolved, for the scoring modal
+  trickSummary:   null,    // one-line narration of the trick just finished
+  trickCredited:  0,
   dealPause:      null,    // { windowIndex, totalWindows, deadline, durationMs } while dealing is paused
 };
 
@@ -159,6 +161,8 @@ function reducer(state, action) {
     case 'TRICK_COMPLETE':
       return {
         roundResult: action.meta?.roundResult ?? state.roundResult,
+        trickSummary: action.meta?.trickSummary ?? null,
+        trickCredited: action.meta?.trickCredited ?? 0,
         ...state,
         screen: 'game',
         gameState: { ...action.payload, currentTrick: action.meta.completedTrick },
@@ -280,7 +284,7 @@ export function GameProvider({ children }) {
       // with no remaining benefit.
       const delay = Math.min(gameState.trickDisplayDelay ?? TRICK_REVIEW_MS, TRICK_REVIEW_MS);
 
-      dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner, roundResult: gameState.roundResult } });
+      dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner, trickSummary: serverTrick?.summary ?? null, trickCredited: serverTrick?.credited ?? 0, roundResult: gameState.roundResult } });
       playTrickWon();
       clearTimeout(trickClearTimer.current);
       trickClearTimer.current = setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
