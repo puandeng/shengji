@@ -138,10 +138,14 @@
 .card--lg.card--joker-small .card__center { font-size: 38px; }
 
 /* Point badge */
+/* The fan overlaps left-to-right, so a card's RIGHT edge is exactly what gets
+   covered — every point badge in an overlapped row was occluded. The left edge
+   is the strip that stays visible, so the badge lives there, tucked under the
+   rank index rather than on top of it. */
 .card__points-badge {
   position: absolute;
   top: -4px;
-  right: -4px;
+  left: -4px;
   background: var(--color-gold);
   color: #111;
   font-size: 0.5rem;
@@ -159,7 +163,7 @@
   .card--clickable:hover { transform: translateY(-6px); }
   .card--selected { transform: translateY(-8px); }
 
-  .card__points-badge { width: 13px; height: 13px; font-size: 0.45rem; top: -4px; right: -4px; }
+  .card__points-badge { width: 13px; height: 13px; font-size: 0.45rem; top: -4px; left: -4px; }
 }
 
 /* Narrow screens shrink the cards, so the index has to come down with them. */
@@ -185,3 +189,7 @@
   .card--lg.card--joker-big  .card__center,
   .card--lg.card--joker-small .card__center { font-size: 30px; }
 }
+
+/* Keep the rank index clear of the badge on point cards. */
+.card--highlight .card__corner--top-left { top: 12px; }
+.card--sm.card--highlight .card__corner--top-left { top: 10px; }

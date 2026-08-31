@@ -152,7 +152,7 @@ export default function Hand({
   const { suitOrder, trumpEnd, rankDirection } = prefs;
   const suitOrderKey = suitOrder.join('');
 
-  const { trumpRow, nonTrumpRow } = useMemo(() => {
+  const { row, trumpCount, trumpFirst } = useMemo(() => {
     const suitPos = suit => {
       const i = suitOrder.indexOf(suit);
       return i === -1 ? 99 : i;
@@ -189,18 +189,31 @@ export default function Hand({
       gutter: i > 0 && groupOf(card) !== groupOf(list[i - 1]),
     }));
 
-    return {
-      trumpRow: withGutters(trump, c => trumpGroup(c, trumpSuit, trumpRank)),
-      nonTrumpRow: withGutters(nonTrump, c => c.suit),
-    };
+    const trumpEntries = withGutters(trump, c => trumpGroup(c, trumpSuit, trumpRank));
+    const otherEntries = withGutters(nonTrump, c => c.suit);
+
+    // One row, not two. A 25-card fan needs far less width than is available,
+    // so the second row bought nothing horizontally while costing ~118px of
+    // height — exactly what the trick area needed to render cards at a
+    // readable size instead of half the size of the cards in your own hand.
+    // The trump group keeps its separation as a wider "major" gutter.
+    const [first, second] = trumpEnd === 'left'
+      ? [trumpEntries, otherEntries]
+      : [otherEntries, trumpEntries];
+
+    const row = [...first, ...second].map((entry, i) => ({
+      ...entry,
+      major: i === first.length && first.length > 0 && second.length > 0,
+    }));
+
+    return { row, trumpCount: trump.length, trumpFirst: trumpEnd === 'left' };
   }, [cards, trumpSuit, trumpRank, suitOrderKey, rankDirection]);
 
   // A fanned hand only needs each card's top-left corner showing — rank and
   // suit — the way you hold real cards. That means a card costs its `sliver`
   // of width, not its full width, so a full hand can use *larger* cards than
   // it could laid out edge to edge.
-  const maxRow      = Math.max(trumpRow.length, nonTrumpRow.length);
-  const layoutCount = Math.max(maxRow, capacity);
+  const layoutCount = Math.max(row.length, capacity);
   const size        = pickSize(narrow ? NARROW_SIZES : SIZES, layoutCount, availWidth);
   const cardSize    = size.name;
 
@@ -217,11 +230,10 @@ export default function Hand({
     return size.width - advance;
   };
 
-  const trumpGutters = trumpRow.filter(entry => entry.gutter).length;
-  const nonGutters   = nonTrumpRow.filter(entry => entry.gutter).length;
-
-  const overlapTrump = calcOverlap(trumpRow.length, trumpGutters, LABEL_RESERVE);
-  const overlapNon   = calcOverlap(nonTrumpRow.length, nonGutters);
+  // A major gutter costs two ordinary ones; count it twice in the budget.
+  const gutterCount = row.filter(e => e.gutter && !e.major).length
+                    + row.filter(e => e.major).length * 2;
+  const overlap = calcOverlap(row.length, gutterCount, LABEL_RESERVE);
 
   const showPlayButton = selectionMode === 'play' && selectedCards.length > 0;
 
@@ -229,7 +241,7 @@ export default function Hand({
     const style = { '--overlap': `${overlap}px`, '--gutter': `${size.gutter}px` };
     return (
       <div className="hand__cards" style={style}>
-        {rowEntries.map(({ card, gutter }, idx) => {
+        {rowEntries.map(({ card, gutter, major }, idx) => {
           const isSelected    = selectedCards.includes(card.id);
           const isHighlighted = card.points > 0;
           const isTrumpCard   = isCardTrump(card, trumpSuit, trumpRank);
@@ -238,6 +250,7 @@ export default function Hand({
           const slotClasses = [
             'hand__card-slot',
             gutter    ? 'hand__card-slot--gutter'   : '',
+            major     ? 'hand__card-slot--major'    : '',
             isDrawing ? 'hand__card-slot--drawing'  : '',
           ].filter(Boolean).join(' ');
 
@@ -266,26 +279,19 @@ export default function Hand({
   return (
     <div className="hand">
       <div className={`hand__main hand__main--${trumpEnd}`} ref={rowsRef}>
-        {trumpRow.length > 0 && (
-          <div className="hand__row hand__row--trump">
-            {/* Before anyone declares there is no trump *suit* — only the rank
-                cards and jokers are trump — so a whole suit is still sitting in
-                the row below and will jump up the moment trump is called.
-                Labelling this "Trump" flat out reads as if the sort were wrong. */}
-            <span
-              className={`hand__row-label${trumpSuit ? '' : ' hand__row-label--pending'}`}
-              title={trumpSuit
-                ? 'Trump: the trump suit, off-suit trump-rank cards, and jokers'
-                : 'No trump suit called yet — only trump-rank cards and jokers are trump so far. A suit joins this row once someone declares.'}
-            >
-              {trumpSuit ? 'Trump' : 'Trump so far'}
-            </span>
-            {renderRow(trumpRow, overlapTrump, 0)}
-          </div>
-        )}
-        {nonTrumpRow.length > 0 && (
-          <div className="hand__row hand__row--non-trump">
-            {renderRow(nonTrumpRow, overlapNon, 1)}
+        {row.length > 0 && (
+          <div className={`hand__row hand__row--single${trumpFirst ? ' hand__row--trump-first' : ''}`}>
+            {trumpCount > 0 && (
+              <span
+                className={`hand__row-label${trumpSuit ? '' : ' hand__row-label--pending'}`}
+                title={trumpSuit
+                  ? 'Trump: the trump suit, off-suit trump-rank cards, and jokers'
+                  : 'No trump suit called yet — only trump-rank cards and jokers are trump so far. A suit joins the trump group once someone declares.'}
+              >
+                {trumpSuit ? 'Trump' : 'Trump so far'}
+              </span>
+            )}
+            {renderRow(row, overlap, 0)}
           </div>
         )}
 

@@ -186,3 +186,17 @@
   opacity: 0.55;
   font-style: italic;
 }
+
+/* One row, so the trump group is separated by a wider gutter rather than by a
+   second row that cost ~118px of height and bought nothing horizontally. */
+.hand__row--single {
+  align-items: flex-end;
+}
+
+.hand__cards > .hand__card-slot--major {
+  margin-left: calc(var(--gutter, 16px) * 2 - var(--overlap, 20px));
+}
+
+/* The label belongs beside the trump group, whichever end it sits at. */
+.hand__row--trump-first .hand__row-label { order: -1; }
+.hand__row--single:not(.hand__row--trump-first) .hand__row-label { order: 1; }
