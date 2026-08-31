@@ -155,8 +155,16 @@ class GameLogger {
         this.note('');
     }
 
-    play({ seatIndex, name, cards, shape, leadSeat }) {
-        this.event('play', { seatIndex, name, cards, shape, isLead: seatIndex === leadSeat });
+    play({ seatIndex, name, isBot, cards, shape, leadSeat, legalCardIds, handBefore }) {
+        // A decision record, not just an outcome: who chose, what they were
+        // holding, what the rules allowed, and which of those they picked.
+        // Without the legal set a training pipeline has to re-derive legality
+        // by reimplementing the rules or replaying through the server.
+        this.event('play', {
+            seatIndex, name, isBot: !!isBot, cards, shape,
+            isLead: seatIndex === leadSeat,
+            legalCardIds, handBefore,
+        });
     }
 
     playRejected({ seatIndex, cardIds, error }) {
