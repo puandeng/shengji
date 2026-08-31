@@ -294,6 +294,7 @@ describe('GameState', () => {
     it('only credits attacking team with points', () => {
       const game = createPlayingGame('S', '2');
       game.attackingTeam = 0; // p0 (seat 0) and p2 (seat 2) are attackers
+      game.kitty = [];        // isolate trick credit from the kitty capture below
 
       // Give each player one card; p0 (attacker) leads and wins with a point card
       game.hands['p0'] = [new Card('H', 'A', 0)];
@@ -314,7 +315,6 @@ describe('GameState', () => {
       const result = game.playCards('p3', ['h_4_0']);
 
       // p0 (attacker, team 0) wins with A — gets the 5 points from p1's card
-      // Attacker winning the last trick "protects" the kitty — no kitty bonus
       expect(result.trickComplete).toBe(true);
       expect(game.scores[0]).toBe(5);
     });
@@ -456,21 +456,21 @@ describe('auto-selected trump', () => {
   });
 });
 
-describe('kitty is a liability, not a payout', () => {
-  // The declarer buries the kitty, and in this variant the declarer's own team
-  // collects points — so the bury must never pay them.
+describe('kitty pays the attackers, never the declarer who buried it', () => {
+  // The declarer defends and buries the kitty. Only the attacking team can
+  // capture it, and only by taking the last trick — which is what makes burying
+  // point cards a genuine risk rather than free profit.
   function lastTrick({ attackersWinIt, kittyPoints }) {
     const game = createReadyGame();
     game.phase = 'PLAYING';
     game.trumpSuit = 'S';
     game.trumpRank = '2';
-    game.attackingTeam = 0;          // p0 + p2 called trump
-    game.scores = { 0: 100, 1: 0 };  // already collected 100 from tricks
+    game.attackingTeam = 0;          // p0 + p2 collect; p1 + p3 declared
+    game.scores = { 0: 100, 1: 0 };  // 100 already collected from tricks
     game.kitty = kittyPoints === 40
       ? [new Card('H', 'K', 0), new Card('D', 'K', 0), new Card('C', 'K', 0), new Card('S', '10', 0)]
       : [new Card('H', '3', 0)];
 
-    // p0 leads; the ace decides who takes it.
     const ace = new Card('H', 'A', 0);
     const low = () => new Card('H', '3', 1);
     game.hands = {
@@ -486,24 +486,23 @@ describe('kitty is a liability, not a payout', () => {
     return game;
   }
 
-  it('pays nothing when the attackers protect their own bury', () => {
+  it('hands the bury to the attackers when they take the last trick', () => {
     const game = lastTrick({ attackersWinIt: true, kittyPoints: 40 });
-    expect(game.scores[0]).toBe(100);   // 100 collected, no kitty gain
+    expect(game.scores[0]).toBe(180);   // 100 + (40 x 2)
   });
 
-  it('costs the attackers the bury when the defenders take the last trick', () => {
+  it('protects the bury when the declaring team holds the last trick', () => {
     const game = lastTrick({ attackersWinIt: false, kittyPoints: 40 });
-    expect(game.scores[0]).toBe(20);    // 100 - (40 x 2)
+    expect(game.scores[0]).toBe(100);   // no capture
   });
 
-  it('never drives the score below zero', () => {
+  it('never credits the declaring team for their own bury', () => {
     const game = lastTrick({ attackersWinIt: false, kittyPoints: 40 });
-    game.scores[0] = 10;
-    expect(game.scores[0]).toBeGreaterThanOrEqual(0);
+    expect(game.scores[1]).toBe(0);     // declarers score nothing, ever
   });
 
   it('does nothing when no point cards were buried', () => {
-    const game = lastTrick({ attackersWinIt: false, kittyPoints: 0 });
+    const game = lastTrick({ attackersWinIt: true, kittyPoints: 0 });
     expect(game.scores[0]).toBe(100);
   });
 });
@@ -564,5 +563,47 @@ describe('kitty bury — the declarer swaps 8 cards', () => {
     const notDeclarer = game.players.find(p => p.socketId !== game.trumpDeclarer).socketId;
     const ids = game.hands[notDeclarer].slice(0, 8).map(c => c.id);
     expect(game.discardToKitty(notDeclarer, ids).error).toMatch(/declarer/i);
+  });
+});
+
+describe('traditional roles: calling trump means defending', () => {
+  it('puts the trump caller on the defending side, and the other team on attack', () => {
+    const game = createReadyGame();
+    game.deal();
+    game.finishDealing();
+
+    const caller = game.getPlayer('p1');
+    const rankCard = game.hands['p1'].find(c => c.rank === game.trumpRank && !c.isJoker);
+    if (!rankCard) return;                       // no callable card this deal
+
+    expect(game.callTrump('p1', [rankCard.id]).success).toBe(true);
+
+    // The caller declares — and declaring is defending.
+    expect(game.trumpDeclarer).toBe('p1');
+    expect(game.attackingTeam).not.toBe(caller.teamIndex);
+  });
+
+  it('never credits the declaring team, however many tricks they win', () => {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpSuit = 'S';
+    game.trumpRank = '2';
+    game.attackingTeam = 0;        // p1 + p3 declared, so they defend
+    game.kitty = [];
+    game.scores = { 0: 0, 1: 0 };
+
+    // p1 (a defender) wins a trick holding 15 points.
+    game.hands = {
+      p0: [new Card('H', '3', 0)], p1: [new Card('H', 'A', 0)],
+      p2: [new Card('H', '5', 0)], p3: [new Card('H', 'K', 0)],
+    };
+    ['p0', 'p1', 'p2', 'p3'].forEach((id, i) => { game.hands[id][0].id = `d${i}`; });
+    game.leadSeat = 0;
+    game.currentSeat = 0;
+    ['p0', 'p1', 'p2', 'p3'].forEach((id, i) => game.playCards(id, [`d${i}`]));
+
+    // Defenders deny; they do not bank the 15 points they just took.
+    expect(game.scores[1]).toBe(0);
+    expect(game.scores[0]).toBe(0);
   });
 });
