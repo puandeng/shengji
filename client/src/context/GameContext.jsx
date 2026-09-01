@@ -501,6 +501,19 @@ export function GameProvider({ children }) {
     socket.emit('room:newRound', {}, () => {});
   }, [socket]);
 
+  // DEV_MODE only — ask the server to rebuild the game in a chosen situation.
+  // The reply is the scenario summary; the state itself arrives as game:started.
+  const setupScenario = useCallback((opts) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('dev:scenario', opts, (res) => {
+        if (res?.error) {
+          dispatch({ type: 'SET_ERROR', payload: res.error });
+          reject(new Error(res.error));
+        } else resolve(res);
+      });
+    });
+  }, [socket]);
+
   const clearError = useCallback(() => dispatch({ type: 'CLEAR_ERROR' }), []);
 
   return (
@@ -520,6 +533,7 @@ export function GameProvider({ children }) {
       previewPlay,
       sendChat,
       startNewRound,
+      setupScenario,
       clearError,
     }}>
       {children}

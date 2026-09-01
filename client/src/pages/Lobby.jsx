@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import DevMenu from '../components/DevMenu/DevMenu';
 import './Lobby.css';
 
 const TEAM_COLORS = ['#3498db', '#e74c3c'];
@@ -69,6 +70,8 @@ export default function Lobby() {
         {!isHost && (
           <p className="lobby-waiting-text">Waiting for the host to start…</p>
         )}
+
+        {devMode && <DevMenu variant="panel" />}
       </div>
     </div>
   );

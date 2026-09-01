@@ -53,6 +53,20 @@ followers could break pairs against a tractor lead) and the level ladder could s
 mandatory stops. Rules correctness should be considered settled — and covered by
 tests — before any training run is worth the compute.
 
+### Dev scenarios — implemented
+- [x] **`DEV_MODE` scenario menu.** Lobby panel and in-game bar that rebuild the
+  room in a chosen situation: fresh deal, mid-game, or an endgame two cards from
+  the finish, on either side, with either team's level dialled anywhere from 2 to
+  A. Setup drives the real engine (deal → call → bury → `playCards` for every
+  seat), so it cannot produce a position the rules disallow. `dev:scenario`,
+  `server/game/DevScenario.js`, `client/src/components/DevMenu/`; covered by
+  `server/game/__tests__/devScenario.test.js` over 15 shuffles per assertion.
+- [x] **The round result never reached the scoring modal.** `TRICK_COMPLETE`
+  spread `...state` *after* `roundResult`, so the previous value overwrote the
+  new one and the modal fell back to its defaults — no kitty arithmetic, no level
+  change, no Jack demotion. Found while building the endgame scenarios, which
+  exist to look at exactly that modal.
+
 ### Still open
 - [ ] **Trick review has no seat attribution** — the last-trick panel shows four cards without saying who played what.
 - [ ] **Lobby polish** — team panels are 162px and 154px tall so their bottoms do not align; the room code uses a face that appears nowhere else.

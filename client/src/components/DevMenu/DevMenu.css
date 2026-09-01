@@ -1,0 +1,219 @@
+/* Dev-only chrome. Hazard orange, because nothing here is a real game control
+   and it should never be mistaken for one. */
+.dev-menu {
+    position: relative;
+    flex: 0 0 auto;
+    text-align: left;
+}
+
+.dev-menu__toggle {
+    width: 100%;
+    padding: 4px;
+    border: none;
+    border-radius: 0;
+    background: #ff9800;
+    color: #000;
+    font-weight: bold;
+    font-size: var(--text-xs);
+    letter-spacing: 2px;
+    cursor: pointer;
+    min-height: 24px;
+}
+
+.dev-menu__caret {
+    letter-spacing: 0;
+}
+
+/* In game it is a corner button, not a strip. As a strip it took a row out of
+   the column layout — squeezing the board — and sat over the back and mute
+   buttons. Mirrors the chat toggle on the other side, lifted clear of the hand
+   by the height the hand reports. */
+.dev-menu--floating {
+    position: fixed;
+    bottom: calc(var(--hand-height, 130px) + 0.75rem);
+    left: 0.75rem;
+    z-index: 40;
+    width: 44px;
+    height: 44px;
+}
+
+.dev-menu--floating .dev-menu__toggle {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 152, 0, 0.55);
+    background: rgba(0, 0, 0, 0.7);
+    color: #ffb74d;
+    font-size: 0.6875rem;
+    letter-spacing: 1px;
+}
+
+.dev-menu--floating .dev-menu__toggle[aria-expanded="true"] {
+    background: #ff9800;
+    color: #000;
+}
+
+.dev-menu--panel {
+    margin-top: 0.75rem;
+}
+
+.dev-menu--panel .dev-menu__toggle {
+    border-radius: var(--radius);
+    letter-spacing: 1px;
+}
+
+.dev-menu--panel .dev-menu__panel {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* Opens upward off the button, like the chat panel it sits opposite. */
+.dev-menu--floating .dev-menu__panel {
+    position: absolute;
+    bottom: 52px;
+    left: 0;
+    width: min(560px, calc(100vw - 1.5rem));
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+    border-radius: var(--radius);
+}
+
+.dev-menu__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    background: rgba(16, 26, 16, 0.98);
+    border: 1px solid #ff9800;
+    border-radius: 0 0 var(--radius) var(--radius);
+    box-shadow: var(--shadow);
+    color: var(--color-text);
+}
+
+.dev-menu__row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.dev-menu__label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #ffb74d;
+    min-width: 54px;
+}
+
+.dev-menu__segmented {
+    display: flex;
+    gap: 2px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: var(--radius-pill);
+    padding: 2px;
+}
+
+.dev-menu__segmented button {
+    min-height: 26px;
+    padding: 0 0.7rem;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+    text-transform: capitalize;
+    cursor: pointer;
+}
+
+.dev-menu__segmented button.is-active {
+    background: #ff9800;
+    color: #000;
+    font-weight: 600;
+}
+
+.dev-menu__levels {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.dev-menu__levels label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.dev-menu__levels select {
+    min-height: 26px;
+    padding: 0 0.3rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 152, 0, 0.4);
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+}
+
+.dev-menu__scenarios {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+}
+
+.dev-menu__scenario {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.45rem 0.55rem;
+    min-height: 44px;
+    text-align: left;
+    border: 1px solid rgba(255, 152, 0, 0.45);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 152, 0, 0.12);
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.dev-menu__scenario:hover:not(:disabled) {
+    background: rgba(255, 152, 0, 0.25);
+}
+
+.dev-menu__scenario:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.dev-menu__scenario-name {
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.dev-menu__scenario-hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+    line-height: 1.25;
+}
+
+.dev-menu__note,
+.dev-menu__status {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: 1.35;
+    color: var(--color-text-dim);
+}
+
+.dev-menu__status {
+    color: #ffcc80;
+    font-variant-numeric: tabular-nums;
+}
+
+.dev-menu__status--error {
+    color: var(--color-team1);
+}
+
+@media (max-width: 560px) {
+    .dev-menu__scenarios {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
