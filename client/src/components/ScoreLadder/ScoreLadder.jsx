@@ -71,7 +71,15 @@ export default function ScoreLadder({ score = 0, bands, threshold, pointsRemaini
   return (
     <div className="ladder">
       <div className="ladder__head">
-        <span className={`ladder__now ladder__now--${current.team}`}>
+        {/* This is a forecast about a team, not the reader's own role. Without
+            "ends here" it reads as a role badge — and since the board shows a
+            real ATK/DEF badge elsewhere, an attacker sitting in a low band saw
+            "DEFENDERS +2" and understandably read it as their own side. */}
+        <span
+          className={`ladder__now ladder__now--${current.team}`}
+          title={`If the round ended at ${score} points, the ${TEAM_NAME[current.team] ?? current.team.toLowerCase()} would climb ${current.levels} level${current.levels === 1 ? '' : 's'}`}
+        >
+          <span className="ladder__now-lead">Ends here:</span>{' '}
           {TEAM_NAME[current.team] ?? current.team} +{current.levels}
         </span>
         <span className="ladder__score">{score} pts</span>

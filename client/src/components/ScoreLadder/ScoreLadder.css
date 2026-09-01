@@ -23,6 +23,12 @@
   white-space: nowrap;
 }
 
+.ladder__now-lead {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.4px;
+}
+
 .ladder__now--attackers { color: #ef5350; }
 .ladder__now--defenders { color: #42a5f5; }
 

@@ -8,8 +8,13 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 
 ## Open
 
+### Kitty bury
+- [x] **The bury mechanism already existed** — `giveKittyToDeclarer()` takes the declarer 25 → 33, `discardToKitty()` takes 8 cards of their choosing back to 25, gated to the declarer and to exactly 8. Three tests now pin it, including that the buried cards are the ones chosen and that they leave the hand.
+- [x] **Humans practically never became declarer, so nobody ever saw it.** Bots called 700ms into a 5s window (`BOT_PLAY_DELAY_MS * (i+1)`), and since an equal-strength call never overrides, any bot holding a trump-rank card declared before a human could finish reading their hand. Bots now deliberate `BOT_CALL_REACTION_MS` (2500ms) before calling, leaving the human first refusal; a bot can still override with a genuinely stronger call.
+
+
 ### Refactor
-- [ ] **Swap attacking/defending team semantics.** The team that calls trump and plays first is the *defending* team (they protect the kitty and try to prevent the other team from scoring). The other team is the *attacking* team (they try to collect points to reach threshold). Currently the codebase has this backwards: `attackingTeam` is set to the trump caller's team. Rename throughout server and client so the labels match traditional Sheng Ji terminology. This refactor includes:
+- [x] **Swap attacking/defending team semantics.** Done. The trump caller is the declarer and *defends*; `attackingTeam` is now the other team — the collectors chasing the threshold. The scoring logic already read `attackingTeam` as "the team that collects and needs the threshold", so this was mostly re-pointing who gets assigned to it, plus: the round handover (the bank passes to the attackers when they make the threshold, rotates to the partner when the declarers hold), the trump rank now taken from the declaring team's level, and the kitty reverting to a traditional capture. 2 tests pin the convention.
   - Swap which team accumulates points (non-caller should accumulate, not caller)
   - Fix the threshold check (non-caller's score vs threshold, not caller's)
   - Level advancement — defenders hold: attackers scored 0 → defenders +3, attackers < threshold−40 → +2, else +1
