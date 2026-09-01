@@ -7,12 +7,21 @@ import TrickArea from '../TrickArea/TrickArea';
 import PlayerInfo from '../PlayerInfo/PlayerInfo';
 import TrumpBanner from '../TrumpBanner/TrumpBanner';
 import ScoreLadder from '../ScoreLadder/ScoreLadder';
+import TrickReview from '../TrickReview/TrickReview';
 import ActionBar from '../ActionBar/ActionBar';
 import HelpPanel from '../HelpPanel/HelpPanel';
 import usePlayPreview from './usePlayPreview';
 import { isMuted, setMuted } from '../../sounds';
 import './GameBoard.css';
 
+
+/** Height a box actually has for its content, padding excluded. */
+function contentHeight(node) {
+  const style = window.getComputedStyle(node);
+  return node.getBoundingClientRect().height
+    - parseFloat(style.paddingTop || 0)
+    - parseFloat(style.paddingBottom || 0);
+}
 
 export default function GameBoard() {
   const {
@@ -37,33 +46,57 @@ export default function GameBoard() {
     if (completedTrick) setShowLastTrick(false);
   }, [completedTrick]);
 
-  // The trick is drawn as large as its row can hold. Card sizes are fixed pixels,
-  // so without measuring, a four-card trick overflows the row on a short window
-  // and paints over the ladder below it. Measure the row itself, not the centre
-  // column: the column is sized by its own content, which would be circular.
+  // The trick is drawn as large as its box can hold. Card sizes are fixed
+  // pixels, so without measuring, a four-card trick overflows on a short window
+  // and paints over what is below it. Measure the box the trick is given, never
+  // the trick itself: the trick is sized by its own content, which is circular.
   const [sidesHeight, setSidesHeight] = useState(0);
   const roRef = useRef(null);
   // A callback ref, not useRef + useEffect([]): the effect ran once against
   // whichever node existed at mount, so when React swapped the row's node the
   // observer kept watching a detached element and the height stayed at its
   // initial 0 — which pinned the trick at its smallest size forever.
+  const trickNodeRef = useRef(null);
   const sidesRef = useCallback(node => {
     if (roRef.current) { roRef.current.disconnect(); roRef.current = null; }
-    if (!node || typeof ResizeObserver === 'undefined') return;
-    setSidesHeight(node.getBoundingClientRect().height);
+    trickNodeRef.current = node || null;
+    if (!node) return;
+    if (typeof ResizeObserver === 'undefined') {
+      // No observer: measure once and let the resize listener below keep it
+      // honest, rather than leaving the trick pinned at its smallest size.
+      setSidesHeight(contentHeight(node));
+      return;
+    }
+    // Content box in both places. The first read used to be
+    // getBoundingClientRect(), which is the border box — it counts the padding
+    // that keeps the trick clear of the seats, so the very first frame solved
+    // the card size against ~75px it does not actually have.
+    setSidesHeight(contentHeight(node));
     const ro = new ResizeObserver(([entry]) => setSidesHeight(entry.contentRect.height));
     ro.observe(node);
     roRef.current = ro;
   }, []);
 
-  // On a short window the row above eats the trick's space with a decorative
-  // stack of face-down cards, while PlayerInfo already states the hand count.
-  // Hysteresis matters here: dropping the stack gives the trick ~66px back, so
-  // a single threshold would flip between the two states forever.
+  // A window resize changes the box without necessarily changing anything React
+  // renders, and it is also the one signal available when ResizeObserver is not.
+  useEffect(() => {
+    const onResize = () => {
+      const node = trickNodeRef.current;
+      if (node) setSidesHeight(contentHeight(node));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // On a short board the top seat's decorative stack of face-down cards is
+  // charging the trick real height, while PlayerInfo already states the count.
+  // Purely decluttering now — the trick's reserve is constant, so this cannot
+  // change the card size. Hysteresis anyway, so a board hovering on the
+  // threshold does not flicker.
   const [hideOppBacks, setHideOppBacks] = useState(false);
   useEffect(() => {
     if (!sidesHeight) return;
-    setHideOppBacks(prev => (prev ? sidesHeight < 220 : sidesHeight < 140));
+    setHideOppBacks(prev => (prev ? sidesHeight < 220 : sidesHeight < 190));
   }, [sidesHeight]);
 
   if (!gameState || !myPlayer) return null;
@@ -412,14 +445,13 @@ export default function GameBoard() {
   const bar = buildBar();
   const reviewing = showLastTrick && canReview;
 
-  // Worst case is all four seats holding a card, i.e. three stacked card rows.
-  // Sized against that so the trick does not resize as cards land.
+  // Worst case is all four seats holding a card, i.e. three stacked card rows
+  // plus the gaps between them: lg cards are 118px tall, md 88, sm 60. Sized
+  // against that so the trick does not resize as cards land.
   const trickScale  = sidesHeight >= 362 ? 'lg'
-    : sidesHeight >= 268 ? 'md'
+    : sidesHeight >= 272 ? 'md'
     : sidesHeight >= 190 ? 'sm'
     : 'xs';                     // xs lays the four plays out in a single strip
-  // The review panel spends a little height on its badge and border.
-  const reviewScale = trickScale === 'lg' ? 'md' : trickScale === 'md' ? 'sm' : 'xs';
 
   function toggleMute() {
     const next = !muted;
@@ -435,22 +467,34 @@ export default function GameBoard() {
 
       <HelpPanel trumpRank={trumpRank} threshold={thresh} />
 
-      <TrumpBanner
-        trumpSuit={trumpSuit}
-        trumpRank={trumpRank}
-        trumpCallStrength={trumpCallStrength}
-        attackingTeam={rolesDecided ? attackingTeam : undefined}
-        players={players}
-        phase={phase}
+      {/* Both teams' levels are reference, not action: they belong in the
+          corners of the felt, not in a full-width row that cost the trick 94px
+          of the height it needed to be readable. */}
+      <LevelCard
+        label="Team 1"
+        level={gameState.teamLevels?.[0] ?? '2'}
+        isAttacking={attackingTeam === 0}
+        rolesDecided={rolesDecided}
+        teamIdx={0}
+        corner="left"
+      />
+      <LevelCard
+        label="Team 2"
+        level={gameState.teamLevels?.[1] ?? '2'}
+        isAttacking={attackingTeam === 1}
+        rolesDecided={rolesDecided}
+        teamIdx={1}
+        corner="right"
       />
 
-      {/* Score bar */}
-      <div className="gameboard__scores">
-        <LevelCard
-          label="Team 1"
-          level={gameState.teamLevels?.[0] ?? '2'}
-          isAttacking={attackingTeam === 0}
-          teamIdx={0}
+      <div className="gameboard__topbar">
+        <TrumpBanner
+          trumpSuit={trumpSuit}
+          trumpRank={trumpRank}
+          trumpCallStrength={trumpCallStrength}
+          attackingTeam={rolesDecided ? attackingTeam : undefined}
+          players={players}
+          phase={phase}
         />
         <span className="gameboard__round">
           Round {gameState.roundNumber || 1}
@@ -458,52 +502,35 @@ export default function GameBoard() {
             <> · {(myHand || []).length} card{(myHand || []).length === 1 ? '' : 's'} left</>
           )}
         </span>
-        <LevelCard
-          label="Team 2"
-          level={gameState.teamLevels?.[1] ?? '2'}
-          isAttacking={attackingTeam === 1}
-          teamIdx={1}
-        />
       </div>
 
-      {/* Trump declaration cards */}
-      {(trumpDeclareCards || []).length > 0 && (isTrumpPhase) && (
-        <div className="gameboard__trump-declare">
-          <span className="trump-declare__label">
-            {/* The revealer, not the declarer. From round 2 the declarer is
-                pre-assigned to the kitty picker, so captioning their name over
-                somebody else's cards credited the call to the wrong player. */}
-            {(players.find(p => p.seatIndex === gameState.trumpCallerSeat)
-              ?? players.find(p => p.socketId === gameState.trumpDeclarer))?.name ?? 'Player'} called:
-          </span>
-          <div className="trump-declare__cards">
-            {trumpDeclareCards.map((card, i) => (
-              <Card key={card.id || i} card={card} size="md" />
-            ))}
-          </div>
+      {/* The table: three seats around the felt, the trick in the middle. The
+          seats are positioned over the felt rather than stacked in their own
+          grid rows — those rows were spending 200px of height on chrome while
+          the trick rendered at half the size of the cards in your own hand. */}
+      <div className="gameboard__table">
+        {/* The playing surface. Purely decorative, but it is what makes the
+            middle of the screen read as a table with cards on it rather than as
+            leftover felt between four seats. */}
+        <div className="gameboard__felt" aria-hidden="true" />
+
+        <div className="gameboard__seat gameboard__seat--top">
+          <PlayerInfo
+            player={getPlayer(oppositeSeat)}
+            isActive={currentSeat === oppositeSeat}
+            trumpSuit={trumpSuit}
+            attackingTeam={rolesDecided ? attackingTeam : undefined}
+          />
+          {!hideOppBacks && (
+            <div className="gameboard__opp-cards">
+              {Array.from({ length: Math.min(handCounts?.[getPlayer(oppositeSeat)?.socketId] ?? 0, 7) }).map((_, i) => (
+                <Card key={i} card={{ id: `back-${i}`, suit: 'S', rank: '?' }} faceDown size="sm" />
+              ))}
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Opposite player */}
-      <div className="gameboard__opposite">
-        <PlayerInfo
-          player={getPlayer(oppositeSeat)}
-          isActive={currentSeat === oppositeSeat}
-          trumpSuit={trumpSuit}
-          attackingTeam={rolesDecided ? attackingTeam : undefined}
-        />
-        {!hideOppBacks && (
-          <div className="gameboard__opp-cards">
-            {Array.from({ length: Math.min(handCounts?.[getPlayer(oppositeSeat)?.socketId] ?? 0, 7) }).map((_, i) => (
-              <Card key={i} card={{ id: `back-${i}`, suit: 'S', rank: '?' }} faceDown size="sm" />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Left & right players */}
-      <div className="gameboard__sides" ref={sidesRef}>
-        <div className="gameboard__left">
+        <div className="gameboard__seat gameboard__seat--left">
           <PlayerInfo
             player={getPlayer(leftSeat)}
             isActive={currentSeat === leftSeat}
@@ -512,15 +539,29 @@ export default function GameBoard() {
             vertical
           />
           <div className="gameboard__side-cards">
-            {Array.from({ length: Math.min(handCounts?.[getPlayer(leftSeat)?.socketId] ?? 0, 10) }).map((_, i) => (
+            {Array.from({ length: Math.min(handCounts?.[getPlayer(leftSeat)?.socketId] ?? 0, 6) }).map((_, i) => (
               <Card key={i} card={{ id: `left-${i}`, suit: 'S', rank: '?' }} faceDown size="sm" />
             ))}
           </div>
         </div>
 
-        {/* Centre: the trick */}
-        <div className="gameboard__centre-col">
-          {/* Dealing deck animation */}
+        <div className="gameboard__seat gameboard__seat--right">
+          <PlayerInfo
+            player={getPlayer(rightSeat)}
+            isActive={currentSeat === rightSeat}
+            trumpSuit={trumpSuit}
+            attackingTeam={rolesDecided ? attackingTeam : undefined}
+            vertical
+          />
+          <div className="gameboard__side-cards">
+            {Array.from({ length: Math.min(handCounts?.[getPlayer(rightSeat)?.socketId] ?? 0, 6) }).map((_, i) => (
+              <Card key={i} card={{ id: `right-${i}`, suit: 'S', rank: '?' }} faceDown size="sm" />
+            ))}
+          </div>
+        </div>
+
+        {/* The trick itself owns the middle of the felt. */}
+        <div className="gameboard__trick" ref={sidesRef}>
           {isDealing && (
             <div className="gameboard__dealing">
               <div className="dealing__deck">
@@ -532,25 +573,26 @@ export default function GameBoard() {
             </div>
           )}
 
-          {/* Reopened previous trick — available at any time, not a forced pause */}
-          {reviewing && (
-            <div className="gameboard__review">
-              <span className="gameboard__review-badge">Last trick</span>
-              <TrickArea
-                trick={lastTrick.cards}
-                players={players}
-                mySeat={mySeat}
-                oppositeSeat={oppositeSeat}
-                leftSeat={leftSeat}
-                rightSeat={rightSeat}
-                winnerSocketId={lastTrick.winner}
-                scale={reviewScale}
-              />
+          {/* Trump declaration cards sit over the felt while trump is being
+              called; in play they cost nothing at all. */}
+          {(trumpDeclareCards || []).length > 0 && isTrumpPhase && (
+            <div className="gameboard__trump-declare">
+              <span className="trump-declare__label">
+                {/* The revealer, not the declarer. From round 2 the declarer is
+                    pre-assigned to the kitty picker, so captioning their name over
+                    somebody else's cards credited the call to the wrong player. */}
+                {(players.find(p => p.seatIndex === gameState.trumpCallerSeat)
+                  ?? players.find(p => p.socketId === gameState.trumpDeclarer))?.name ?? 'Player'} called:
+              </span>
+              <div className="trump-declare__cards">
+                {trumpDeclareCards.map((card, i) => (
+                  <Card key={card.id || i} card={card} size="md" />
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Show completed trick during the (now short) display delay */}
-          {!reviewing && showTrickDisplay && (
+          {!isDealing && showTrickDisplay && (
             <TrickArea
               trick={completedTrick}
               players={players}
@@ -564,8 +606,7 @@ export default function GameBoard() {
             />
           )}
 
-          {/* Show current trick when not frozen */}
-          {!reviewing && !showTrickDisplay && !isDealing && (
+          {!isDealing && !showTrickDisplay && (
             <TrickArea
               trick={currentTrick}
               players={players}
@@ -576,69 +617,31 @@ export default function GameBoard() {
               scale={trickScale}
             />
           )}
-
-        </div>
-
-        <div className="gameboard__right">
-          <PlayerInfo
-            player={getPlayer(rightSeat)}
-            isActive={currentSeat === rightSeat}
-            trumpSuit={trumpSuit}
-            attackingTeam={rolesDecided ? attackingTeam : undefined}
-            vertical
-          />
-          <div className="gameboard__side-cards">
-            {Array.from({ length: Math.min(handCounts?.[getPlayer(rightSeat)?.socketId] ?? 0, 10) }).map((_, i) => (
-              <Card key={i} card={{ id: `right-${i}`, suit: 'S', rank: '?' }} faceDown size="sm" />
-            ))}
-          </div>
         </div>
       </div>
 
-        {/* Where the round stands: every level band, not a bar to one threshold */}
+      {/* Where the round stands, in one line. */}
+      <div className="gameboard__standing">
         {(phase === 'PLAYING' || showTrickDisplay) && (
-          <div className="gameboard__point-pile">
-            {/* score is the authoritative round score, not pileTotal: it also
-                carries the kitty capture and the throw penalty, so the pile
-                alone could sit a whole band away from how the round resolves. */}
-            <ScoreLadder
-              score={attackerScore}
-              bands={levelBands}
-              threshold={thresh}
-              pointsRemaining={pointsRemaining}
-              myRole={myRole}
-            />
-            {(attackerPointPile || []).length > 0 && (
-              <div className="point-pile__cards">
-                {(attackerPointPile || []).map((card, i) => (
-                  <Card key={card.id || i} card={card} size="sm" />
-                ))}
-              </div>
-            )}
-          </div>
+          /* score is the authoritative round score, not pileTotal: it also
+             carries the kitty capture and the throw penalty, so the pile alone
+             could sit a whole band away from how the round resolves. */
+          <ScoreLadder
+            score={attackerScore}
+            bands={levelBands}
+            threshold={thresh}
+            pointsRemaining={pointsRemaining}
+            myRole={myRole}
+            pileCards={attackerPointPile || []}
+          />
         )}
+      </div>
 
       {/* Fixed action bar — the phase's verbs always live here */}
       <div className="gameboard__prompt">
         {error && <p className="error-text">{error}</p>}
         <ActionBar {...bar} />
       </div>
-
-      {/* One role statement, from the player's own seat. "Declaring means
-          defending" is the single most confusing thing about this game, so say
-          it rather than leaving four badges to be reconciled. */}
-      {rolesDecided && myRole && (
-        <div
-          className={`gameboard__team-role gameboard__team-role--${myRole === 'attackers' ? 'attacking' : 'defending'}`}
-          title={myRole === 'attackers'
-            ? `Your team collects 5s, 10s and Kings. Reach ${thresh} points to take the bank.`
-            : `Your team declared, so you hold the kitty and deny points. Keep the attackers under ${thresh}.`}
-        >
-          {myRole === 'attackers'
-            ? <>You are <strong>attacking</strong> — collect {thresh} points</>
-            : <>You are <strong>defending</strong> — deny them {thresh} points</>}
-        </div>
-      )}
 
       {/* My hand */}
       <Hand
@@ -655,20 +658,35 @@ export default function GameBoard() {
         playableIds={isMyTurn && !showTrickDisplay ? gameState.playableCardIds : null}
         kittyIds={isKittyPhase ? kittyCardIds : []}
       />
+
+      {/* Reopened previous trick — a deliberate look, so it gets the screen */}
+      {reviewing && (
+        <TrickReview
+          trick={lastTrick.cards}
+          players={players}
+          winnerSocketId={lastTrick.winner}
+          summary={trickSummary}
+          credited={trickCredited}
+          onClose={() => setShowLastTrick(false)}
+        />
+      )}
     </div>
   );
 }
 
-function LevelCard({ label, level = '2', isAttacking, teamIdx }) {
+function LevelCard({ label, level = '2', isAttacking, rolesDecided, teamIdx, corner }) {
   const suit = teamIdx === 0 ? 'S' : 'H';
   const card = { id: `level-${teamIdx}`, suit, rank: level, isJoker: false };
+  const roleClass = !rolesDecided ? '' : isAttacking ? ' level-card--attacking' : ' level-card--defending';
   return (
-    <div className={`level-card ${isAttacking ? 'level-card--attacking' : 'level-card--defending'}`}>
+    <div className={`level-card level-card--${corner}${roleClass}`} title={`${label} is playing at level ${level}`}>
       <span className="level-card__label">{label}</span>
       <Card card={card} size="sm" />
-      <span className={`level-card__role ${isAttacking ? 'level-card__role--atk' : 'level-card__role--def'}`}>
-        {isAttacking ? 'ATK' : 'DEF'}
-      </span>
+      {rolesDecided && (
+        <span className={`level-card__role ${isAttacking ? 'level-card__role--atk' : 'level-card__role--def'}`}>
+          {isAttacking ? 'ATK' : 'DEF'}
+        </span>
+      )}
     </div>
   );
 }

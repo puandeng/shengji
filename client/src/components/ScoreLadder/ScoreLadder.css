@@ -1,205 +1,236 @@
+/* The standing reads as one line: role, score against target, a bar, and what
+   the current band pays. Everything else — ranges, deltas, points left,
+   captured cards — is one click away, so the table is not carrying eight
+   numbers at all times. */
 .ladder {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  position: relative;
   width: 100%;
-  font-variant-numeric: tabular-nums;
+  max-width: 620px;
+  margin: 0 auto;
 }
 
-.ladder__head {
+.ladder__strip {
+  width: 100%;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.4rem;
-  font-size: var(--text-xs);
-  line-height: 1.1;
-  color: var(--color-text-muted);
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 30px;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.34);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
 }
 
-.ladder__now {
+.ladder__strip:hover,
+.ladder--open .ladder__strip {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.ladder__role {
+  flex: 0 0 auto;
+  font-size: var(--text-xs);
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  color: #fff;
+}
+
+.ladder__role--attackers { background: #c0392b; }
+.ladder__role--defenders { background: #2471a3; }
+
+.ladder__score {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
   white-space: nowrap;
 }
 
-.ladder__now-lead {
-  font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.4px;
-}
-
-.ladder__now--attackers { color: #ef5350; }
-.ladder__now--defenders { color: #42a5f5; }
-
-.ladder__score {
-  font-size: 0.85rem;
-  font-weight: 700;
+.ladder__score strong {
+  font-size: var(--text-display);
   color: var(--color-gold);
 }
 
-.ladder__remaining {
-  white-space: nowrap;
+.ladder__score-target {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
+/* The bar carries the shape of the round — where the score sits among the
+   bands — without spelling any of it out in numbers. */
 .ladder__track {
   position: relative;
   display: flex;
-  height: 12px;
-  border-radius: 3px;
+  flex: 1 1 auto;
+  min-width: 80px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
   background: rgba(0, 0, 0, 0.35);
 }
 
+.ladder__track--slim { height: 10px; }
+
+.ladder__track--tall {
+  height: 30px;
+  border-radius: var(--radius-sm);
+  margin-top: 0.4rem;
+}
+
 .ladder__band {
   position: relative;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
-  border-right: 1px solid rgba(0, 0, 0, 0.5);
-  transition: opacity 0.2s ease;
+  border-right: 1px solid rgba(0, 0, 0, 0.45);
 }
 
 .ladder__band:last-child { border-right: none; }
 
-.ladder__band--defenders { background: rgba(66, 165, 245, 0.30); }
-.ladder__band--attackers { background: rgba(239, 83, 80, 0.30); }
+.ladder__band--defenders { background: rgba(41, 128, 185, 0.42); }
+.ladder__band--attackers { background: rgba(192, 57, 43, 0.42); }
+.ladder__band--mine      { background-image: linear-gradient(rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.14)); }
+.ladder__band--passed    { opacity: 0.85; }
+.ladder__band--current   { box-shadow: inset 0 0 0 1px var(--color-gold); }
 
-/* Bands the score has already moved past read as spent, not as available. */
-.ladder__band--passed { opacity: 0.45; }
+/* A band the attackers can no longer reach with the points left on the table. */
+.ladder__band--out { opacity: 0.25; }
 
-/* Not enough points remain on the table to ever reach these. */
-.ladder__band--out {
-  opacity: 0.15;
-  background-image: repeating-linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.12) 0 2px,
-    transparent 2px 5px
-  );
-}
-
-.ladder__band--current.ladder__band--defenders { background: rgba(66, 165, 245, 0.75); }
-.ladder__band--current.ladder__band--attackers { background: rgba(239, 83, 80, 0.75); }
-
-/* Which half of the ladder is YOURS. The class was applied in JSX but had no
-   rule at all, so the one cue that makes the ladder readable never rendered —
-   six bands of +3 +2 +1 +1 +2 +3 with nothing saying which end you want. */
-.ladder__band--mine {
-  box-shadow: inset 0 2px 0 var(--color-gold);
-}
-
-.ladder__band--mine .ladder__band-level {
-  color: var(--color-gold);
-  font-weight: 800;
-}
-
-.ladder__band--current {
-  opacity: 1;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
-}
-
+/* Levels only. The boundary numbers were legible at 10px and nothing else, and
+   the row below already names the two boundaries that matter — the one just
+   passed and the one coming up. */
 .ladder__band-level {
   font-size: var(--text-xs);
-  font-weight: 700;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  color: var(--color-text);
 }
 
-.ladder__band--out .ladder__band-level { visibility: hidden; }
+.ladder__track--slim .ladder__band-level { display: none; }
 
 .ladder__marker {
   position: absolute;
   top: -2px;
   bottom: -2px;
-  width: 0;
-  border-left: 2px solid var(--color-gold);
-  transform: translateX(-1px);
-  transition: left 0.4s ease;
-  pointer-events: none;
-}
-
-.ladder__marker-dot {
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  width: 2px;
+  margin-left: -1px;
   background: var(--color-gold);
+  box-shadow: 0 0 4px rgba(240, 192, 64, 0.9);
+  border-radius: 2px;
 }
 
-.ladder__scale {
-  display: flex;
+.ladder__marker--tall { top: 0; bottom: 0; width: 3px; }
+
+.ladder__verdict {
+  flex: 0 0 auto;
   font-size: var(--text-xs);
-  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.ladder__verdict--good { color: #7fd18a; }
+.ladder__verdict--bad  { color: #f0907f; }
+
+.ladder__chevron {
+  flex: 0 0 auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+}
+
+/* ── Detail popover ─────────────────────────────────────────────────────── */
+.ladder__detail {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding: 0.6rem 0.7rem 0.7rem;
+  border: 1px solid rgba(240, 192, 64, 0.3);
+  border-radius: var(--radius);
+  background: rgba(14, 24, 14, 0.97);
+  box-shadow: var(--shadow);
+}
+
+.ladder__sentence {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.35;
   color: var(--color-text-muted);
 }
 
-.ladder__tick {
-  min-width: 0;
-  padding-left: 1px;
-  overflow: hidden;
-  white-space: nowrap;
-}
+.ladder__sentence strong { color: var(--color-text); }
 
 .ladder__deltas {
   display: flex;
   justify-content: space-between;
-  gap: 0.4rem;
-  font-size: var(--text-xs);
-  line-height: 1.1;
-  color: var(--color-text-muted);
+  gap: 0.5rem;
+  margin-top: 0.35rem;
 }
 
 .ladder__delta {
-  white-space: nowrap;
-}
-
-.ladder__delta--up {
-  color: var(--color-gold);
-}
-
-/* Fallback shown until the server sends levelBands */
-.ladder--fallback {
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: space-between;
   font-size: var(--text-xs);
+  color: var(--color-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.ladder__remaining {
+  margin: 0.4rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+}
+
+.ladder__pile {
+  margin-top: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ladder__pile-label {
+  display: block;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-dim);
+  margin-bottom: 0.3rem;
+}
+
+.ladder__pile-cards {
+  display: flex;
+  flex-wrap: wrap;
+  max-height: 92px;
+  overflow-y: auto;
+}
+
+.ladder__pile-cards .card { margin-left: -18px; }
+.ladder__pile-cards .card:first-child { margin-left: 0; }
+
+/* ── Fallback, before the server has sent any bands ──────────────────────── */
+.ladder--fallback {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 30px;
+}
+
+.ladder__fallback-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 1px;
   color: var(--color-text-muted);
 }
 
 .ladder__fallback-score {
-  font-weight: 700;
+  font-size: var(--text-lg);
   color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 480px) {
-  .ladder__head    { font-size: var(--text-xs); }
-  .ladder__score   { font-size: 0.75rem; }
-  .ladder__scale   { font-size: var(--text-xs); }
-  .ladder__deltas  { font-size: var(--text-xs); }
-  .ladder__track   { height: 10px; }
-}
-
-/* The score is the single most-glanced number on the board and was rendering
-   at 13.6px, the same as everything else. It gets the display step. */
-.ladder__score {
-    font-size: var(--text-display);
-    font-weight: 800;
-    line-height: 1.05;
-    font-variant-numeric: tabular-nums;
-}
-
-.ladder__score-unit {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    opacity: 0.75;
-}
-
-.ladder__target {
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-    letter-spacing: 0.02em;
+@media (max-width: 560px) {
+  .ladder__verdict { display: none; }
 }
