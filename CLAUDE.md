@@ -52,11 +52,32 @@ shengji/
 | `client/src/components/` | `Card`, `Hand`, `GameBoard`, `TrickArea`, `PlayerInfo`, `TrumpBanner`, `ScoringModal`, `ChatPanel`, `Notification` |
 | `client/src/sounds.js` | Web Audio synthesised sound effects + localStorage mute toggle |
 | `client/src/suits.js` | Suit display helpers — symbol for chips, word for prose, never both at once. Never render a bare suit code to a player |
-| `client/src/components/ScoreLadder/` | Six-band scoring ladder, rendered from `levelBands` |
+| `client/src/components/ScoreLadder/` | The round's standing: a one-line strip (role, score/target, band bar, what the band pays) that opens the full six-band ladder, the deltas, the points left and the captured cards |
+| `client/src/components/TrickReview/` | The last trick, in play order, with who played what — reopened from the action bar |
 | `client/src/components/ActionBar/` | Fixed action bar — phase verbs always present, disabled with a visible reason |
-| `client/src/components/HandSettings/` | Hand sort preferences (suit order, trump end, rank direction), persisted to `localStorage` |
+| `client/src/components/HandSettings/` | Hand preferences (suit order, trump end, rank direction, one or two rows), persisted to `localStorage` |
 | `client/src/components/GameBoard/usePlayPreview.js` | Debounced, sequence-guarded `game:previewPlay` hook |
 | `client/src/components/DevMenu/` | `DEV_MODE` scenario picker — lobby panel, and a corner button in game |
+
+## The board is a table, not a stack of rows
+
+`GameBoard` is five grid rows — trump bar, **table**, standing, action bar, hand
+— and the table takes every pixel the other four do not. The three opponents are
+positioned around the felt rather than given rows of their own, and everything
+that is reference instead of action (each team's level, the round number, the
+trump reveal) sits over the felt or in the top bar.
+
+This is load-bearing, not cosmetic. The board used to be eight stacked rows, and
+at 1280×720 the trick's row got 182px of the 720 — which forced the smallest
+card size, so the cards on the table were 42×60 while the cards in your own hand
+were 84×118. The table now measures 449px and the trick renders at the same size
+as your hand.
+
+`GameBoard` measures the trick's own box with a ResizeObserver and picks the
+card scale from it (`trickScale`); `TrickArea` then picks a size per play, since
+a four-card tractor needs more width than a single. Never size the trick from
+its own content — that is circular, and it is how the trick used to overflow
+onto whatever sat below it.
 
 ## Scoring is banded, not pass/fail
 
