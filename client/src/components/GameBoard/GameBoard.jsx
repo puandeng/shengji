@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useGame } from '../../context/GameContext';
-import { suitLabel } from '../../suits';
+import { suitName } from '../../suits';
 import Card from '../Card/Card';
 import Hand from '../Hand/Hand';
 import TrickArea from '../TrickArea/TrickArea';
@@ -244,7 +244,7 @@ export default function GameBoard() {
               : `Pick a ${trumpRank} to call trump`)
           : 'Nothing to call with yet';
       } else if (trumpSuit) {
-        status = `${suitLabel(trumpSuit)} called`;
+        status = `${suitName(trumpSuit)} called`;
         detail = 'Click a stronger combo to override, or pass';
       } else {
         detail = `Click a ${trumpRank} to call, or a pair for a stronger call`;

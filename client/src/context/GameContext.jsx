@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from './SocketContext';
 import { playCardSnap, playTrickWon, playRoundEnd } from '../sounds';
-import { suitLabel } from '../suits';
+import { suitName } from '../suits';
 
 const GameContext = createContext(null);
 
@@ -266,7 +266,7 @@ export function GameProvider({ children }) {
       } else {
         dispatch({ type: 'GAME_STATE', payload: gameState });
       }
-      const calledWhat = gameState.trumpSuit ? suitLabel(gameState.trumpSuit) : 'no trump';
+      const calledWhat = gameState.trumpSuit ? suitName(gameState.trumpSuit) : 'no trump';
       const strengthLabel = gameState.strength === 3 ? 'joker pair' : gameState.strength === 2 ? 'pair' : 'single';
       dispatch({ type: 'SET_NOTIFICATION', payload: `${gameState.declarerName} called ${calledWhat} with a ${strengthLabel}` });
       setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
@@ -290,7 +290,7 @@ export function GameProvider({ children }) {
         dispatch({ type: 'SET_KITTY_CARDS', payload: addedIds });
       }
 
-      const finalSuit = gameState.trumpSuit ? suitLabel(gameState.trumpSuit) : 'no trump';
+      const finalSuit = gameState.trumpSuit ? suitName(gameState.trumpSuit) : 'no trump';
       const msg = gameState.auto
         ? `Trump auto-selected: ${finalSuit}`
         : `${gameState.declarerName} declared trump: ${finalSuit}`;
