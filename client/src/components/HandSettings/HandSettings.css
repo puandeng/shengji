@@ -1,0 +1,130 @@
+/* Narrow column beside the fan — costs width, never height. Stretched to the
+   hand's full height so the panel, anchored to its top edge, clears the cards
+   instead of opening across them. */
+.hand-settings {
+    position: relative;
+    flex: 0 0 auto;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+}
+
+.hand-settings__toggle {
+    padding: 0;
+    width: 22px;
+    height: 26px;
+    border-radius: 5px;
+    font-size: 0.85rem;
+    line-height: 1;
+    background: rgba(0, 0, 0, 0.28);
+    color: var(--color-gold);
+    border: 1px solid rgba(240, 192, 64, 0.35);
+    opacity: 0.65;
+    transition: opacity 0.15s, background 0.15s;
+}
+
+.hand-settings__toggle:hover:not(:disabled),
+.hand-settings__toggle--open {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.5);
+    transform: none;
+}
+
+.hand-settings__panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 6px);
+    z-index: 60;
+    width: 178px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.6rem;
+    border-radius: 8px;
+    background: rgba(16, 26, 16, 0.97);
+    border: 1px solid rgba(240, 192, 64, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    text-align: left;
+}
+
+.hand-settings__group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.hand-settings__label {
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-gold);
+    opacity: 0.75;
+}
+
+.hand-settings__hint {
+    font-size: 0.55rem;
+    color: var(--color-text-muted);
+}
+
+.hand-settings__suits {
+    display: flex;
+    gap: 4px;
+}
+
+.hand-settings__suit {
+    flex: 1;
+    padding: 0;
+    height: 26px;
+    font-size: 0.95rem;
+    line-height: 1;
+    border-radius: 4px;
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
+}
+
+.hand-settings__suit--red   { color: var(--color-red); }
+.hand-settings__suit--black { color: var(--color-black); }
+
+.hand-settings__seg {
+    display: flex;
+    gap: 3px;
+}
+
+.hand-settings__seg-btn {
+    flex: 1;
+    padding: 0.28rem 0.2rem;
+    font-size: 0.6rem;
+    line-height: 1.1;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--color-text-muted);
+    border: 1px solid transparent;
+}
+
+.hand-settings__seg-btn--on {
+    background: rgba(240, 192, 64, 0.18);
+    border-color: rgba(240, 192, 64, 0.55);
+    color: var(--color-gold);
+    font-weight: 600;
+}
+
+.hand-settings__reset {
+    padding: 0.28rem;
+    font-size: 0.6rem;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+@media (max-width: 480px) {
+    .hand-settings__toggle {
+        width: 18px;
+        height: 22px;
+        font-size: 0.7rem;
+    }
+
+    .hand-settings__panel {
+        width: 162px;
+    }
+}

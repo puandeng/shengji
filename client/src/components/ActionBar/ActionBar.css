@@ -1,0 +1,103 @@
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  /* Held at a constant height so the board does not shift every time a verb
+     becomes available or a reason appears. */
+  min-height: 2.4rem;
+  padding: 0.15rem 0.5rem;
+  max-width: 100%;
+}
+
+.action-bar__readout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  text-align: right;
+  /* Server reasons are full sentences. Cap and wrap them here, or one long
+     refusal pushes the buttons off the edge of the board. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(60ch, 58vw);
+}
+
+.action-bar__status {
+  font-size: 0.78rem;
+  line-height: 1.15;
+  font-weight: 600;
+}
+
+.action-bar__detail {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.action-bar__status--muted,
+.action-bar__detail--muted { color: var(--color-text-muted); }
+
+.action-bar__status--good,
+.action-bar__detail--good  { color: #81c784; }
+
+.action-bar__status--bad,
+.action-bar__detail--bad   { color: #ff8a80; }
+
+.action-bar__status--gold,
+.action-bar__detail--gold  { color: var(--color-gold); }
+
+.action-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.action-bar__btn {
+  padding: 0.28rem 0.8rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.action-bar__aside {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.action-bar__ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--color-text-muted);
+  padding: 0.22rem 0.6rem;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.action-bar__ghost--on {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+@media (max-width: 768px) {
+  .action-bar {
+    gap: 0.4rem;
+    min-height: 2.2rem;
+    padding: 0.1rem 0.25rem;
+  }
+
+  .action-bar__status { font-size: 0.72rem; }
+  .action-bar__detail { font-size: 0.6rem; }
+
+  .action-bar__btn {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.72rem;
+  }
+
+  .action-bar__ghost { font-size: 0.62rem; }
+}

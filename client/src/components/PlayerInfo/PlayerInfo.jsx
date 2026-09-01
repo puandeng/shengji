@@ -1,8 +1,8 @@
 import React from 'react';
+import { SUIT_SYMBOLS } from '../../suits';
 import './PlayerInfo.css';
 
 const TEAM_COLORS = ['var(--color-team0)', 'var(--color-team1)'];
-const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
 export default function PlayerInfo({ player, cardCount = 0, isActive, trumpSuit, attackingTeam, vertical }) {
   if (!player) {

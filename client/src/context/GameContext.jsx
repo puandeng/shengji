@@ -6,6 +6,16 @@ const GameContext = createContext(null);
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
+// How long a completed trick stays frozen on the table before play resumes.
+// The server's TRICK_DISPLAY_DELAY_MS (2.5s) used to be a forced stare; the
+// trick is now reopenable on demand from the board, so the automatic pause only
+// has to be long enough to register that the trick ended.
+const TRICK_REVIEW_MS = 1100;
+
+// A preview ack that never arrives (old server, no handler registered) must not
+// leave the caller's promise pending forever.
+const PREVIEW_TIMEOUT_MS = 2000;
+
 const INITIAL_STATE = {
   screen:        'home',   // 'home' | 'lobby' | 'game'
   myPlayer:      null,     // { socketId, name, seatIndex, teamIndex }
@@ -18,6 +28,7 @@ const INITIAL_STATE = {
   newCardIds:    [],       // Card IDs that were just drawn (for animation)
   completedTrick: null,
   trickWinner:    null,
+  lastTrick:      null,    // { cards, winner } — survives the freeze so it can be reopened on demand
   dealPause:      null,    // { windowIndex, totalWindows, deadline, durationMs } while dealing is paused
 };
 
@@ -44,6 +55,7 @@ function reducer(state, action) {
         ...state,
         screen:    'game',
         gameState: action.payload,
+        lastTrick: null,
       };
 
     case 'UPDATE_GAME_STATE':
@@ -149,8 +161,14 @@ function reducer(state, action) {
         gameState: { ...action.payload, currentTrick: action.meta.completedTrick },
         completedTrick: action.meta.completedTrick,
         trickWinner: action.meta.trickWinner,
+        lastTrick: {
+          cards:  action.meta.completedTrick,
+          winner: action.meta.trickWinner,
+        },
       };
 
+    // Ends the freeze only. `lastTrick` deliberately survives so the board can
+    // reopen the trick later — that is what lets the automatic pause be short.
     case 'CLEAR_COMPLETED_TRICK':
       return {
         ...state,
@@ -172,6 +190,7 @@ export function GameProvider({ children }) {
   const { socket }        = useSocket();
   const stateRef          = useRef(state);
   stateRef.current        = state;
+  const trickClearTimer   = useRef(null);
 
   // ── Fetch server config (dev mode flag) ──────────────────────────────────
   useEffect(() => {
@@ -253,11 +272,15 @@ export function GameProvider({ children }) {
       const serverTrick = gameState.completedTrick;
       const completedTrick = serverTrick?.cards || stateRef.current.gameState?.currentTrick || [];
       const trickWinner = serverTrick?.winner || null;
-      const delay = gameState.trickDisplayDelay || 2500;
+      // Cap the server's delay rather than obey it: the trick can be reopened
+      // from the board at any time, so freezing the table for 2.5s is a cost
+      // with no remaining benefit.
+      const delay = Math.min(gameState.trickDisplayDelay ?? TRICK_REVIEW_MS, TRICK_REVIEW_MS);
 
       dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner } });
       playTrickWon();
-      setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
+      clearTimeout(trickClearTimer.current);
+      trickClearTimer.current = setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
 
       if (gameState.gameOver) {
         dispatch({ type: 'SET_NOTIFICATION', payload: `Team ${gameState.winnerTeam + 1} wins the game!` });
@@ -404,6 +427,33 @@ export function GameProvider({ children }) {
     });
   }, [socket]);
 
+  // Ask the server what a selection *would* be before committing it. The server
+  // stays the only judge of shape and legality — this just makes its verdict
+  // visible before the play is made. Unlike playCards it never raises the error
+  // banner: a probe that fails is not a player mistake.
+  const previewPlay = useCallback((cardIds) => {
+    return new Promise((resolve, reject) => {
+      if (!socket) {
+        reject(new Error('not connected'));
+        return;
+      }
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('preview unavailable'));
+      }, PREVIEW_TIMEOUT_MS);
+
+      socket.emit('game:previewPlay', { cardIds }, (res) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (!res || res.error) reject(new Error(res?.error || 'preview unavailable'));
+        else resolve(res);
+      });
+    });
+  }, [socket]);
+
   const sendChat = useCallback((message) => {
     socket.emit('room:chat', { message });
   }, [socket]);
@@ -428,6 +478,7 @@ export function GameProvider({ children }) {
       discardKitty,
       playCard,
       playCards,
+      previewPlay,
       sendChat,
       startNewRound,
       clearError,

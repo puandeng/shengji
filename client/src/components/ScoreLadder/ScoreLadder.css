@@ -1,0 +1,166 @@
+.ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.ladder__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.6rem;
+  line-height: 1.1;
+  color: var(--color-text-muted);
+}
+
+.ladder__now {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.ladder__now--attackers { color: #ef5350; }
+.ladder__now--defenders { color: #42a5f5; }
+
+.ladder__score {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.ladder__remaining {
+  white-space: nowrap;
+}
+
+.ladder__track {
+  position: relative;
+  display: flex;
+  height: 12px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.ladder__band {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  transition: opacity 0.2s ease;
+}
+
+.ladder__band:last-child { border-right: none; }
+
+.ladder__band--defenders { background: rgba(66, 165, 245, 0.30); }
+.ladder__band--attackers { background: rgba(239, 83, 80, 0.30); }
+
+/* Bands the score has already moved past read as spent, not as available. */
+.ladder__band--passed { opacity: 0.45; }
+
+/* Not enough points remain on the table to ever reach these. */
+.ladder__band--out {
+  opacity: 0.15;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.12) 0 2px,
+    transparent 2px 5px
+  );
+}
+
+.ladder__band--current.ladder__band--defenders { background: rgba(66, 165, 245, 0.75); }
+.ladder__band--current.ladder__band--attackers { background: rgba(239, 83, 80, 0.75); }
+
+.ladder__band--current {
+  opacity: 1;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+.ladder__band-level {
+  font-size: 0.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.ladder__band--out .ladder__band-level { visibility: hidden; }
+
+.ladder__marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 0;
+  border-left: 2px solid var(--color-gold);
+  transform: translateX(-1px);
+  transition: left 0.4s ease;
+  pointer-events: none;
+}
+
+.ladder__marker-dot {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-gold);
+}
+
+.ladder__scale {
+  display: flex;
+  font-size: 0.48rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+}
+
+.ladder__tick {
+  min-width: 0;
+  padding-left: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ladder__deltas {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.55rem;
+  line-height: 1.1;
+  color: var(--color-text-muted);
+}
+
+.ladder__delta {
+  white-space: nowrap;
+}
+
+.ladder__delta--up {
+  color: var(--color-gold);
+}
+
+/* Fallback shown until the server sends levelBands */
+.ladder--fallback {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.ladder__fallback-score {
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+@media (max-width: 480px) {
+  .ladder__head    { font-size: 0.55rem; }
+  .ladder__score   { font-size: 0.75rem; }
+  .ladder__scale   { font-size: 0.44rem; }
+  .ladder__deltas  { font-size: 0.5rem; }
+  .ladder__track   { height: 10px; }
+}

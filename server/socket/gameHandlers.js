@@ -6,6 +6,7 @@ const { GAME_PHASES, TRICK_DISPLAY_DELAY_MS } = require('../game/constants');
  *  game:declareTrump → Legacy single-card trump declaration (kept for compat, calls callTrump internally)
  *  game:discardKitty → Trump declarer discards KITTY_SIZE cards
  *  game:playCards    → Play 1–N cards during trick-taking (single / pair / tractor / throw)
+ *  game:previewPlay  → Ack-only legality check for a selection (never broadcast)
  */
 function setupGameHandlers(io, socket, registry) {
 
@@ -180,6 +181,28 @@ function setupGameHandlers(io, socket, registry) {
 
     } catch (err) {
       console.error('[game:playCards]', err);
+      callback?.({ error: 'Server error' });
+    }
+  });
+
+  // ── Preview a selection (read-only; ack only, never broadcast) ───────────
+  // Answered through the callback alone — broadcasting would show the rest of
+  // the table which cards this player is holding over.
+  socket.on('game:previewPlay', ({ cardIds } = {}, callback) => {
+    try {
+      const room = registry.getRoomForSocket(socket.id);
+      if (!room) return callback?.({ error: 'Not in a room' });
+      if (room.game.phase !== GAME_PHASES.PLAYING) {
+        return callback?.({ error: 'Game is not in playing phase' });
+      }
+      if (socket.id !== room.game.currentPlayerSocketId) {
+        return callback?.({ error: "It's not your turn" });
+      }
+
+      callback?.(room.game.previewPlay(socket.id, cardIds));
+
+    } catch (err) {
+      console.error('[game:previewPlay]', err);
       callback?.({ error: 'Server error' });
     }
   });

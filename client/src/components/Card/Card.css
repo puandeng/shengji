@@ -8,10 +8,22 @@
   flex-shrink: 0;
 }
 
-/* Sizes */
-.card--sm  { width: 42px;  height: 60px;  border-radius: 4px; }
-.card--md  { width: 62px;  height: 88px;  border-radius: 5px; }
-.card--lg  { width: 84px;  height: 118px; border-radius: 7px; }
+/* Sizes. `--rank-size` / `--suit-size` drive the corner index: in a fanned hand
+   the top-left corner is the only part of most cards on screen, so it is sized
+   to fill the exposed sliver (see SIZES in Hand.jsx) rather than being scaled
+   to the card as if the whole face were visible. */
+.card--sm  {
+  width: 42px;  height: 60px;  border-radius: 4px;
+  --rank-size: 15px; --suit-size: 12px; --corner-x: 3px; --corner-y: 2px;
+}
+.card--md  {
+  width: 62px;  height: 88px;  border-radius: 5px;
+  --rank-size: 18px; --suit-size: 15px; --corner-x: 4px; --corner-y: 3px;
+}
+.card--lg  {
+  width: 84px;  height: 118px; border-radius: 7px;
+  --rank-size: 22px; --suit-size: 18px; --corner-x: 5px; --corner-y: 4px;
+}
 
 /* Colors */
 .card--red   { color: var(--color-red); }
@@ -62,43 +74,68 @@
   line-height: 1;
 }
 
-.card__corner--top-left     { top: 4px; left: 5px; }
-.card__corner--bottom-right { bottom: 4px; right: 5px; transform: rotate(180deg); }
+.card__corner--top-left     { top: var(--corner-y, 4px); left: var(--corner-x, 5px); }
+.card__corner--bottom-right { bottom: var(--corner-y, 4px); right: var(--corner-x, 5px); transform: rotate(180deg); }
+
+/* Deeper than the shared palette: on a white face at this size the index is
+   the whole card, so it is worth the extra contrast. */
+.card--black .card__corner { color: #0f0f0f; }
+.card--red   .card__corner { color: #b3241a; }
 
 .card__rank {
-  font-size: 0.8em;
-  font-weight: 700;
+  font-size: var(--rank-size, 18px);
+  font-weight: 800;
   line-height: 1;
+}
+
+/* '10', 'BJ', 'SJ' — two glyphs have to fit the same sliver as one. */
+.card__rank--wide {
+  font-size: calc(var(--rank-size, 18px) * 0.78);
+  letter-spacing: -0.04em;
 }
 
 .card__suit {
-  font-size: 0.65em;
+  font-size: var(--suit-size, 15px);
   line-height: 1;
 }
 
-/* Centre pip */
+/* Centre pip — decoration the fan hides, so it is dropped at the sizes the
+   hand actually uses and kept faint at the largest. */
 .card__center {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 1.5em;
-  opacity: 0.15;
+  opacity: 0.12;
+  display: none;
 }
 
-/* Joker center pip — large and high contrast */
+.card--lg .card__center {
+  display: block;
+  font-size: 26px;
+}
+
+/* Joker centre pip — the card's identity, not decoration: always shown. */
+.card--joker-big .card__center,
+.card--joker-small .card__center {
+  display: block;
+}
 .card--joker-big .card__center {
   opacity: 1;
-  font-size: 2.2em;
   color: #ff6b6b;
   text-shadow: 0 0 8px rgba(255, 107, 107, 0.6);
 }
 .card--joker-small .card__center {
   opacity: 0.9;
-  font-size: 2.2em;
   color: #e0e0e0;
   text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 }
+.card--sm.card--joker-big  .card__center,
+.card--sm.card--joker-small .card__center { font-size: 20px; }
+.card--md.card--joker-big  .card__center,
+.card--md.card--joker-small .card__center { font-size: 28px; }
+.card--lg.card--joker-big  .card__center,
+.card--lg.card--joker-small .card__center { font-size: 38px; }
 
 /* Point badge */
 .card__points-badge {
@@ -118,40 +155,33 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 
-/* Size adjustments for corners */
-.card--sm .card__rank { font-size: 0.6em; }
-.card--sm .card__suit { font-size: 0.5em; }
-.card--sm .card__center { font-size: 1em; }
-.card--md .card__rank { font-size: 0.75em; }
-.card--md .card__suit { font-size: 0.6em; }
-.card--md .card__center { font-size: 1.4em; }
-.card--lg .card__rank { font-size: 0.9em; }
-.card--lg .card__suit { font-size: 0.7em; }
-.card--lg .card__center { font-size: 1.8em; }
-
-/* Mobile: smaller cards */
 @media (max-width: 768px) {
-  .card--sm .card__rank  { font-size: 0.55em; }
-  .card--sm .card__suit  { font-size: 0.45em; }
-  .card--sm .card__center { font-size: 0.9em; }
-  .card--md .card__rank  { font-size: 0.65em; }
-  .card--md .card__suit  { font-size: 0.5em; }
-  .card--md .card__center { font-size: 1.2em; }
-  .card--lg .card__rank  { font-size: 0.8em; }
-  .card--lg .card__suit  { font-size: 0.6em; }
-  .card--lg .card__center { font-size: 1.5em; }
-
   .card--clickable:hover { transform: translateY(-6px); }
   .card--selected { transform: translateY(-8px); }
 
   .card__points-badge { width: 13px; height: 13px; font-size: 0.45rem; top: -4px; right: -4px; }
 }
 
+/* Narrow screens shrink the cards, so the index has to come down with them. */
 @media (max-width: 480px) {
-  .card--sm  { width: 36px;  height: 52px;  }
-  .card--md  { width: 50px;  height: 72px;  }
-  .card--lg  { width: 66px;  height: 94px;  }
+  .card--sm  {
+    width: 36px;  height: 52px;
+    --rank-size: 13px; --suit-size: 10px; --corner-x: 2px; --corner-y: 2px;
+  }
+  .card--md  {
+    width: 50px;  height: 72px;
+    --rank-size: 15px; --suit-size: 12px; --corner-x: 3px; --corner-y: 2px;
+  }
+  .card--lg  {
+    width: 66px;  height: 94px;
+    --rank-size: 18px; --suit-size: 15px; --corner-x: 4px; --corner-y: 3px;
+  }
 
-  .card__corner--top-left { top: 2px; left: 3px; }
-  .card__corner--bottom-right { bottom: 2px; right: 3px; }
+  .card--lg .card__center { font-size: 20px; }
+  .card--sm.card--joker-big  .card__center,
+  .card--sm.card--joker-small .card__center { font-size: 16px; }
+  .card--md.card--joker-big  .card__center,
+  .card--md.card--joker-small .card__center { font-size: 22px; }
+  .card--lg.card--joker-big  .card__center,
+  .card--lg.card--joker-small .card__center { font-size: 30px; }
 }
