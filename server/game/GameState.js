@@ -668,11 +668,13 @@ class GameState {
 
     const caller = this.getPlayer(socketId);
 
-    // Round 1: trump caller becomes declarer and their team attacks.
+    // Round 1: the trump caller becomes the declarer. Declaring means
+    // *defending* — they take the kitty and deny points — so the attacking
+    // (point-collecting) team is the other one.
     // Later rounds: kitty picker is pre-determined; calling only sets the suit.
     if (this.kittyPickerSeat === null) {
       this.trumpDeclarer = socketId;
-      this.attackingTeam = caller.teamIndex;
+      this.attackingTeam = caller.teamIndex === 0 ? 1 : 0;
     }
 
     if (this.logger) {
@@ -808,11 +810,12 @@ class GameState {
       this.trumpSuit = (nonJoker || hand?.[0])?.suit ?? 'S';
     }
 
-    // Round 1: set declarer to seat 0 if no one called
+    // Round 1: seat 0 declares if nobody called — and declaring is defending,
+    // so the other team attacks.
     if (this.kittyPickerSeat === null) {
       const firstPlayer = this.players[0];
       this.trumpDeclarer = firstPlayer.socketId;
-      this.attackingTeam = firstPlayer.teamIndex;
+      this.attackingTeam = firstPlayer.teamIndex === 0 ? 1 : 0;
     }
     // Later rounds: trumpDeclarer already set by startNewRound
   }
@@ -1156,22 +1159,16 @@ class GameState {
       });
     }
 
-    // The kitty is buried by the declarer, and in this variant the declarer's
-    // own team is the one collecting points — so crediting the kitty to them
-    // made burying point cards pure profit, and with the condition written as
-    // `!attackerWonTrick` it paid out for *losing* the last trick: bury four
-    // Kings, throw the last trick, collect 80.
-    //
-    // Buried points are a liability instead. Win the last trick and you have
-    // protected the bury (no gain — they were your own points). Lose it and the
-    // opposing team captures the bury, costing you the same multiplier.
-    if (isLastTrick) {
+    // The declarer defends, and buries the kitty. If the attacking team takes
+    // the last trick they capture the bury at the multiplier; if the declarer's
+    // team holds the last trick, the kitty is protected and pays nobody. The
+    // declarer can therefore never profit from their own bury — burying point
+    // cards is a risk, which is the whole tension of the discard.
+    if (isLastTrick && attackerWonTrick) {
       kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
       kittyMultiplier = 2 * winnerEntry.cards.length;
-      if (!attackerWonTrick && kittyPoints > 0) {
-        kittyBonus = -(kittyPoints * kittyMultiplier);
-        this.scores[this.attackingTeam] = Math.max(0, this.scores[this.attackingTeam] + kittyBonus);
-      }
+      kittyBonus      = kittyPoints * kittyMultiplier;
+      this.scores[this.attackingTeam] += kittyBonus;
     }
 
     // Apply throw penalty
@@ -1282,9 +1279,6 @@ class GameState {
 
     // Level advancement reads straight off the ladder the players are shown, so
     // the displayed bands and the actual scoring can never drift apart.
-    // NOTE: variable names are inverted vs traditional Sheng Ji. In code,
-    // attackingTeam = trump caller = DEFENDING team in traditional terms.
-    // The full rename + scoring refactor is tracked in PLAN.md.
     const band           = this._bandForScore(attackingScore);
     const attackingWon   = band.team === 'attackers';
     const advancingTeam  = attackingWon ? this.attackingTeam : defendingTeam;

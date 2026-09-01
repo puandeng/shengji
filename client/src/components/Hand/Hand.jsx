@@ -268,7 +268,18 @@ export default function Hand({
       <div className={`hand__main hand__main--${trumpEnd}`} ref={rowsRef}>
         {trumpRow.length > 0 && (
           <div className="hand__row hand__row--trump">
-            <span className="hand__row-label">Trump</span>
+            {/* Before anyone declares there is no trump *suit* — only the rank
+                cards and jokers are trump — so a whole suit is still sitting in
+                the row below and will jump up the moment trump is called.
+                Labelling this "Trump" flat out reads as if the sort were wrong. */}
+            <span
+              className={`hand__row-label${trumpSuit ? '' : ' hand__row-label--pending'}`}
+              title={trumpSuit
+                ? 'Trump: the trump suit, off-suit trump-rank cards, and jokers'
+                : 'No trump suit called yet — only trump-rank cards and jokers are trump so far. A suit joins this row once someone declares.'}
+            >
+              {trumpSuit ? 'Trump' : 'Trump so far'}
+            </span>
             {renderRow(trumpRow, overlapTrump, 0)}
           </div>
         )}

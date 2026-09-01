@@ -248,21 +248,25 @@ class Room {
     const threshold        = LEVEL_THRESHOLDS[this.game.trumpRank];
     const attackingWon     = this.game.scores[prevAttacking] >= threshold;
 
+    // The kitty picker is the declarer, and declaring means defending.
+    // Team 0 = seats 0&2, Team 1 = seats 1&3, so an adjacent seat is the other
+    // team and (seat + 2) is the partner.
     let nextKittySeat;
 
     if (attackingWon) {
-      // Attacking team stays on attack; kitty rotates to the partner
-      // Team 0 = seats 0&2, Team 1 = seats 1&3 → partner is (seat + 2) % 4
-      nextKittySeat = (prevKittySeat + 2) % 4;
-    } else {
-      // Defending team becomes attackers
-      this.game.attackingTeam = prevAttacking === 0 ? 1 : 0;
-      // Player to the right of previous kitty picker picks up kitty
+      // The attackers made their threshold, so they take the bank: the declarer
+      // role passes to their team.
       nextKittySeat = (prevKittySeat + 1) % 4;
+    } else {
+      // The declarers held them off and keep the bank; it rotates to the partner.
+      nextKittySeat = (prevKittySeat + 2) % 4;
     }
 
-    // Trump rank for next round = attacking team's current level
-    this.game.trumpRank = this.game.teamLevels[this.game.attackingTeam];
+    // The rank being played belongs to the declaring team — they are defending
+    // their own level — and the other team attacks it.
+    const nextDeclaringTeam = nextKittySeat % 2;
+    this.game.trumpRank     = this.game.teamLevels[nextDeclaringTeam];
+    this.game.attackingTeam = nextDeclaringTeam === 0 ? 1 : 0;
 
     // Pre-assign kitty picker — they will be trumpDeclarer after trump selection
     this.game.kittyPickerSeat = nextKittySeat;
@@ -275,7 +279,7 @@ class Room {
     const kittyPlayer = this.game.players.find(p => p.seatIndex === nextKittySeat);
     if (kittyPlayer) {
       this.game.trumpDeclarer = kittyPlayer.socketId;
-      this.game.attackingTeam = kittyPlayer.teamIndex;
+      this.game.attackingTeam = kittyPlayer.teamIndex === 0 ? 1 : 0;
     }
 
     return result;
