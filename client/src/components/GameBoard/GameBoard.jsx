@@ -15,6 +15,14 @@ import { isMuted, setMuted } from '../../sounds';
 import './GameBoard.css';
 
 
+/** Height a box actually has for its content, padding excluded. */
+function contentHeight(node) {
+  const style = window.getComputedStyle(node);
+  return node.getBoundingClientRect().height
+    - parseFloat(style.paddingTop || 0)
+    - parseFloat(style.paddingBottom || 0);
+}
+
 export default function GameBoard() {
   const {
     gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards,
@@ -48,23 +56,47 @@ export default function GameBoard() {
   // whichever node existed at mount, so when React swapped the row's node the
   // observer kept watching a detached element and the height stayed at its
   // initial 0 — which pinned the trick at its smallest size forever.
+  const trickNodeRef = useRef(null);
   const sidesRef = useCallback(node => {
     if (roRef.current) { roRef.current.disconnect(); roRef.current = null; }
-    if (!node || typeof ResizeObserver === 'undefined') return;
-    setSidesHeight(node.getBoundingClientRect().height);
+    trickNodeRef.current = node || null;
+    if (!node) return;
+    if (typeof ResizeObserver === 'undefined') {
+      // No observer: measure once and let the resize listener below keep it
+      // honest, rather than leaving the trick pinned at its smallest size.
+      setSidesHeight(contentHeight(node));
+      return;
+    }
+    // Content box in both places. The first read used to be
+    // getBoundingClientRect(), which is the border box — it counts the padding
+    // that keeps the trick clear of the seats, so the very first frame solved
+    // the card size against ~75px it does not actually have.
+    setSidesHeight(contentHeight(node));
     const ro = new ResizeObserver(([entry]) => setSidesHeight(entry.contentRect.height));
     ro.observe(node);
     roRef.current = ro;
   }, []);
 
-  // On a short window the row above eats the trick's space with a decorative
-  // stack of face-down cards, while PlayerInfo already states the hand count.
-  // Hysteresis matters here: dropping the stack gives the trick ~66px back, so
-  // a single threshold would flip between the two states forever.
+  // A window resize changes the box without necessarily changing anything React
+  // renders, and it is also the one signal available when ResizeObserver is not.
+  useEffect(() => {
+    const onResize = () => {
+      const node = trickNodeRef.current;
+      if (node) setSidesHeight(contentHeight(node));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // On a short board the top seat's decorative stack of face-down cards is
+  // charging the trick real height, while PlayerInfo already states the count.
+  // Purely decluttering now — the trick's reserve is constant, so this cannot
+  // change the card size. Hysteresis anyway, so a board hovering on the
+  // threshold does not flicker.
   const [hideOppBacks, setHideOppBacks] = useState(false);
   useEffect(() => {
     if (!sidesHeight) return;
-    setHideOppBacks(prev => (prev ? sidesHeight < 300 : sidesHeight < 240));
+    setHideOppBacks(prev => (prev ? sidesHeight < 220 : sidesHeight < 190));
   }, [sidesHeight]);
 
   if (!gameState || !myPlayer) return null;

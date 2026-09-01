@@ -147,7 +147,7 @@
 
 .gameboard__seat {
   position: absolute;
-  z-index: 4;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 0.2rem;
@@ -179,7 +179,7 @@
      positioned element paints over a static sibling whatever the DOM order, so
      its dark gradient was tinting the played cards. */
   position: relative;
-  z-index: 1;
+  z-index: 3;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
@@ -187,7 +187,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4.6rem 7.5rem 0.2rem;
+  /* A constant reserve, deliberately: when this padding depended on whether the
+     top seat's card backs were drawn, and that decision came from measuring
+     this same box, the size took two layout passes to settle and could sit a
+     whole card size behind. The played cards paint over the backs instead. */
+  padding: 3.2rem 7.5rem 0.2rem;
   overflow: hidden;
 }
 
