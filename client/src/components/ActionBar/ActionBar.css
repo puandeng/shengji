@@ -1,12 +1,14 @@
+/* A three-column grid, not centred flex. Centring meant the buttons slid
+   sideways by however wide the readout happened to be — measured at 254px when
+   a refusal wrapped to three lines, dragging the whole board with it. The
+   readout now has its own column and the verbs never move. The reserved height
+   covers a three-line reason, so the bar does not grow either. */
 .action-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
   gap: 0.6rem;
-  flex-wrap: wrap;
-  /* Held at a constant height so the board does not shift every time a verb
-     becomes available or a reason appears. */
-  min-height: 2.4rem;
+  min-height: 3.1rem;
   padding: 0.15rem 0.5rem;
   max-width: 100%;
 }
@@ -19,9 +21,8 @@
   text-align: right;
   /* Server reasons are full sentences. Cap and wrap them here, or one long
      refusal pushes the buttons off the edge of the board. */
-  flex: 0 1 auto;
   min-width: 0;
-  max-width: min(60ch, 58vw);
+  justify-self: end;
 }
 
 .action-bar__status {
@@ -31,7 +32,7 @@
 }
 
 .action-bar__detail {
-  font-size: 0.66rem;
+  font-size: var(--text-xs);
   line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -75,7 +76,7 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
   color: var(--color-text-muted);
   padding: 0.22rem 0.6rem;
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
@@ -91,13 +92,43 @@
     padding: 0.1rem 0.25rem;
   }
 
-  .action-bar__status { font-size: 0.72rem; }
-  .action-bar__detail { font-size: 0.6rem; }
+  .action-bar__status { font-size: var(--text-sm); }
+  .action-bar__detail { font-size: var(--text-xs); }
 
   .action-bar__btn {
     padding: 0.25rem 0.6rem;
-    font-size: 0.72rem;
+    font-size: var(--text-sm);
   }
 
-  .action-bar__ghost { font-size: 0.62rem; }
+  .action-bar__ghost { font-size: var(--text-xs); }
+}
+
+/* Actions hold the centre column; the aside trails in the third so neither can
+   push the primary verb off its position. */
+.action-bar__actions { justify-self: center; }
+.action-bar__aside   { justify-self: start; min-width: 0; }
+
+/* Tap targets. Measured at 43x21 for the primary verb on mobile and 51x24 on
+   desktop — under WCAG 2.2's 24x24 floor everywhere, and about a fifth of the
+   44x44 iOS target on a phone. */
+.action-bar__btn {
+    min-height: 32px;
+    min-width: 64px;
+}
+
+@media (max-width: 480px) {
+    .action-bar__btn {
+        min-height: 44px;
+        min-width: 72px;
+        font-size: var(--text-sm);
+    }
+
+    .action-bar {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 0.35rem;
+    }
+
+    .action-bar__readout,
+    .action-bar__actions,
+    .action-bar__aside { justify-self: center; }
 }

@@ -1,0 +1,157 @@
+/* Centred over the board rather than squeezed into the trick column: the
+   review is a deliberate look at four plays, not a peripheral readout, and the
+   column it used to live in is the shortest box on the screen. */
+.trick-review {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  animation: trick-review-in 0.12s ease-out;
+}
+
+@keyframes trick-review-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.trick-review__panel {
+  width: min(720px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 0.8rem 1rem 1rem;
+  border: 1px solid rgba(240, 192, 64, 0.35);
+  border-radius: var(--radius);
+  background: rgba(16, 26, 16, 0.98);
+  box-shadow: var(--shadow);
+}
+
+.trick-review__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.trick-review__title {
+  font-size: var(--text-lg);
+  color: var(--color-gold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.trick-review__points {
+  flex: 1 1 auto;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.trick-review__close {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.trick-review__close:hover { color: var(--color-text); }
+
+/* Play order, left to right — who led, who followed, who took it. */
+.trick-review__plays {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trick-review__play {
+  flex: 1 1 0;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.trick-review__play--won {
+  border-color: rgba(240, 192, 64, 0.6);
+  background: rgba(240, 192, 64, 0.09);
+}
+
+.trick-review__cards {
+  display: flex;
+  gap: 3px;
+}
+
+.trick-review__who {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.trick-review__name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.trick-review__name--team0 { color: var(--color-team0); }
+.trick-review__name--team1 { color: var(--color-team1); }
+
+.trick-review__tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+}
+
+.trick-review__tag {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--color-text-dim);
+}
+
+.trick-review__tag--won {
+  background: rgba(240, 192, 64, 0.22);
+  color: var(--color-gold);
+}
+
+.trick-review__tag--pts {
+  background: rgba(126, 211, 133, 0.18);
+  color: #8fd79a;
+}
+
+.trick-review__summary,
+.trick-review__credited {
+  margin: 0.6rem 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.trick-review__credited { color: var(--color-text-dim); }
+
+@media (max-width: 560px) {
+  .trick-review__plays { flex-direction: column; }
+  .trick-review__play { flex-direction: row; justify-content: center; }
+}

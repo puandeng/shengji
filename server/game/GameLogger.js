@@ -155,8 +155,16 @@ class GameLogger {
         this.note('');
     }
 
-    play({ seatIndex, name, cards, shape, leadSeat }) {
-        this.event('play', { seatIndex, name, cards, shape, isLead: seatIndex === leadSeat });
+    play({ seatIndex, name, isBot, cards, shape, leadSeat, legalCardIds, handBefore }) {
+        // A decision record, not just an outcome: who chose, what they were
+        // holding, what the rules allowed, and which of those they picked.
+        // Without the legal set a training pipeline has to re-derive legality
+        // by reimplementing the rules or replaying through the server.
+        this.event('play', {
+            seatIndex, name, isBot: !!isBot, cards, shape,
+            isLead: seatIndex === leadSeat,
+            legalCardIds, handBefore,
+        });
     }
 
     playRejected({ seatIndex, cardIds, error }) {
@@ -196,8 +204,10 @@ class GameLogger {
         if (throwPenalty) this.note(`      throw penalty applied: ${throwPenalty > 0 ? '+' : ''}${throwPenalty}`);
         if (isLastTrick) {
             const fate = kittyBonus === 0
-                ? 'protected by attackers (no gain — it was their own bury)'
-                : `${kittyBonus} to attackers — captured by defenders`;
+                ? 'protected by the declarers — their own bury, so it pays nobody'
+                : `+${kittyBonus} to the attackers — they captured the declarers' bury`;
+            // kittyPoints is now computed on every last trick, so a protected
+            // bury reports its real value instead of logging as 0pts.
             this.note(`      last trick: kitty ${kittyPoints}pts × ${kittyMultiplier} → ${fate}`);
         }
     }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from './SocketContext';
 import { playCardSnap, playTrickWon, playRoundEnd } from '../sounds';
+import { suitName } from '../suits';
 
 const GameContext = createContext(null);
 
@@ -26,9 +27,13 @@ const INITIAL_STATE = {
   chatMessages:  [],
   devMode:       false,
   newCardIds:    [],       // Card IDs that were just drawn (for animation)
+  kittyCardIds:  [],       // the 8 cards the kitty gave the declarer, until buried
   completedTrick: null,
   trickWinner:    null,
   lastTrick:      null,    // { cards, winner } — survives the freeze so it can be reopened on demand
+  roundResult:    null,    // how the last round resolved, for the scoring modal
+  trickSummary:   null,    // one-line narration of the trick just finished
+  trickCredited:  0,
   dealPause:      null,    // { windowIndex, totalWindows, deadline, durationMs } while dealing is paused
 };
 
@@ -56,6 +61,12 @@ function reducer(state, action) {
         screen:    'game',
         gameState: action.payload,
         lastTrick: null,
+        // A fresh snapshot replaces the round wholesale — a dev scenario can
+        // even wind it backwards — so nothing left over from the last one
+        // should still be on screen.
+        completedTrick: null,
+        trickWinner:    null,
+        roundResult:    null,
       };
 
     case 'UPDATE_GAME_STATE':
@@ -69,7 +80,14 @@ function reducer(state, action) {
       return {
         ...state,
         gameState: state.gameState
-          ? { ...state.gameState, currentTrick: action.payload.trick, currentSeat: action.payload.currentSeat }
+          ? {
+              ...state.gameState,
+              currentTrick: action.payload.trick,
+              currentSeat: action.payload.currentSeat,
+              // The legal set changes with every card played, so carry it here
+              // rather than leaving the dimming frozen at trick start.
+              playableCardIds: action.payload.playableCardIds ?? state.gameState.playableCardIds,
+            }
           : state.gameState,
         completedTrick: null,
       };
@@ -91,6 +109,12 @@ function reducer(state, action) {
 
     case 'SET_DEV_MODE':
       return { ...state, devMode: action.payload };
+
+    case 'SET_KITTY_CARDS':
+      return { ...state, kittyCardIds: action.payload };
+
+    case 'CLEAR_KITTY_CARDS':
+      return { ...state, kittyCardIds: [] };
 
     case 'SET_NEW_CARDS':
       return { ...state, newCardIds: action.payload };
@@ -156,7 +180,14 @@ function reducer(state, action) {
 
     case 'TRICK_COMPLETE':
       return {
+        // `...state` first: spread last, it overwrote the three fields above it
+        // with their previous values, so the round result never reached the
+        // scoring modal and it fell back to defaults — no kitty arithmetic, no
+        // level change, no Jack demotion.
         ...state,
+        roundResult:   action.meta?.roundResult ?? state.roundResult,
+        trickSummary:  action.meta?.trickSummary ?? null,
+        trickCredited: action.meta?.trickCredited ?? 0,
         screen: 'game',
         gameState: { ...action.payload, currentTrick: action.meta.completedTrick },
         completedTrick: action.meta.completedTrick,
@@ -235,9 +266,9 @@ export function GameProvider({ children }) {
       } else {
         dispatch({ type: 'GAME_STATE', payload: gameState });
       }
-      const suitLabel = gameState.trumpSuit || 'no-trump';
+      const calledWhat = gameState.trumpSuit ? suitName(gameState.trumpSuit) : 'no trump';
       const strengthLabel = gameState.strength === 3 ? 'joker pair' : gameState.strength === 2 ? 'pair' : 'single';
-      dispatch({ type: 'SET_NOTIFICATION', payload: `${gameState.declarerName} called ${suitLabel} with a ${strengthLabel}` });
+      dispatch({ type: 'SET_NOTIFICATION', payload: `${gameState.declarerName} called ${calledWhat} with a ${strengthLabel}` });
       setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
     });
     on('game:trumpSelected',  (gameState)        => {
@@ -252,16 +283,24 @@ export function GameProvider({ children }) {
       if (addedIds.length > 0) {
         dispatch({ type: 'SET_NEW_CARDS', payload: addedIds });
         setTimeout(() => dispatch({ type: 'CLEAR_NEW_CARDS' }), 1000);
+        // The draw animation lasted a second and then the 8 kitty cards were
+        // indistinguishable from the 25 you were dealt — so you could not tell
+        // what the kitty gave you, or put back what you had just taken. Mark
+        // them until the bury is submitted.
+        dispatch({ type: 'SET_KITTY_CARDS', payload: addedIds });
       }
 
-      const suitLabel = gameState.trumpSuit || 'no-trump';
+      const finalSuit = gameState.trumpSuit ? suitName(gameState.trumpSuit) : 'no trump';
       const msg = gameState.auto
-        ? `Trump auto-selected: ${suitLabel}`
-        : `${gameState.declarerName} declared trump: ${suitLabel}`;
+        ? `Trump auto-selected: ${finalSuit}`
+        : `${gameState.declarerName} declared trump: ${finalSuit}`;
       dispatch({ type: 'SET_NOTIFICATION', payload: msg });
       setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
     });
-    on('game:kittyDiscarded', (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
+    on('game:kittyDiscarded', (gameState)        => {
+      dispatch({ type: 'GAME_STATE', payload: gameState });
+      dispatch({ type: 'CLEAR_KITTY_CARDS' });
+    });
     on('game:cardDealt',      (data)             => dispatch({ type: 'CARD_DEALT', payload: data }));
     on('game:dealComplete',   (gameState)        => dispatch({ type: 'DEAL_COMPLETE', payload: gameState }));
     on('game:dealPaused',     (data)             => dispatch({ type: 'DEAL_PAUSED', payload: data }));
@@ -277,7 +316,7 @@ export function GameProvider({ children }) {
       // with no remaining benefit.
       const delay = Math.min(gameState.trickDisplayDelay ?? TRICK_REVIEW_MS, TRICK_REVIEW_MS);
 
-      dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner } });
+      dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner, trickSummary: serverTrick?.summary ?? null, trickCredited: serverTrick?.credited ?? 0, roundResult: gameState.roundResult } });
       playTrickWon();
       clearTimeout(trickClearTimer.current);
       trickClearTimer.current = setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
@@ -462,6 +501,19 @@ export function GameProvider({ children }) {
     socket.emit('room:newRound', {}, () => {});
   }, [socket]);
 
+  // DEV_MODE only — ask the server to rebuild the game in a chosen situation.
+  // The reply is the scenario summary; the state itself arrives as game:started.
+  const setupScenario = useCallback((opts) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('dev:scenario', opts, (res) => {
+        if (res?.error) {
+          dispatch({ type: 'SET_ERROR', payload: res.error });
+          reject(new Error(res.error));
+        } else resolve(res);
+      });
+    });
+  }, [socket]);
+
   const clearError = useCallback(() => dispatch({ type: 'CLEAR_ERROR' }), []);
 
   return (
@@ -481,6 +533,7 @@ export function GameProvider({ children }) {
       previewPlay,
       sendChat,
       startNewRound,
+      setupScenario,
       clearError,
     }}>
       {children}

@@ -32,10 +32,13 @@ shengji/
 | `server/game/GameState.js` | Core state machine: dealing → trump → kitty → playing → scoring; shape detection, follow-suit enforcement, level progression |
 | `server/game/GameLogger.js` | Per-room append-only game log — JSONL event stream + chess-style notation |
 | `server/game/BotPlayer.js` | Stub bot logic for `DEV_MODE` — trump calls, passes, legal card/combo selection |
+| `server/game/DevScenario.js` | `DEV_MODE` only — rebuilds a room's game in a chosen situation (fresh / mid-game / endgame, either role, either team level) |
 | `server/game/__tests__/` | Jest suite for `Card` and `GameState` (`npm test --workspace=server`) |
 | `server/game/Room.js` | Room wrapper + `RoomRegistry` (in-memory store, code generator) |
 | `server/socket/index.js` | Connection setup, disconnect cleanup |
 | `server/socket/roomHandlers.js` | `room:create`, `room:join`, `room:start`, `room:chat` |
+| `server/socket/dealFlow.js` | The animated deal wiring — shared by `room:start`, `room:newRound` and dev scenario setup |
+| `server/socket/devHandlers.js` | `dev:scenario` — refuses unless `DEV_MODE` is set |
 | `server/socket/gameHandlers.js` | `game:callTrump`, `game:passTrump`, `game:discardKitty`, `game:playCards` (+ legacy `game:declareTrump`, `game:playCard`) |
 
 ### Client layout
@@ -48,11 +51,33 @@ shengji/
 | `client/src/pages/Game.jsx` | Active game screen |
 | `client/src/components/` | `Card`, `Hand`, `GameBoard`, `TrickArea`, `PlayerInfo`, `TrumpBanner`, `ScoringModal`, `ChatPanel`, `Notification` |
 | `client/src/sounds.js` | Web Audio synthesised sound effects + localStorage mute toggle |
-| `client/src/suits.js` | Suit display helpers — symbol for chips, word for prose. Never render a bare suit code to a player |
-| `client/src/components/ScoreLadder/` | Six-band scoring ladder, rendered from `levelBands` |
+| `client/src/suits.js` | Suit display helpers — symbol for chips, word for prose, never both at once. Never render a bare suit code to a player |
+| `client/src/components/ScoreLadder/` | The round's standing: a one-line strip (role, score/target, band bar, what the band pays) that opens the full six-band ladder, the deltas, the points left and the captured cards |
+| `client/src/components/TrickReview/` | The last trick, in play order, with who played what — reopened from the action bar |
 | `client/src/components/ActionBar/` | Fixed action bar — phase verbs always present, disabled with a visible reason |
-| `client/src/components/HandSettings/` | Hand sort preferences (suit order, trump end, rank direction), persisted to `localStorage` |
+| `client/src/components/HandSettings/` | Hand preferences (suit order, trump end, rank direction, one or two rows), persisted to `localStorage` |
 | `client/src/components/GameBoard/usePlayPreview.js` | Debounced, sequence-guarded `game:previewPlay` hook |
+| `client/src/components/DevMenu/` | `DEV_MODE` scenario picker — lobby panel, and a corner button in game |
+
+## The board is a table, not a stack of rows
+
+`GameBoard` is five grid rows — trump bar, **table**, standing, action bar, hand
+— and the table takes every pixel the other four do not. The three opponents are
+positioned around the felt rather than given rows of their own, and everything
+that is reference instead of action (each team's level, the round number, the
+trump reveal) sits over the felt or in the top bar.
+
+This is load-bearing, not cosmetic. The board used to be eight stacked rows, and
+at 1280×720 the trick's row got 182px of the 720 — which forced the smallest
+card size, so the cards on the table were 42×60 while the cards in your own hand
+were 84×118. The table now measures 449px and the trick renders at the same size
+as your hand.
+
+`GameBoard` measures the trick's own box with a ResizeObserver and picks the
+card scale from it (`trickScale`); `TrickArea` then picks a size per play, since
+a four-card tractor needs more width than a single. Never size the trick from
+its own content — that is circular, and it is how the trick used to overflow
+onto whatever sat below it.
 
 ## Scoring is banded, not pass/fail
 
@@ -65,6 +90,46 @@ A round is never simply won or lost. `GameState.levelBands()` returns the ordere
 Boundaries fall every 40 points anchored on the threshold, plus a shutout band at exactly 0; at level A the threshold is 120 and the whole ladder shifts. Never hardcode 80 or 40 in the client — read `levelBands` from the state snapshot.
 
 `pointsPlayed` / `pointsRemaining` track point cards seen in completed tricks. `pointsRemaining` includes the kitty deliberately: it leaks nothing (anyone can count point cards that have appeared) and it tells both teams which bands are still reachable.
+
+## Dev scenarios
+
+`DEV_MODE` exposes a scenario menu — an orange bar in the lobby, and a corner
+button opposite the chat toggle in game — that rebuilds the room's game in a
+chosen situation.
+Reaching a late round or a level change by playing takes several minutes, so
+those states were the least-tested part of the game.
+
+The menu is three knobs and four buttons: which side you are on
+(attacking / defending), what level each team holds (`2`…`A`), and how far
+through the round to start:
+
+| Scenario | Where it drops you |
+|---|---|
+| Fresh start | `DEALING`, animated deal, trump still to be called |
+| Mid-game | `PLAYING`, trump called, kitty buried, three tricks played |
+| Endgame — win | `PLAYING`, two cards each, your team past the line |
+| Endgame — lose | `PLAYING`, two cards each, your team short of it |
+
+Setup runs entirely through the normal `GameState` methods — deal, call, bury,
+`playCards` for every seat including yours — so a scenario cannot reach a
+position the rules do not allow. Two things are synthesised, and both are
+marked in `DevScenario.js`:
+
+- **The declarer's call**, when their dealt hand holds no trump-rank card. The
+  scenario is about the roles, not about how the call was won.
+- **The attacker score** in the endgame scenarios, set one band clear of the
+  threshold. Only the attackers ever score, so "you win" means a high attacker
+  score in one role and a low one in the other; `pointsPlayed` moves with it, or
+  the ladder and the points-remaining counter would contradict each other.
+
+The remaining tricks are real: an endgame can still swing, and a kitty capture
+on the last trick is worth several bands.
+
+Which seat declares is what fixes your role — declaring means defending, so
+your partner declares for a defending scenario and an opponent declares for an
+attacking one. The rank in play is the declaring team's level, except in the
+`fresh` scenario where round-1 rules leave the declarer undecided and the rank
+is taken from the requesting player's level.
 
 ## Game Logs
 
@@ -145,6 +210,7 @@ The logger writes to the repo root and never inside `server/` — nodemon watche
 | `game:playCards` | `{ cardIds[] }` | Play 1–N cards (single / pair / tractor / throw) |
 | `game:previewPlay` | `{ cardIds[] }` | Ask what a selection *is* and whether it is legal, without playing it. Replies **only** via the ack callback — broadcasting would leak one player's selection to the table. Returns `{ shape, shapeLabel, legal, reason, requiredCount }` |
 | `room:newRound` | — | Start next round (host only) |
+| `dev:scenario` | `{ scenario, role, myLevel, opponentLevel }` | **`DEV_MODE` only** — rebuild the room's game in a scenario. Answers on the ack with a summary (`phase`, `trumpSuit`, `trumpRank`, `threshold`, `teamLevels`, `attackingTeam`, `myTeam`, `attackerScore`); the state itself arrives as `game:started` |
 | `room:state` | — | Re-request the current snapshot (used on reconnect) |
 | `game:declareTrump` | `{ cardId }` | **Legacy** — wraps `callTrump` with a single card |
 | `game:playCard` | `{ cardId }` | **Legacy** — wraps `playCards` with one card |
@@ -243,7 +309,7 @@ cd client && npm run dev    # → http://localhost:5173
 Then open `http://localhost:5173`, create a room, and share the 4-letter code with 3 friends.
 
 ### Environment
-- `server/.env` — `PORT` (default 3001), `CLIENT_URL` (CORS origin, default `http://localhost:5173`), `DEV_MODE` (any truthy value lets a room start with <4 players and fills empty seats with bots; exposed to the client via `GET /config`), `GAME_LOG` (set to `0` to disable game logging)
+- `server/.env` — `PORT` (default 3001), `CLIENT_URL` (CORS origin, default `http://localhost:5173`), `DEV_MODE` (any truthy value lets a room start with <4 players, fills empty seats with bots, and turns on the scenario menu; exposed to the client via `GET /config`), `GAME_LOG` (set to `0` to disable game logging)
 - Dealing pace lives in `server/game/constants.js`: `DEAL_CARD_INTERVAL_MS`, `DEAL_PAUSE_EVERY_CARDS`, `DEAL_PAUSE_MS`
 - `client/.env` — server URL for the socket connection
 

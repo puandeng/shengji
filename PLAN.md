@@ -8,6 +8,92 @@ Status legend: `[ ]` todo · `[~]` in progress (add name) · `[x]` done
 
 ## Open
 
+### From the three-lens UX audit — implemented
+All findings from the review are addressed. Highlights, with the evidence that they were real:
+
+- [x] **Mandatory stops were skippable.** `advanceLevel` returned "match won" before scanning, so Q+3 took the match past K and A. Now Q+3 stops at K, K+2 at A; a team already at A still wins.
+- [x] **Jack demotion punished the wrong team** after the role swap — it keyed off `attackingTeam` and could only fire in rounds that were not J rounds.
+- [x] **The level ladder was one step generous** at every attacker band versus the ladder documented here. Making the threshold now takes the bank and earns no level.
+- [x] **Three combo rules**: side-suit tractors ignored the trump-rank gap; a scattered ruff beat a throw; followers could break pairs against a tractor lead.
+- [x] **Round-2 trump calling**: an opponent could name the declarer's suit, and the board captioned the declarer's name over cards somebody else revealed.
+- [x] **Bots played by array position.** They buried their own jokers and points every round, trumped their partner's winners, never led a pair, and called no-trump reflexively. All four fixed; verified a live bury of `S3 C6 S7 C8 C9 CJ SJ CQ` — no trump, no jokers, no points.
+- [x] **The hand took two rows** and starved the trick. One row now; sides 255→379px, trick cards 42×60→62×88. The row-height ResizeObserver was also attached to a stale node, pinning the trick at its smallest size regardless.
+- [x] **Type had no scale**: 22 chrome styles, 11 under 11px, largest label 13.6px. Now 5 sizes, none under 12px, score at 24px. `--color-text-muted` failed AA on felt (3.47:1) and was fixed.
+- [x] **Legality was invisible.** Cards that cannot follow are dimmed, driven by a server-computed set; the mid-trick broadcasts now carry it per seat.
+- [x] **The kitty was invisible at both ends** — no point total while burying, no reveal when it swung the round by 90.
+- [x] **The action bar moved 254px** when a refusal wrapped. Pinned to a grid.
+- [x] Point badge moved off the occluded corner; roles no longer shown before they exist; no-trump rounds no longer read "Waiting for trump declaration…" for 25 tricks; trick results are narrated; in-game help panel added; tap targets meet 24px (44px mobile).
+
+### AI agent (planned)
+The playing logic is to be learned rather than hand-written; `BotPlayer` is a
+placeholder. Division of labour:
+
+- **Logs are for reviewing games**, not for training. `logs/*.jsonl` records who
+  acted (`isBot`), the actor's hand, the legal subset the rules allowed, and the
+  action taken — enough to ask "why that card" of any decision after the fact.
+- **The simulator is for learning the rules and strategy.** `server/game/GameState.js`
+  is already a complete, deterministic, I/O-free engine, so self-play runs at
+  process speed rather than being gated on animation delays and bot timers, and
+  reaches positions no logged game ever will.
+
+- [ ] **Headless self-play harness.** A seeded runner that plays N games in-process
+  against `GameState` (no sockets, no delays) and emits transitions — state, legal
+  action mask, action, reward. `GameState.playableCardIds()` already provides the
+  mask; `_finishRound()` provides the reward via `levelBands()`.
+- [ ] **Reproducibility.** `Deck` shuffles without a seed today, so a run cannot be
+  replayed exactly. Thread a seed through `deal()` before generating training data.
+- [ ] **Then swap `BotPlayer` for the learned policy** behind the same interface
+  (`chooseLegalCards`, `chooseTrumpCall`, `chooseKittyDiscard`), so dev mode and
+  disconnect auto-play pick it up unchanged.
+
+**Prerequisite, and the reason ordering matters:** an agent trained against a wrong
+engine learns the wrong game. Three combo rules were broken until this week (a
+scattered ruff beat a throw, side-suit tractors ignored the trump-rank gap,
+followers could break pairs against a tractor lead) and the level ladder could skip
+mandatory stops. Rules correctness should be considered settled — and covered by
+tests — before any training run is worth the compute.
+
+### Dev scenarios — implemented
+- [x] **`DEV_MODE` scenario menu.** Lobby panel and in-game bar that rebuild the
+  room in a chosen situation: fresh deal, mid-game, or an endgame two cards from
+  the finish, on either side, with either team's level dialled anywhere from 2 to
+  A. Setup drives the real engine (deal → call → bury → `playCards` for every
+  seat), so it cannot produce a position the rules disallow. `dev:scenario`,
+  `server/game/DevScenario.js`, `client/src/components/DevMenu/`; covered by
+  `server/game/__tests__/devScenario.test.js` over 15 shuffles per assertion.
+- [x] **The round result never reached the scoring modal.** `TRICK_COMPLETE`
+  spread `...state` *after* `roundResult`, so the previous value overwrote the
+  new one and the modal fell back to its defaults — no kitty arithmetic, no level
+  change, no Jack demotion. Found while building the endgame scenarios, which
+  exist to look at exactly that modal.
+
+### Playing-area pass — implemented
+- [x] **The trick was half the size of your own hand.** Eight grid rows spent 373px
+  of a 720px board on chrome and left the trick 182px, which pinned it to the
+  smallest card size. The board is five rows now, the opponents sit around the
+  felt, and the trick's box measures 449px — cards at 84×118, the same as the
+  hand, on a drawn table surface.
+- [x] **The scoring bar carried eight numbers at once.** It is a one-line strip —
+  your role, score against target, a band bar, and what the current band pays —
+  that opens the full ladder, the deltas, the points remaining and the captured
+  cards on click.
+- [x] **Every seat was badged DEF before anyone had called.** `PlayerInfo` read the
+  deliberate `undefined` for "roles not settled" as "not attacking".
+- [x] **A stray `}` in `GameBoard.css`** had been breaking the CSS minifier for
+  weeks (`Unexpected "}"` on every build).
+
+### Still open
+- [x] **Trick review has no seat attribution** — done. The panel is now a centred
+  overlay showing the plays in play order with each player's name, `led` /
+  `took it` / point tags, the trick total and the narration, instead of a
+  scrollable sliver of four anonymous cards.
+- [ ] **Lobby polish** — team panels are 162px and 154px tall so their bottoms do not align; the room code uses a face that appears nowhere else.
+- [ ] **Button styles have not been consolidated** — four styles at three heights remain.
+- [ ] **Cards are not keyboard reachable.** They are `div`s with `onClick`; the accessibility tree contains no cards.
+- [ ] **Round 2+ has never been played to completion.** The handover now has unit tests, but no full two-round game has been observed end to end.
+
+
+
 ### Kitty bury
 - [x] **The bury mechanism already existed** — `giveKittyToDeclarer()` takes the declarer 25 → 33, `discardToKitty()` takes 8 cards of their choosing back to 25, gated to the declarer and to exactly 8. Three tests now pin it, including that the buried cards are the ones chosen and that they leave the hand.
 - [x] **Humans practically never became declarer, so nobody ever saw it.** Bots called 700ms into a 5s window (`BOT_PLAY_DELAY_MS * (i+1)`), and since an equal-strength call never overrides, any bot holding a trump-rank card declared before a human could finish reading their hand. Bots now deliberate `BOT_CALL_REACTION_MS` (2500ms) before calling, leaving the human first refusal; a bot can still override with a genuinely stronger call.

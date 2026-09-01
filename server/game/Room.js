@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const GameState = require('./GameState');
 const BotPlayer = require('./BotPlayer');
 const { GameLogger } = require('./GameLogger');
+const DevScenario = require('./DevScenario');
 const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, BOT_CALL_REACTION_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, DEAL_PAUSE_EVERY_CARDS, DEAL_PAUSE_MS, DEAL_PAUSE_MIN_GAP_CARDS, MAX_CALL_STRENGTH, TRICK_DISPLAY_DELAY_MS } = require('./constants');
 
 /**
@@ -69,7 +70,14 @@ class Room {
   fillWithBots() {
     const currentCount = this.game.players.length;
     for (let i = currentCount; i < PLAYERS_PER_ROOM; i++) {
-      this.game.addPlayer(BotPlayer.generateBotId(i), BotPlayer.generateBotName(i));
+      const socketId = BotPlayer.generateBotId(i);
+      this.game.addPlayer(socketId, BotPlayer.generateBotName(i));
+      // Mark the seat. The log already had an isBot field, but nothing ever
+      // set it, so every game read back as four humans — which makes the logs
+      // useless for training, since you cannot tell which actions came from a
+      // policy worth imitating and which came from the placeholder bot.
+      const seated = this.game.getPlayer(socketId);
+      if (seated) seated.isBot = true;
     }
   }
 
@@ -194,6 +202,27 @@ class Room {
       clearTimeout(this._trumpTimer);
       this._trumpTimer = null;
     }
+  }
+
+  _clearBotTimers() {
+    this._botTimers.forEach(t => clearTimeout(t));
+    this._botTimers = [];
+  }
+
+  /** Drop every pending timer — a dev scenario rebuilds the game underneath them. */
+  clearTimers() {
+    this._clearDealTimer();
+    this._clearTrumpTimer();
+    this._clearBotTimers();
+  }
+
+  /**
+   * DEV_MODE only — rebuild this room's game in a given situation so a tester
+   * can start from the state they want to look at. See `DevScenario`.
+   */
+  applyDevScenario(socketId, opts) {
+    if (!this.devMode) return { error: 'Dev mode is off' };
+    return DevScenario.applyScenario(this, socketId, opts);
   }
 
   /**
@@ -377,14 +406,38 @@ class Room {
     this._botTimers.push(timer);
   }
 
+  /**
+   * What bot logic would play for this seat right now. Used both for real bot
+   * turns and by dev scenario setup, which drives every seat — the human's
+   * included — to fast-forward a game into position.
+   */
+  autoPlayChoice(socketId) {
+    const hand = this.game.hands[socketId];
+    if (!hand || hand.length === 0) return null;
+
+    // Give the bot the two facts it needs to play with any judgement: whether
+    // its own partner is currently taking the trick, and what is at stake.
+    const me            = this.game.getPlayer(socketId);
+    const winnerId      = this.game.currentTrickWinner();
+    const winner        = winnerId ? this.game.getPlayer(winnerId) : null;
+    const partnerWinning = !!(me && winner && winner.socketId !== socketId && winner.teamIndex === me.teamIndex);
+    const trickPoints   = this.game.currentTrick.reduce(
+      (sum, e) => sum + e.cards.reduce((s, c) => s + c.points, 0), 0
+    );
+
+    return BotPlayer.chooseLegalCards(
+      hand, this.game.currentTrick, this.game.trumpSuit, this.game.trumpRank,
+      { partnerWinning, trickPoints }
+    );
+  }
+
   _executeBotTurn() {
     if (this.game.phase !== GAME_PHASES.PLAYING) return;
 
     const socketId = this.game.currentPlayerSocketId;
     if (!this._shouldAutoPlay(socketId)) return;
 
-    const hand = this.game.hands[socketId];
-    const cardIds = BotPlayer.chooseLegalCards(hand, this.game.currentTrick, this.game.trumpSuit, this.game.trumpRank);
+    const cardIds = this.autoPlayChoice(socketId);
     if (!cardIds || cardIds.length === 0) return;
 
     const result = this.game.playCards(socketId, cardIds);
@@ -414,6 +467,19 @@ class Room {
           roundOver:      !!result.roundOver,
           gameOver:       !!result.gameOver,
           attackingWon:   result.attackingWon,
+          // The round result has to travel with the round, or the modal cannot
+          // account for its own numbers: a player saw 65 pts on the board and
+          // 155 in the modal, with the 90-point kitty capture invisible.
+          roundResult:    result.roundOver ? {
+            attackingTeam:  result.attackingTeam,
+            attackingWon:   result.attackingWon,
+            threshold:      result.threshold,
+            tablePoints:    result.tablePoints,
+            kittyResult:    result.kittyResult,
+            levelsAdvanced: result.levelsAdvanced,
+            advancingTeam:  result.advancingTeam,
+            jackDemotion:   result.jackDemotion,
+          } : null,
           scores:         result.scores || this.game.scores,
           roundScores:    result.roundScores || this.game.roundScores,
           winnerTeam:     result.winner,
@@ -432,6 +498,10 @@ class Room {
             card:     e.cards[0]?.toJSON(),
             shape:    e.shape,
           })),
+          // Which of this player's cards can legally follow what is now on the
+          // table. Without it the client only learned the legal set at the
+          // start of a trick, so the dimming never updated as the trick filled.
+          playableCardIds: this.game.playableCardIds(p.socketId),
         });
       });
     }
@@ -443,7 +513,7 @@ class Room {
 
     const timer = setTimeout(() => {
       const hand = this.game.hands[this.game.trumpDeclarer];
-      const cardIds = BotPlayer.chooseKittyDiscard(hand, KITTY_SIZE);
+      const cardIds = BotPlayer.chooseKittyDiscard(hand, KITTY_SIZE, this.game.trumpSuit, this.game.trumpRank);
       const result = this.game.discardToKitty(this.game.trumpDeclarer, cardIds);
       if (result.error) {
         console.error(`[Bot] Kitty discard error: ${result.error}`);

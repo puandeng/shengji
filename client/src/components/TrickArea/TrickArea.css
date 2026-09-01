@@ -30,20 +30,18 @@
 .trick-area--xs .trick-area__placeholder {
   width: 18px;
   height: 26px;
-  border-width: 1px;
-  border-color: rgba(255,255,255,0.10);
 }
 
 .trick-area--xs .trick-area__winner-badge {
   bottom: -8px;
-  font-size: 0.5rem;
+  font-size: var(--text-xs);
   padding: 0 4px;
 }
 
 /* Centre-of-table size: the played cards should read from across the room, so
    they take the space the empty felt used to. */
 .trick-area--lg {
-  max-width: 420px;
+  max-width: 520px;
   min-width: 200px;
   gap: 4px;
 }
@@ -71,25 +69,37 @@
   width: 100%;
 }
 
-.trick-area__centre {
-  width: 60px;
-  height: 86px;
-}
-
+/* An empty seat only has to hold its place, not reserve a whole card of felt —
+   at every size, not just the largest. A full-card placeholder made the cross
+   3x86 tall at `sm`, so a hand switched to two rows left the trick a box it
+   overflowed by 9px and the bottom seat's play was clipped. Each size now keeps
+   the cross to roughly three card heights, which is exactly what the scale
+   thresholds in GameBoard are solved against. */
 .trick-area__placeholder {
-  width: 60px;
-  height: 86px;
-  border: 2px dashed rgba(255,255,255,0.12);
-  border-radius: 6px;
+  width: 22px;
+  height: 30px;
+  border: 1px dashed rgba(255,255,255,0.10);
+  border-radius: 5px;
 }
 
-/* An empty seat only has to hold its place, not reserve a whole card of felt. */
+.trick-area__centre {
+  width: 18px;
+  height: 30px;
+}
+
+.trick-area--md .trick-area__placeholder {
+  width: 26px;
+  height: 36px;
+}
+
+.trick-area--md .trick-area__centre {
+  width: 20px;
+  height: 36px;
+}
+
 .trick-area--lg .trick-area__placeholder {
   width: 30px;
   height: 42px;
-  border-width: 1px;
-  border-color: rgba(255,255,255,0.10);
-  border-radius: 5px;
 }
 
 .trick-area--lg .trick-area__centre {
@@ -107,8 +117,10 @@
   margin-left: -28px;
 }
 
-/* Overlap scales with the card so the rank corner stays readable. */
-.trick-area__combo--lg .card + .card { margin-left: -46px; }
+/* Overlap scales with the card so the rank corner stays readable. There is
+   room in the middle of the table now, so a pair overlaps by a third rather
+   than by half. */
+.trick-area__combo--lg .card + .card { margin-left: -30px; }
 .trick-area__combo--md .card + .card { margin-left: -32px; }
 .trick-area__combo--sm .card + .card { margin-left: -22px; }
 
@@ -123,7 +135,7 @@
   transform: translateX(-50%);
   background: var(--color-gold);
   color: #111;
-  font-size: 0.55rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 4px;
@@ -228,4 +240,31 @@
   }
 
   .trick-area__combo--lg .card + .card { margin-left: -30px; }
+}
+
+/* A resolved trick went from four cards to zero in a single frame — the one
+   moment that should tell you who took what had no motion at all. While the
+   trick is frozen the losing plays recede and the winner's lifts, so the eye
+   is pulled to the seat that took it before the table clears. */
+.trick-area--frozen .trick-area__slot:not(.trick-area__slot--winner) .trick-area__combo {
+    animation: trick-yield 420ms ease-out both;
+    animation-delay: 220ms;
+}
+
+.trick-area--frozen .trick-area__slot--winner .trick-area__combo {
+    animation: trick-claim 420ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    animation-delay: 220ms;
+}
+
+@keyframes trick-yield {
+    to { transform: scale(0.82); opacity: 0.35; }
+}
+
+@keyframes trick-claim {
+    50% { transform: scale(1.1); }
+    to  { transform: scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .trick-area--frozen .trick-area__slot .trick-area__combo { animation: none; }
 }

@@ -141,7 +141,8 @@ describe('GameState', () => {
       c2.id = 'c2';
       game.hands['p1'].push(c2);
       const result = game.callTrump('p1', ['c2']);
-      expect(result.error).toMatch(/does not override/i);
+      expect(result.error).toMatch(/already stands/i);
+      expect(result.error).toMatch(/first caller keeps it/i);
     });
   });
 
@@ -433,7 +434,7 @@ describe('joker-pair call is final', () => {
     game.trumpCallStrength = 3;
     game.hands['p1'] = [new Card('JOKER', 'SJ', 0), new Card('JOKER', 'SJ', 1)];
     const { error } = game.callTrump('p1', ['JOKER_SJ_0', 'JOKER_SJ_1']);
-    expect(error).toMatch(/does not override/);
+    expect(error).toMatch(/already stands/i);
   });
 });
 
@@ -605,5 +606,174 @@ describe('traditional roles: calling trump means defending', () => {
     // Defenders deny; they do not bank the 15 points they just took.
     expect(game.scores[1]).toBe(0);
     expect(game.scores[0]).toBe(0);
+  });
+});
+
+describe('trump calling from round 2 onward', () => {
+  // From round 2 the declarer is pre-assigned to the kitty picker and the rank
+  // played is their team's level, so only their team may name the suit.
+  function roundTwo() {
+    const game = createReadyGame();
+    game.deal();
+    game.finishDealing();
+    game.kittyPickerSeat = 0;          // seat 0 (team 0) declares
+    game.trumpDeclarer   = 'p0';
+    game.attackingTeam   = 1;          // team 1 collects
+    return game;
+  }
+
+  function rankCardOf(game, id) {
+    return game.hands[id].find(c => c.rank === game.trumpRank && !c.isJoker);
+  }
+
+  it('refuses a call from the attacking team', () => {
+    const game = roundTwo();
+    const card = rankCardOf(game, 'p1');
+    if (!card) return;
+    const { error } = game.callTrump('p1', [card.id]);
+    expect(error).toMatch(/declaring team/i);
+    expect(game.trumpSuit).toBeNull();
+  });
+
+  it('allows the declaring team to name the suit without changing the roles', () => {
+    const game = roundTwo();
+    const card = rankCardOf(game, 'p2');   // p2 is seat 2, same team as seat 0
+    if (!card) return;
+    expect(game.callTrump('p2', [card.id]).success).toBe(true);
+    expect(game.trumpSuit).toBe(card.suit);
+    expect(game.trumpDeclarer).toBe('p0');  // declarer unchanged
+    expect(game.attackingTeam).toBe(1);     // roles unchanged
+  });
+
+  it('records who revealed the cards, not just who declares', () => {
+    const game = roundTwo();
+    const card = rankCardOf(game, 'p2');
+    if (!card) return;
+    game.callTrump('p2', [card.id]);
+    expect(game.trumpCallerSeat).toBe(2);
+    expect(game.trumpDeclarer).toBe('p0');
+  });
+});
+
+describe('mandatory stops cannot be skipped by overshooting', () => {
+  function advanceFrom(level, score, visited = ['2']) {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpRank = '2';
+    game.attackingTeam = 0;
+    game.teamLevels = { 0: level, 1: '2' };
+    game.visitedRanks = { 0: new Set(visited), 1: new Set(visited) };
+    game.scores = { 0: score, 1: 0 };
+    game.players.forEach(p => { game.hands[p.socketId] = []; });
+    const res = game._finishRound();
+    return { level: game.teamLevels[0], gameOver: res.gameOver };
+  }
+
+  it('stops at K instead of winning the match from Q', () => {
+    expect(advanceFrom('Q', 200)).toEqual({ level: 'K', gameOver: false });
+  });
+
+  it('stops at A instead of winning the match from K', () => {
+    expect(advanceFrom('K', 200)).toEqual({ level: 'A', gameOver: false });
+  });
+
+  it('still wins the match when the team is already at A', () => {
+    expect(advanceFrom('A', 200, ['2', 'A']).gameOver).toBe(true);
+  });
+});
+
+describe('combo rules', () => {
+  function table(trumpSuit, trumpRank, hands) {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpSuit = trumpSuit;
+    game.trumpRank = trumpRank;
+    game.kitty = [];
+    game.hands = hands;
+    game.leadSeat = 0;
+    game.currentSeat = 0;
+    return game;
+  }
+
+  it('treats ranks either side of the trump rank as adjacent in a side suit', () => {
+    // Trump is spades with rank 5, so 5♥ is trump and 4♥/6♥ are neighbours.
+    const game = table('S', '5', {
+      p0: [new Card('H', '4', 0), new Card('H', '4', 1), new Card('H', '6', 0), new Card('H', '6', 1)],
+      p1: [], p2: [], p3: [],
+    });
+    expect(game.previewPlay('p0', game.hands.p0.map(c => c.id)).shape).toBe('tractor');
+  });
+
+  it('does not let three unmatched trumps beat a throw', () => {
+    const game = table('S', '2', {
+      p0: [new Card('H', 'A', 0), new Card('H', 'K', 0), new Card('H', 'K', 1)],
+      p1: [new Card('S', '3', 0), new Card('S', '4', 0), new Card('S', '9', 0)],
+      p2: [new Card('D', '3', 0), new Card('D', '4', 0), new Card('D', '5', 0)],
+      p3: [new Card('C', '3', 0), new Card('C', '4', 0), new Card('C', '5', 0)],
+    });
+    ['p0', 'p1', 'p2', 'p3'].forEach(id => game.playCards(id, game.hands[id].map(c => c.id)));
+    const winner = game.tricks[0].winner;
+    expect(game.getPlayer(winner).seatIndex).toBe(0);   // the thrower keeps it
+  });
+
+  it('makes a follower contribute their pair when a tractor is led', () => {
+    const game = table('S', '2', {
+      p0: [new Card('H', '5', 0), new Card('H', '5', 1), new Card('H', '6', 0), new Card('H', '6', 1)],
+      p1: [new Card('H', '9', 0), new Card('H', '9', 1), new Card('H', '7', 0), new Card('H', 'Q', 0), new Card('H', 'J', 0)],
+      p2: [], p3: [],
+    });
+    game.playCards('p0', game.hands.p0.map(c => c.id));
+
+    const h = game.hands.p1;
+    const broken = [h[0], h[2], h[3], h[4]].map(c => c.id);   // one 9 + three odd
+    const kept   = [h[0], h[1], h[2], h[3]].map(c => c.id);   // the pair + two odd
+
+    const refused = game.previewPlay('p1', broken);
+    expect(refused.legal).toBe(false);
+    expect(refused.reason).toMatch(/must play 1 of them/i);
+    expect(game.previewPlay('p1', kept).legal).toBe(true);
+  });
+});
+
+describe('the round explains its own arithmetic', () => {
+  function lastTrick(attackersWinIt) {
+    const game = createReadyGame();
+    game.phase = 'PLAYING';
+    game.trumpSuit = 'S';
+    game.trumpRank = '2';
+    game.attackingTeam = 0;
+    game.scores = { 0: 100, 1: 0 };
+    game.kitty = [new Card('H', 'K', 0), new Card('D', 'K', 0)];   // 20 buried
+    const ace = new Card('H', 'A', 0);
+    const low = () => new Card('H', '3', 1);
+    game.hands = {
+      p0: [attackersWinIt ? ace : low()],
+      p1: [attackersWinIt ? low() : ace],
+      p2: [new Card('H', '4', 0)],
+      p3: [new Card('H', '6', 0)],
+    };
+    ['p0', 'p1', 'p2', 'p3'].forEach((id, i) => { game.hands[id][0].id = `k${i}`; });
+    game.leadSeat = 0;
+    game.currentSeat = 0;
+    let res;
+    ['p0', 'p1', 'p2', 'p3'].forEach((id, i) => { res = game.playCards(id, [`k${i}`]); });
+    return res;
+  }
+
+  it('reveals the buried cards and the multiplier when the attackers capture it', () => {
+    const res = lastTrick(true);
+    expect(res.kittyResult.captured).toBe(true);
+    expect(res.kittyResult.points).toBe(20);
+    expect(res.kittyResult.multiplier).toBe(2);
+    expect(res.kittyResult.bonus).toBe(40);
+    expect(res.kittyResult.cards).toHaveLength(2);
+    expect(res.tablePoints).toBe(100);          // score 140 minus the 40 bonus
+  });
+
+  it('still reports the kitty value when the declarers protect it', () => {
+    const res = lastTrick(false);
+    expect(res.kittyResult.captured).toBe(false);
+    expect(res.kittyResult.points).toBe(20);    // was reported as 0 before
+    expect(res.kittyResult.bonus).toBe(0);
   });
 });

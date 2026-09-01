@@ -1,7 +1,10 @@
+/* The chat button is position:fixed over a grid area it knows nothing about,
+   so it sat on top of the hand — covering three cards, and overlapping the
+   hand-sort toggle. Lifted clear of the hand's own height. */
 .chat-panel {
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
+  bottom: calc(var(--hand-height, 130px) + 0.75rem);
+  right: 0.75rem;
   z-index: 40;
 }
 
@@ -26,7 +29,7 @@
   right: -4px;
   background: var(--color-red);
   color: #fff;
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   border-radius: 50%;
   width: 16px;
@@ -83,7 +86,7 @@
 
 .chat-message__name {
   display: block;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   color: var(--color-gold);
   font-weight: 600;
   margin-bottom: 1px;

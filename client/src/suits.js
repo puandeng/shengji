@@ -2,6 +2,7 @@
  * Suit display for the UI. Never render a bare suit code (`S`, `H`, `D`, `C`)
  * to a player — those are wire/log identifiers, not names. Use a symbol in
  * compact spots (chips, badges, inline references) and the full word in prose.
+ * Never both at once: "♥ Hearts" says the same thing twice.
  *
  * The log notation in `server/game/GameLogger.js` deliberately keeps the
  * letters: it is read with a monospace font by people and tools, where `S5`
@@ -20,10 +21,4 @@ export function suitSymbol(suit) {
 export function suitName(suit) {
     if (!suit) return 'No trump';
     return SUIT_NAMES[suit] || '';
-}
-
-/** Symbol plus word, for headline spots: ♣ Clubs */
-export function suitLabel(suit) {
-    if (!suit) return 'No trump';
-    return `${suitSymbol(suit)} ${suitName(suit)}`;
 }

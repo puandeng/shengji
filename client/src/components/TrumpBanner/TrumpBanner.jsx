@@ -1,15 +1,20 @@
 import React from 'react';
-import { suitLabel } from '../../suits';
+import { suitName } from '../../suits';
 import './TrumpBanner.css';
 
 const RED_SUITS    = new Set(['H', 'D']);
 
-const STRENGTH_LABEL = { 1: 'single', 2: 'pair', 3: 'joker pair' };
-
 export default function TrumpBanner({ trumpSuit, trumpRank, trumpCallStrength, attackingTeam, players, phase }) {
-  const isTrumpSelection = phase === 'TRUMP_SELECTION';
+  const isTrumpSelection = phase === 'TRUMP_SELECTION' || phase === 'DEALING';
+  // A joker-pair call sets trumpSuit to null FOR THE WHOLE ROUND — that is what
+  // "no trump" means here. Using !trumpSuit as a stand-in for "nobody has
+  // called yet" left the banner reading "Waiting for trump declaration…"
+  // through all 25 tricks of a no-trump round, and never showed the rank
+  // either, in the one variant where rank cards and jokers are the only trump.
+  const noTrumpCalled = !trumpSuit && trumpCallStrength === 3;
+  const undecided     = !trumpSuit && !noTrumpCalled;
 
-  if (!trumpSuit && isTrumpSelection) {
+  if (undecided && isTrumpSelection) {
     return (
       <div className="trump-banner trump-banner--waiting">
         <span>
@@ -19,7 +24,7 @@ export default function TrumpBanner({ trumpSuit, trumpRank, trumpCallStrength, a
     );
   }
 
-  if (!trumpSuit) {
+  if (undecided) {
     return (
       <div className="trump-banner trump-banner--waiting">
         <span>Waiting for trump declaration…</span>
@@ -27,24 +32,39 @@ export default function TrumpBanner({ trumpSuit, trumpRank, trumpCallStrength, a
     );
   }
 
+  if (noTrumpCalled) {
+    return (
+      <div className="trump-banner">
+        <span className="trump-banner__label">Trump</span>
+        <span className="trump-banner__suit">No trump</span>
+        <span className="trump-banner__divider">·</span>
+        <span className="trump-banner__rank">
+          Only <strong>{trumpRank}</strong>s and jokers are trump
+        </span>
+        {attackingTeam != null && (
+          <>
+            <span className="trump-banner__divider">|</span>
+            <span className="trump-banner__attacking">⚔️ Team {attackingTeam + 1} attacking</span>
+          </>
+        )}
+      </div>
+    );
+  }
+
   const isRed    = RED_SUITS.has(trumpSuit);
   const teamName = `Team ${(attackingTeam ?? 0) + 1}`;
-  const callStr  = trumpCallStrength ? ` (${STRENGTH_LABEL[trumpCallStrength] ?? ''} call)` : '';
 
   return (
     <div className="trump-banner">
       <span className="trump-banner__label">Trump</span>
       <span className={`trump-banner__suit ${isRed ? 'trump-banner__suit--red' : ''}`}>
-        {suitLabel(trumpSuit)}
+        {suitName(trumpSuit)}
       </span>
       {trumpRank && (
         <>
           <span className="trump-banner__divider">·</span>
           <span className="trump-banner__rank">Rank: {trumpRank}</span>
         </>
-      )}
-      {isTrumpSelection && callStr && (
-        <span className="trump-banner__call-status">{callStr}</span>
       )}
       <span className="trump-banner__divider">|</span>
       <span className="trump-banner__attacking">

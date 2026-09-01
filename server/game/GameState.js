@@ -25,19 +25,24 @@ const {
  * Returns null if the team has won (levelled past A).
  */
 function advanceLevel(currentLevel, steps, visitedRanks = new Set()) {
-  const idx = LEVEL_ORDER.indexOf(currentLevel);
-  let newIdx = idx + steps;
-  if (newIdx >= LEVEL_ORDER.length) return null; // Past A → team wins
+  const idx  = LEVEL_ORDER.indexOf(currentLevel);
+  const last = LEVEL_ORDER.length - 1;
 
-  for (let i = idx + 1; i < newIdx; i++) {
+  // Scan for a mandatory stop BEFORE deciding the advance overshoots the top.
+  // Returning early on overshoot let a big win at Q skip straight past K and A
+  // and take the match — the stops exist precisely to force a win *at* A.
+  // Clamp to the last rank so the scan covers every rank actually passed.
+  let newIdx = Math.min(idx + steps, last + 1);
+  const scanTo = Math.min(newIdx, last);
+
+  for (let i = idx + 1; i <= scanTo; i++) {
     const rank = LEVEL_ORDER[i];
     if (MANDATORY_STOP_RANKS.has(rank) && !visitedRanks.has(rank)) {
-      newIdx = i;
-      break;
+      return LEVEL_ORDER[i];
     }
   }
 
-  if (newIdx >= LEVEL_ORDER.length) return null;
+  if (newIdx > last) return null; // Past A with no unvisited stop → team wins
   return LEVEL_ORDER[newIdx];
 }
 
@@ -133,10 +138,17 @@ function isTractor(cards, trumpSuit, trumpRank) {
  * For non-trump cards: normal rank value (used for non-trump suit tractors).
  */
 function tractorValue(card, trumpSuit, trumpRank) {
-  if (!card.isTrump(trumpSuit, trumpRank)) return card.rankValue;
-
   const RANK_ORDER = require('./constants').RANK_ORDER;
   const trumpRankVal = (trumpRank !== null) ? (RANK_ORDER[trumpRank] || 0) : 0;
+
+  if (!card.isTrump(trumpSuit, trumpRank)) {
+    // The trump rank is missing from every side suit as well — those cards are
+    // trump, not part of the suit's sequence — so the ranks either side of it
+    // are adjacent. Without this shift, roughly one adjacency per side suit
+    // silently stopped being a tractor once the trump rank was 5 or higher.
+    const rv = card.rankValue;
+    return rv < trumpRankVal ? rv : rv - 1;
+  }
 
   if (card.isBigJoker)  return 1003;
   if (card.isSmallJoker) return 1002;
@@ -247,6 +259,12 @@ function beatsTrickEntry(challenger, current, leadShape, leadEffSuit, trumpSuit,
 
   // For throws: compare the pair components, then single components
   if (leadShape === 'throw') {
+    // The challenger has to answer with the same structure. Without this, three
+    // unmatched trumps took a throw off the table, because splitThrowComponents
+    // falls back to cards[0]/cards[1] when there is no genuine 1+2 split.
+    if (challenger.shape !== 'throw') return false;
+    if (current.shape !== 'throw')    return true;
+
     const chalComps = splitThrowComponents(challenger.cards, trumpSuit, trumpRank);
     const curComps  = splitThrowComponents(current.cards, trumpSuit, trumpRank);
     if (!chalComps || !curComps) return false;
@@ -271,6 +289,16 @@ function beatsTrickEntry(challenger, current, leadShape, leadEffSuit, trumpSuit,
  * Split a 3-card throw into its single and pair components.
  * Returns { singleCard, pairCard } where pairCard is one of the pair cards (for comparison).
  */
+/** How many matched pairs (same suit AND rank) a set of cards contains. */
+function countPairsIn(cards) {
+  const groups = {};
+  cards.forEach(c => {
+    const key = `${c.suit}_${c.rank}`;
+    groups[key] = (groups[key] || 0) + 1;
+  });
+  return Object.values(groups).reduce((n, count) => n + Math.floor(count / 2), 0);
+}
+
 function splitThrowComponents(cards, trumpSuit, trumpRank) {
   if (cards.length !== 3) return null;
 
@@ -348,6 +376,8 @@ function shapeLabel(cards, shape) {
 
 // Level gains step every 40 points either side of the round threshold, so the
 // whole ladder slides when the threshold does (80 for levels 2–K, 120 at A).
+const CALL_NAMES = { 1: 'single trump-rank card', 2: 'pair of trump-rank cards', 3: 'joker pair' };
+
 const BAND_WIDTH = 40;
 
 // ─────────────────────────────────────────────
@@ -382,11 +412,13 @@ class GameState {
     this.players        = [];
     this.hands          = {};           // { socketId: Card[] }
     this.kitty          = [];           // Card[]
+    this.kittyResult    = null;         // revealed bury + arithmetic, set at round end
     this.trumpSuit      = null;
     this.trumpRank      = STARTING_LEVEL;
     this.trumpDeclarer  = null;
     this.trumpCallStrength = 0;         // 0=none, 1=single, 2=pair (for bidding mechanic)
     this.trumpDeclareCards = [];        // Card objects shown during trump declaration
+    this.trumpCallerSeat   = null;      // seat that revealed them (≠ declarer in rounds 2+)
     this.attackingTeam  = 0;
     this.kittyPickerSeat = null;       // Pre-determined kitty picker (null = first round, use trump caller)
     this.teamLevels     = { 0: STARTING_LEVEL, 1: STARTING_LEVEL };
@@ -496,6 +528,45 @@ class GameState {
     return this.players.length === PLAYERS_PER_ROOM;
   }
 
+  /**
+   * Wind the match back to the lobby, keeping the seats. A room code is shared
+   * with the other players, so dev scenario setup rebuilds the match in place
+   * rather than making everyone rejoin a new room.
+   */
+  resetToLobby() {
+    this.phase             = GAME_PHASES.WAITING;
+    this.hands             = {};
+    this.kitty             = [];
+    this.kittyResult       = null;
+    this.trumpSuit         = null;
+    this.trumpRank         = STARTING_LEVEL;
+    this.trumpDeclarer     = null;
+    this.trumpCallStrength = 0;
+    this.trumpDeclareCards = [];
+    this.trumpCallerSeat   = null;
+    this.attackingTeam     = 0;
+    this.kittyPickerSeat   = null;
+    this.teamLevels        = { 0: STARTING_LEVEL, 1: STARTING_LEVEL };
+    this.visitedRanks      = { 0: new Set([STARTING_LEVEL]), 1: new Set([STARTING_LEVEL]) };
+    this.currentTrick      = [];
+    this.tricks            = [];
+    this.leadSeat          = 0;
+    this.currentSeat       = 0;
+    this.scores            = { 0: 0, 1: 0 };
+    this.roundScores       = { 0: 0, 1: 0 };
+    this.attackerPointPile = [];
+    this.pointsPlayed      = 0;
+    this.winner            = null;
+    this.roundNumber       = 1;
+    this.trumpPasses       = new Set();
+    this.dealWindowPasses  = new Set();
+    this.dealWindowIndex   = 0;
+    this.dealPaused        = false;
+    this.dealQueue         = null;
+    this.dealIndex         = 0;
+    return { success: true };
+  }
+
   // ─────────────────────────────────────────────
   // Dealing
   // ─────────────────────────────────────────────
@@ -529,6 +600,7 @@ class GameState {
     this.trumpDeclarer     = null;
     this.trumpCallStrength = 0;
     this.trumpDeclareCards = [];
+    this.trumpCallerSeat   = null;
     this.trumpPasses       = new Set();
     this.dealWindowPasses  = new Set();
     this.dealWindowIndex   = 0;
@@ -537,6 +609,7 @@ class GameState {
     this.tricks            = [];
     this.scores            = { 0: 0, 1: 0 };
     this.attackerPointPile = [];
+    this.kittyResult       = null;
     this.pointsPlayed      = 0;
 
     if (this.logger) {
@@ -659,14 +732,37 @@ class GameState {
     }
 
     if (strength <= this.trumpCallStrength) {
-      return { error: `Call strength ${strength} does not override current call (strength ${this.trumpCallStrength})` };
+      const beats = strength === 1
+        ? 'A pair of trump-rank cards in one suit, or a matched joker pair, would take it.'
+        : strength === 2
+          ? 'Only a matched joker pair beats a pair.'
+          : 'A joker pair is the highest call there is.';
+      return {
+        error: this.trumpCallStrength === strength
+          ? `A ${CALL_NAMES[strength]} already stands and the first caller keeps it. ${beats}`
+          : `A ${CALL_NAMES[this.trumpCallStrength]} already stands, which beats your ${CALL_NAMES[strength]}. ${beats}`,
+      };
+    }
+
+    const caller = this.getPlayer(socketId);
+
+    // From round 2 the declarer is pre-assigned, and the rank being played is
+    // their team's level. Letting an opponent name the suit would hand the
+    // declarer whichever trump they are weakest in — no ruleset allows it.
+    if (this.kittyPickerSeat !== null) {
+      const declarer = this.getPlayer(this.trumpDeclarer);
+      if (declarer && caller.teamIndex !== declarer.teamIndex) {
+        return { error: 'Only the declaring team names trump this round — they are defending their own level.' };
+      }
     }
 
     this.trumpSuit         = suit;
     this.trumpCallStrength = strength;
     this.trumpDeclareCards = cards.map(c => c.toJSON());
-
-    const caller = this.getPlayer(socketId);
+    // Who actually revealed the cards, which is not always the declarer from
+    // round 2 onward — the board used to caption the declarer's name over
+    // somebody else's cards.
+    this.trumpCallerSeat   = caller.seatIndex;
 
     // Round 1: the trump caller becomes the declarer. Declaring means
     // *defending* — they take the kitty and deny points — so the attacking
@@ -926,6 +1022,11 @@ class GameState {
       if (err) return err;
     }
 
+    // Captured before the hand is mutated: a decision record needs the state
+    // the actor was choosing from.
+    const handBefore = this.logger ? hand.map(c => c.id) : null;
+    const legalBefore = this.logger ? this.playableCardIds(socketId) : null;
+
     // Remove played cards from hand
     cardIds.forEach(id => {
       const idx = hand.findIndex(c => c.id === id);
@@ -939,9 +1040,15 @@ class GameState {
       this.logger.play({
         seatIndex: p.seatIndex,
         name:      p.name,
+        isBot:     !!p.isBot,
         cards:     cards.map(c => c.toJSON()),
         shape,
         leadSeat:  this.leadSeat,
+        // The choice that was available, not just the one taken. Without it a
+        // training pipeline has to re-derive legality by reimplementing the
+        // rules, or replay every game through the server to recover the mask.
+        legalCardIds: legalBefore,
+        handBefore,
       });
     }
 
@@ -1037,6 +1144,15 @@ class GameState {
       if (leadEntry.shape === 'pair' && info.pairCount > 0 && shape !== 'pair') {
         return { error: `A pair was led and you hold ${info.pairCount} ${this._suitPlural(leadEffSuit)} pair(s) — you must play one of them, not two odd cards.` };
       }
+      // A follower who cannot form the tractor must still contribute as many
+      // pairs as the lead contains before resorting to loose singles.
+      if (leadEntry.shape === 'tractor' && info.tractorPairCount * 2 < n && info.pairCount > 0) {
+        const playedPairs = countPairsIn(playedCards);
+        const requiredPairs = Math.min(info.pairCount, n / 2);
+        if (playedPairs < requiredPairs) {
+          return { error: `A tractor was led. You hold ${info.pairCount} ${this._suitPlural(leadEffSuit)} pair(s) and must play ${requiredPairs} of them — you played ${playedPairs}.` };
+        }
+      }
       if (leadEntry.shape === 'tractor' && info.tractorPairCount * 2 >= n && shape !== 'tractor') {
         return { error: `A tractor (${n / 2} consecutive pairs) was led and you can form one in ${this._suitPlural(leadEffSuit)} — you must play it.` };
       }
@@ -1108,6 +1224,42 @@ class GameState {
     return msg;
   }
 
+  /**
+   * Which of this player's cards could begin a legal play right now.
+   *
+   * The client had no way to show legality on the cards themselves, so every
+   * illegal card looked exactly as playable as a legal one and the rules were
+   * taught only by a refusal after the fact. Computed here rather than on the
+   * client: a second copy of the follow-suit rule would drift.
+   */
+  playableCardIds(socketId) {
+    const hand = this.hands[socketId] || [];
+    const all  = hand.map(c => c.id);
+    if (this.phase !== GAME_PHASES.PLAYING) return all;
+    if (this.currentTrick.length === 0) return all;          // leading: anything
+
+    const leadEntry   = this.currentTrick[0];
+    const n           = leadEntry.cards.length;
+    const leadEffSuit = leadEntry.cards[0].effectiveSuit(this.trumpSuit, this.trumpRank);
+    const suitCards   = hand.filter(c => c.effectiveSuit(this.trumpSuit, this.trumpRank) === leadEffSuit);
+
+    // Holding enough of the lead suit, the play must come entirely from it.
+    // Holding some but not enough, the rest is filled with anything, so every
+    // card can legitimately appear in the play.
+    return suitCards.length >= n ? suitCards.map(c => c.id) : all;
+  }
+
+  /**
+   * Who is currently winning the partial trick, or null if nobody has played.
+   * Bots need this to tell "my partner is taking it" from "the opponents are",
+   * which is the difference between feeding points and hoarding them.
+   */
+  currentTrickWinner() {
+    if (this.currentTrick.length === 0) return null;
+    const winner = resolveTrickWinner(this.currentTrick, this.trumpSuit, this.trumpRank);
+    return winner ? winner.socketId : null;
+  }
+
   _advanceSeat() {
     this.currentSeat = (this.currentSeat + 1) % PLAYERS_PER_ROOM;
   }
@@ -1164,11 +1316,26 @@ class GameState {
     // team holds the last trick, the kitty is protected and pays nobody. The
     // declarer can therefore never profit from their own bury — burying point
     // cards is a risk, which is the whole tension of the discard.
-    if (isLastTrick && attackerWonTrick) {
+    if (isLastTrick) {
+      // Compute the kitty's value either way. It used to be calculated only
+      // inside the paying branch, so a bury worth 20 logged as "kitty 0pts"
+      // whenever the declarers held the last trick.
       kittyPoints     = this.kitty.reduce((s, c) => s + c.points, 0);
       kittyMultiplier = 2 * winnerEntry.cards.length;
-      kittyBonus      = kittyPoints * kittyMultiplier;
-      this.scores[this.attackingTeam] += kittyBonus;
+      if (attackerWonTrick) {
+        kittyBonus = kittyPoints * kittyMultiplier;
+        this.scores[this.attackingTeam] += kittyBonus;
+      }
+      // The round has to be able to explain its own arithmetic: a player saw
+      // 65 pts on the board and 155 in the modal with nothing accounting for
+      // the difference.
+      this.kittyResult = {
+        cards:      this.kitty.map(c => c.toJSON()),
+        points:     kittyPoints,
+        multiplier: kittyMultiplier,
+        bonus:      kittyBonus,
+        captured:   attackerWonTrick,
+      };
     }
 
     // Apply throw penalty
@@ -1222,6 +1389,19 @@ class GameState {
       })),
       winner:   winnerEntry.socketId,
       points:   pointsScored,
+      // A trick worth 25 points going to the defenders produced no words at
+      // all. The explanation already existed — it just went to the log file.
+      summary: (() => {
+        const who = winnerPlayer.name;
+        const role = attackerWonTrick ? 'attackers' : 'defenders';
+        if (trickPoints === 0) return `${who} takes the trick for the ${role} — no points on the table.`;
+        return attackerWonTrick
+          ? `${who} takes the trick for the attackers — ${trickPoints} points banked.`
+          : `${who} takes the trick for the defenders — ${trickPoints} points denied, since only the attackers score.`;
+      })(),
+      trickPoints,
+      credited: pointsScored,
+      winnerTeam: winnerPlayer.teamIndex,
     };
     this.tricks.push(completedTrick);
 
@@ -1253,9 +1433,14 @@ class GameState {
       { min: 0,                  max: 0,                      team: 'defenders', levels: 3 },
       { min: 1,                  max: t - BAND_WIDTH - 1,     team: 'defenders', levels: 2 },
       { min: t - BAND_WIDTH,     max: t - 1,                  team: 'defenders', levels: 1 },
-      { min: t,                  max: t + BAND_WIDTH - 1,     team: 'attackers', levels: 1 },
-      { min: t + BAND_WIDTH,     max: t + 2 * BAND_WIDTH - 1, team: 'attackers', levels: 2 },
-      { min: t + 2 * BAND_WIDTH, max: TOTAL_POINTS,           team: 'attackers', levels: 3 },
+      // Making the threshold takes the bank but earns no level — the attackers
+      // become the declarers and that is the reward. Levels come from the
+      // margin above it. Every attacker band used to be one step generous,
+      // which contradicted the ladder documented in PLAN.md.
+      { min: t,                  max: t + BAND_WIDTH - 1,     team: 'attackers', levels: 0 },
+      { min: t + BAND_WIDTH,     max: t + 2 * BAND_WIDTH - 1, team: 'attackers', levels: 1 },
+      { min: t + 2 * BAND_WIDTH, max: t + 3 * BAND_WIDTH - 1, team: 'attackers', levels: 2 },
+      { min: t + 3 * BAND_WIDTH, max: TOTAL_POINTS,           team: 'attackers', levels: 3 },
     ]
       .map(b => ({ ...b, max: Math.min(b.max, TOTAL_POINTS) }))
       .filter(b => b.min <= b.max);
@@ -1284,19 +1469,28 @@ class GameState {
     const advancingTeam  = attackingWon ? this.attackingTeam : defendingTeam;
     const levelsAdvanced = band.levels;
 
-    // Jack demotion: if attackers are at level J and defenders won the last
-    // trick with a Jack card, attackers are demoted back to level 2.
+    // Jack demotion. The rank being played is the DECLARING team's level, so a
+    // "J round" is trumpRank === 'J'. If the attackers take the last trick with
+    // a Jack, the declaring team is knocked back to the starting level.
+    //
+    // This previously keyed off teamLevels[attackingTeam] and demoted the
+    // attackers — correct only while attackingTeam meant the declarer, before
+    // the roles were swapped. It could fire in rounds that were not J rounds
+    // and never fired in ones that were.
     let jackDemotion = false;
-    if (!attackingWon && this.teamLevels[this.attackingTeam] === 'J') {
+    if (this.trumpRank === 'J') {
       const lastTrick = this.tricks[this.tricks.length - 1];
       if (lastTrick) {
         const lastWinner = this.getPlayer(lastTrick.winner);
-        if (lastWinner && lastWinner.teamIndex !== this.attackingTeam) {
+        if (lastWinner && lastWinner.teamIndex === this.attackingTeam) {
           const winnerPlay = lastTrick.cards.find(e => e.socketId === lastTrick.winner);
           const hasJack = winnerPlay && winnerPlay.cards.some(c => c.rank === 'J');
           if (hasJack) {
             jackDemotion = true;
-            this.teamLevels[this.attackingTeam] = STARTING_LEVEL;
+            this.teamLevels[defendingTeam] = STARTING_LEVEL;
+            // A demotion that leaves the visited stops behind is nearly free —
+            // the team would re-skip 5/10/K on the way back up.
+            this.visitedRanks[defendingTeam] = new Set([STARTING_LEVEL]);
           }
         }
       }
@@ -1346,6 +1540,8 @@ class GameState {
       levelsAdvanced,
       advancingTeam,
       jackDemotion,
+      kittyResult:    this.kittyResult,
+      tablePoints:    Math.max(0, attackingScore - ((this.kittyResult && this.kittyResult.bonus) || 0)),
       teamLevels:     { ...this.teamLevels },
       scores:         this.scores,
       roundScores:    this.roundScores,
@@ -1368,6 +1564,7 @@ class GameState {
       trumpSuit:         this.trumpSuit,
       trumpRank:         this.trumpRank,
       trumpDeclarer:     this.trumpDeclarer,
+      trumpCallerSeat:   this.trumpCallerSeat,
       trumpCallStrength: this.trumpCallStrength,
       trumpDeclareCards: this.trumpDeclareCards,
       attackingTeam:     this.attackingTeam,
@@ -1397,6 +1594,8 @@ class GameState {
 
   toPlayerJSON(socketId) {
     const full = this.toFullJSON();
+    // Per-player by definition — it is derived from this player's own hand.
+    full.playableCardIds = this.playableCardIds(socketId);
 
     if (this.phase === GAME_PHASES.DEALING) {
       full.myHand     = this.getDealtHand(socketId).map(c => c.toJSON());

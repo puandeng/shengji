@@ -47,7 +47,7 @@
 }
 
 .hand__row-label {
-  font-size: 0.55rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--color-gold);
@@ -142,7 +142,7 @@
   }
 
   .hand__row-label {
-    font-size: 0.45rem;
+    font-size: var(--text-xs);
   }
 
   .hand__play-btn-row {
@@ -185,4 +185,39 @@
 .hand__row-label--pending {
   opacity: 0.55;
   font-style: italic;
+}
+
+/* One row, so the trump group is separated by a wider gutter rather than by a
+   second row that cost ~118px of height and bought nothing horizontally. */
+.hand__row--single {
+  align-items: flex-end;
+}
+
+.hand__cards > .hand__card-slot--major {
+  margin-left: calc(var(--gutter, 16px) * 2 - var(--overlap, 20px));
+}
+
+/* The label belongs beside the trump group, whichever end it sits at — in the
+   two-row shape that means the end of its own row. */
+.hand__row--trump-first .hand__row-label { order: -1; }
+.hand__row--single:not(.hand__row--trump-first) .hand__row-label { order: 1; }
+.hand__row--trump:not(.hand__row--trump-first) .hand__row-label { order: 1; }
+
+/* Cards that cannot legally begin a play. The server already knew this; the
+   hand simply never showed it, so every illegal card looked as playable as a
+   legal one and the rules were taught only by a refusal after the fact. */
+.hand__cards > .hand__card-slot--unplayable .card {
+    filter: grayscale(0.7) brightness(0.62);
+    cursor: default;
+}
+
+.hand__cards > .hand__card-slot--unplayable .card:hover {
+    transform: none;
+}
+
+/* The 8 cards the kitty just handed you, marked until the bury is submitted —
+   otherwise they are indistinguishable from the 25 you were dealt and you
+   cannot put back what you just took. */
+.hand__cards > .hand__card-slot--kitty .card {
+    box-shadow: 0 0 0 2px var(--color-gold), 0 2px 8px rgba(0, 0, 0, 0.45);
 }
