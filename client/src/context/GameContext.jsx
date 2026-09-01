@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from './SocketContext';
 import { playCardSnap, playTrickWon, playRoundEnd } from '../sounds';
-import { suitLabel } from '../suits';
+import { suitName } from '../suits';
 
 const GameContext = createContext(null);
 
@@ -61,6 +61,12 @@ function reducer(state, action) {
         screen:    'game',
         gameState: action.payload,
         lastTrick: null,
+        // A fresh snapshot replaces the round wholesale — a dev scenario can
+        // even wind it backwards — so nothing left over from the last one
+        // should still be on screen.
+        completedTrick: null,
+        trickWinner:    null,
+        roundResult:    null,
       };
 
     case 'UPDATE_GAME_STATE':
@@ -174,10 +180,14 @@ function reducer(state, action) {
 
     case 'TRICK_COMPLETE':
       return {
-        roundResult: action.meta?.roundResult ?? state.roundResult,
-        trickSummary: action.meta?.trickSummary ?? null,
-        trickCredited: action.meta?.trickCredited ?? 0,
+        // `...state` first: spread last, it overwrote the three fields above it
+        // with their previous values, so the round result never reached the
+        // scoring modal and it fell back to defaults — no kitty arithmetic, no
+        // level change, no Jack demotion.
         ...state,
+        roundResult:   action.meta?.roundResult ?? state.roundResult,
+        trickSummary:  action.meta?.trickSummary ?? null,
+        trickCredited: action.meta?.trickCredited ?? 0,
         screen: 'game',
         gameState: { ...action.payload, currentTrick: action.meta.completedTrick },
         completedTrick: action.meta.completedTrick,
@@ -256,7 +266,7 @@ export function GameProvider({ children }) {
       } else {
         dispatch({ type: 'GAME_STATE', payload: gameState });
       }
-      const calledWhat = gameState.trumpSuit ? suitLabel(gameState.trumpSuit) : 'no trump';
+      const calledWhat = gameState.trumpSuit ? suitName(gameState.trumpSuit) : 'no trump';
       const strengthLabel = gameState.strength === 3 ? 'joker pair' : gameState.strength === 2 ? 'pair' : 'single';
       dispatch({ type: 'SET_NOTIFICATION', payload: `${gameState.declarerName} called ${calledWhat} with a ${strengthLabel}` });
       setTimeout(() => dispatch({ type: 'CLEAR_NOTIFICATION' }), 4000);
@@ -280,7 +290,7 @@ export function GameProvider({ children }) {
         dispatch({ type: 'SET_KITTY_CARDS', payload: addedIds });
       }
 
-      const finalSuit = gameState.trumpSuit ? suitLabel(gameState.trumpSuit) : 'no trump';
+      const finalSuit = gameState.trumpSuit ? suitName(gameState.trumpSuit) : 'no trump';
       const msg = gameState.auto
         ? `Trump auto-selected: ${finalSuit}`
         : `${gameState.declarerName} declared trump: ${finalSuit}`;
@@ -491,6 +501,19 @@ export function GameProvider({ children }) {
     socket.emit('room:newRound', {}, () => {});
   }, [socket]);
 
+  // DEV_MODE only — ask the server to rebuild the game in a chosen situation.
+  // The reply is the scenario summary; the state itself arrives as game:started.
+  const setupScenario = useCallback((opts) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('dev:scenario', opts, (res) => {
+        if (res?.error) {
+          dispatch({ type: 'SET_ERROR', payload: res.error });
+          reject(new Error(res.error));
+        } else resolve(res);
+      });
+    });
+  }, [socket]);
+
   const clearError = useCallback(() => dispatch({ type: 'CLEAR_ERROR' }), []);
 
   return (
@@ -510,6 +533,7 @@ export function GameProvider({ children }) {
       previewPlay,
       sendChat,
       startNewRound,
+      setupScenario,
       clearError,
     }}>
       {children}

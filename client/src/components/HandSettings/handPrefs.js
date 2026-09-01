@@ -18,8 +18,10 @@ export const ALL_SUITS = ['S', 'H', 'D', 'C'];
 /** Defaults reproduce the previous hard-coded behaviour exactly. */
 export const DEFAULT_PREFS = {
     suitOrder: ['S', 'H', 'D', 'C'],
-    trumpEnd: 'right',      // which end of the hand the trump row sits at
+    trumpEnd: 'right',      // which end of the hand the trump group sits at
     rankDirection: 'asc',   // 'asc' = low→high, 'desc' = high→low, within each group
+    rows: 'one',            // 'one' = trump group split off by a wide gutter,
+                            // 'two' = trump on its own row above the rest
 };
 
 /** Never trust what came out of storage — it survives across app versions. */
@@ -42,6 +44,9 @@ function sanitize(raw) {
     }
     if (raw.rankDirection === 'asc' || raw.rankDirection === 'desc') {
         prefs.rankDirection = raw.rankDirection;
+    }
+    if (raw.rows === 'one' || raw.rows === 'two') {
+        prefs.rows = raw.rows;
     }
     return prefs;
 }

@@ -18,7 +18,11 @@ export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam,
   }
 
   const teamColor = TEAM_COLORS[player.teamIndex] || '#888';
-  const isAttacking = attackingTeam !== undefined && player.teamIndex === attackingTeam;
+  // Undefined means the sides are not settled yet — nobody has called. Treating
+  // that as "not attacking" badged all four seats DEF through the whole deal,
+  // which is the opposite of what passing undefined was meant to achieve.
+  const rolesKnown  = attackingTeam !== undefined && attackingTeam !== null;
+  const isAttacking = rolesKnown && player.teamIndex === attackingTeam;
 
   return (
     <div
@@ -26,7 +30,7 @@ export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam,
         'player-info',
         isActive ? 'player-info--active' : '',
         vertical ? 'player-info--vertical' : '',
-        isAttacking ? 'player-info--attacking' : 'player-info--defending',
+        !rolesKnown ? '' : isAttacking ? 'player-info--attacking' : 'player-info--defending',
       ].filter(Boolean).join(' ')}
       style={{ '--team-color': teamColor }}
     >
@@ -35,9 +39,11 @@ export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam,
       </div>
       <div className="player-info__details">
         <span className="player-info__name">{player.name}</span>
-        <span className={`player-info__role ${isAttacking ? 'player-info__role--atk' : 'player-info__role--def'}`}>
-          {isAttacking ? 'ATK' : 'DEF'}
-        </span>
+        {rolesKnown && (
+          <span className={`player-info__role ${isAttacking ? 'player-info__role--atk' : 'player-info__role--def'}`}>
+            {isAttacking ? 'ATK' : 'DEF'}
+          </span>
+        )}
       </div>
       {isActive && <div className="player-info__turn-indicator">●</div>}
     </div>

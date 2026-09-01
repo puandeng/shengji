@@ -528,6 +528,45 @@ class GameState {
     return this.players.length === PLAYERS_PER_ROOM;
   }
 
+  /**
+   * Wind the match back to the lobby, keeping the seats. A room code is shared
+   * with the other players, so dev scenario setup rebuilds the match in place
+   * rather than making everyone rejoin a new room.
+   */
+  resetToLobby() {
+    this.phase             = GAME_PHASES.WAITING;
+    this.hands             = {};
+    this.kitty             = [];
+    this.kittyResult       = null;
+    this.trumpSuit         = null;
+    this.trumpRank         = STARTING_LEVEL;
+    this.trumpDeclarer     = null;
+    this.trumpCallStrength = 0;
+    this.trumpDeclareCards = [];
+    this.trumpCallerSeat   = null;
+    this.attackingTeam     = 0;
+    this.kittyPickerSeat   = null;
+    this.teamLevels        = { 0: STARTING_LEVEL, 1: STARTING_LEVEL };
+    this.visitedRanks      = { 0: new Set([STARTING_LEVEL]), 1: new Set([STARTING_LEVEL]) };
+    this.currentTrick      = [];
+    this.tricks            = [];
+    this.leadSeat          = 0;
+    this.currentSeat       = 0;
+    this.scores            = { 0: 0, 1: 0 };
+    this.roundScores       = { 0: 0, 1: 0 };
+    this.attackerPointPile = [];
+    this.pointsPlayed      = 0;
+    this.winner            = null;
+    this.roundNumber       = 1;
+    this.trumpPasses       = new Set();
+    this.dealWindowPasses  = new Set();
+    this.dealWindowIndex   = 0;
+    this.dealPaused        = false;
+    this.dealQueue         = null;
+    this.dealIndex         = 0;
+    return { success: true };
+  }
+
   // ─────────────────────────────────────────────
   // Dealing
   // ─────────────────────────────────────────────

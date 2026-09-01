@@ -87,6 +87,15 @@ export default function HandSettings({ prefs, onChange }) {
                     </div>
 
                     <div className="hand-settings__group">
+                        <span className="hand-settings__label">Hand rows</span>
+                        <Segmented
+                            value={prefs.rows}
+                            options={[['one', 'One'], ['two', 'Two']]}
+                            onSelect={v => onChange({ rows: v })}
+                        />
+                    </div>
+
+                    <div className="hand-settings__group">
                         <span className="hand-settings__label">Rank order</span>
                         <Segmented
                             value={prefs.rankDirection}

@@ -197,9 +197,11 @@
   margin-left: calc(var(--gutter, 16px) * 2 - var(--overlap, 20px));
 }
 
-/* The label belongs beside the trump group, whichever end it sits at. */
+/* The label belongs beside the trump group, whichever end it sits at — in the
+   two-row shape that means the end of its own row. */
 .hand__row--trump-first .hand__row-label { order: -1; }
 .hand__row--single:not(.hand__row--trump-first) .hand__row-label { order: 1; }
+.hand__row--trump:not(.hand__row--trump-first) .hand__row-label { order: 1; }
 
 /* Cards that cannot legally begin a play. The server already knew this; the
    hand simply never showed it, so every illegal card looked as playable as a

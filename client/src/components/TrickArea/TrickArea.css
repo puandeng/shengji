@@ -30,8 +30,6 @@
 .trick-area--xs .trick-area__placeholder {
   width: 18px;
   height: 26px;
-  border-width: 1px;
-  border-color: rgba(255,255,255,0.10);
 }
 
 .trick-area--xs .trick-area__winner-badge {
@@ -43,7 +41,7 @@
 /* Centre-of-table size: the played cards should read from across the room, so
    they take the space the empty felt used to. */
 .trick-area--lg {
-  max-width: 420px;
+  max-width: 520px;
   min-width: 200px;
   gap: 4px;
 }
@@ -71,25 +69,37 @@
   width: 100%;
 }
 
-.trick-area__centre {
-  width: 60px;
-  height: 86px;
-}
-
+/* An empty seat only has to hold its place, not reserve a whole card of felt —
+   at every size, not just the largest. A full-card placeholder made the cross
+   3x86 tall at `sm`, so a hand switched to two rows left the trick a box it
+   overflowed by 9px and the bottom seat's play was clipped. Each size now keeps
+   the cross to roughly three card heights, which is exactly what the scale
+   thresholds in GameBoard are solved against. */
 .trick-area__placeholder {
-  width: 60px;
-  height: 86px;
-  border: 2px dashed rgba(255,255,255,0.12);
-  border-radius: 6px;
+  width: 22px;
+  height: 30px;
+  border: 1px dashed rgba(255,255,255,0.10);
+  border-radius: 5px;
 }
 
-/* An empty seat only has to hold its place, not reserve a whole card of felt. */
+.trick-area__centre {
+  width: 18px;
+  height: 30px;
+}
+
+.trick-area--md .trick-area__placeholder {
+  width: 26px;
+  height: 36px;
+}
+
+.trick-area--md .trick-area__centre {
+  width: 20px;
+  height: 36px;
+}
+
 .trick-area--lg .trick-area__placeholder {
   width: 30px;
   height: 42px;
-  border-width: 1px;
-  border-color: rgba(255,255,255,0.10);
-  border-radius: 5px;
 }
 
 .trick-area--lg .trick-area__centre {
@@ -107,8 +117,10 @@
   margin-left: -28px;
 }
 
-/* Overlap scales with the card so the rank corner stays readable. */
-.trick-area__combo--lg .card + .card { margin-left: -46px; }
+/* Overlap scales with the card so the rank corner stays readable. There is
+   room in the middle of the table now, so a pair overlaps by a third rather
+   than by half. */
+.trick-area__combo--lg .card + .card { margin-left: -30px; }
 .trick-area__combo--md .card + .card { margin-left: -32px; }
 .trick-area__combo--sm .card + .card { margin-left: -22px; }
 

@@ -4,6 +4,7 @@ import GameBoard from '../components/GameBoard/GameBoard';
 import ScoringModal from '../components/ScoringModal/ScoringModal';
 import Notification from '../components/Notification/Notification';
 import ChatPanel from '../components/ChatPanel/ChatPanel';
+import DevMenu from '../components/DevMenu/DevMenu';
 import './Game.css';
 
 export default function Game() {
@@ -23,7 +24,7 @@ export default function Game() {
 
   return (
     <div className="game-root">
-      {devMode && <div className="dev-mode-indicator">DEV MODE</div>}
+      {devMode && <DevMenu variant="floating" />}
       {notification && <Notification message={notification} />}
 
       <GameBoard />

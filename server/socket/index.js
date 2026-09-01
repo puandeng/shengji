@@ -1,6 +1,7 @@
 const { RoomRegistry } = require('../game/Room');
 const { setupRoomHandlers } = require('./roomHandlers');
 const { setupGameHandlers } = require('./gameHandlers');
+const { setupDevHandlers } = require('./devHandlers');
 
 const registry = new RoomRegistry();
 
@@ -11,6 +12,7 @@ function setupSocketHandlers(io) {
     // Pass registry + io to each handler module
     setupRoomHandlers(io, socket, registry);
     setupGameHandlers(io, socket, registry);
+    setupDevHandlers(io, socket, registry);
 
     socket.on('disconnect', () => {
       console.log(`[Socket] Disconnected: ${socket.id}`);

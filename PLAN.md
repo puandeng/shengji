@@ -53,8 +53,40 @@ followers could break pairs against a tractor lead) and the level ladder could s
 mandatory stops. Rules correctness should be considered settled — and covered by
 tests — before any training run is worth the compute.
 
+### Dev scenarios — implemented
+- [x] **`DEV_MODE` scenario menu.** Lobby panel and in-game bar that rebuild the
+  room in a chosen situation: fresh deal, mid-game, or an endgame two cards from
+  the finish, on either side, with either team's level dialled anywhere from 2 to
+  A. Setup drives the real engine (deal → call → bury → `playCards` for every
+  seat), so it cannot produce a position the rules disallow. `dev:scenario`,
+  `server/game/DevScenario.js`, `client/src/components/DevMenu/`; covered by
+  `server/game/__tests__/devScenario.test.js` over 15 shuffles per assertion.
+- [x] **The round result never reached the scoring modal.** `TRICK_COMPLETE`
+  spread `...state` *after* `roundResult`, so the previous value overwrote the
+  new one and the modal fell back to its defaults — no kitty arithmetic, no level
+  change, no Jack demotion. Found while building the endgame scenarios, which
+  exist to look at exactly that modal.
+
+### Playing-area pass — implemented
+- [x] **The trick was half the size of your own hand.** Eight grid rows spent 373px
+  of a 720px board on chrome and left the trick 182px, which pinned it to the
+  smallest card size. The board is five rows now, the opponents sit around the
+  felt, and the trick's box measures 449px — cards at 84×118, the same as the
+  hand, on a drawn table surface.
+- [x] **The scoring bar carried eight numbers at once.** It is a one-line strip —
+  your role, score against target, a band bar, and what the current band pays —
+  that opens the full ladder, the deltas, the points remaining and the captured
+  cards on click.
+- [x] **Every seat was badged DEF before anyone had called.** `PlayerInfo` read the
+  deliberate `undefined` for "roles not settled" as "not attacking".
+- [x] **A stray `}` in `GameBoard.css`** had been breaking the CSS minifier for
+  weeks (`Unexpected "}"` on every build).
+
 ### Still open
-- [ ] **Trick review has no seat attribution** — the last-trick panel shows four cards without saying who played what.
+- [x] **Trick review has no seat attribution** — done. The panel is now a centred
+  overlay showing the plays in play order with each player's name, `led` /
+  `took it` / point tags, the trick total and the narration, instead of a
+  scrollable sliver of four anonymous cards.
 - [ ] **Lobby polish** — team panels are 162px and 154px tall so their bottoms do not align; the room code uses a face that appears nowhere else.
 - [ ] **Button styles have not been consolidated** — four styles at three heights remain.
 - [ ] **Cards are not keyboard reachable.** They are `div`s with `onClick`; the accessibility tree contains no cards.

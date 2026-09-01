@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const GameState = require('./GameState');
 const BotPlayer = require('./BotPlayer');
 const { GameLogger } = require('./GameLogger');
+const DevScenario = require('./DevScenario');
 const { GAME_PHASES, PLAYERS_PER_ROOM, TRUMP_DECLARATION_TIMEOUT, LEVEL_THRESHOLDS, BOT_PLAY_DELAY_MS, BOT_CALL_REACTION_MS, KITTY_SIZE, DEAL_CARD_INTERVAL_MS, DEAL_PAUSE_EVERY_CARDS, DEAL_PAUSE_MS, DEAL_PAUSE_MIN_GAP_CARDS, MAX_CALL_STRENGTH, TRICK_DISPLAY_DELAY_MS } = require('./constants');
 
 /**
@@ -203,6 +204,27 @@ class Room {
     }
   }
 
+  _clearBotTimers() {
+    this._botTimers.forEach(t => clearTimeout(t));
+    this._botTimers = [];
+  }
+
+  /** Drop every pending timer — a dev scenario rebuilds the game underneath them. */
+  clearTimers() {
+    this._clearDealTimer();
+    this._clearTrumpTimer();
+    this._clearBotTimers();
+  }
+
+  /**
+   * DEV_MODE only — rebuild this room's game in a given situation so a tester
+   * can start from the state they want to look at. See `DevScenario`.
+   */
+  applyDevScenario(socketId, opts) {
+    if (!this.devMode) return { error: 'Dev mode is off' };
+    return DevScenario.applyScenario(this, socketId, opts);
+  }
+
   /**
    * A player calls trump during the TRUMP_SELECTION phase.
    * Higher-strength calls (pair > single, joker pair > pair) override weaker ones.
@@ -384,13 +406,15 @@ class Room {
     this._botTimers.push(timer);
   }
 
-  _executeBotTurn() {
-    if (this.game.phase !== GAME_PHASES.PLAYING) return;
-
-    const socketId = this.game.currentPlayerSocketId;
-    if (!this._shouldAutoPlay(socketId)) return;
-
+  /**
+   * What bot logic would play for this seat right now. Used both for real bot
+   * turns and by dev scenario setup, which drives every seat — the human's
+   * included — to fast-forward a game into position.
+   */
+  autoPlayChoice(socketId) {
     const hand = this.game.hands[socketId];
+    if (!hand || hand.length === 0) return null;
+
     // Give the bot the two facts it needs to play with any judgement: whether
     // its own partner is currently taking the trick, and what is at stake.
     const me            = this.game.getPlayer(socketId);
@@ -401,10 +425,19 @@ class Room {
       (sum, e) => sum + e.cards.reduce((s, c) => s + c.points, 0), 0
     );
 
-    const cardIds = BotPlayer.chooseLegalCards(
+    return BotPlayer.chooseLegalCards(
       hand, this.game.currentTrick, this.game.trumpSuit, this.game.trumpRank,
       { partnerWinning, trickPoints }
     );
+  }
+
+  _executeBotTurn() {
+    if (this.game.phase !== GAME_PHASES.PLAYING) return;
+
+    const socketId = this.game.currentPlayerSocketId;
+    if (!this._shouldAutoPlay(socketId)) return;
+
+    const cardIds = this.autoPlayChoice(socketId);
     if (!cardIds || cardIds.length === 0) return;
 
     const result = this.game.playCards(socketId, cardIds);
