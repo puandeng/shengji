@@ -61,6 +61,12 @@ function reducer(state, action) {
         screen:    'game',
         gameState: action.payload,
         lastTrick: null,
+        // A fresh snapshot replaces the round wholesale — a dev scenario can
+        // even wind it backwards — so nothing left over from the last one
+        // should still be on screen.
+        completedTrick: null,
+        trickWinner:    null,
+        roundResult:    null,
       };
 
     case 'UPDATE_GAME_STATE':
@@ -174,10 +180,14 @@ function reducer(state, action) {
 
     case 'TRICK_COMPLETE':
       return {
-        roundResult: action.meta?.roundResult ?? state.roundResult,
-        trickSummary: action.meta?.trickSummary ?? null,
-        trickCredited: action.meta?.trickCredited ?? 0,
+        // `...state` first: spread last, it overwrote the three fields above it
+        // with their previous values, so the round result never reached the
+        // scoring modal and it fell back to defaults — no kitty arithmetic, no
+        // level change, no Jack demotion.
         ...state,
+        roundResult:   action.meta?.roundResult ?? state.roundResult,
+        trickSummary:  action.meta?.trickSummary ?? null,
+        trickCredited: action.meta?.trickCredited ?? 0,
         screen: 'game',
         gameState: { ...action.payload, currentTrick: action.meta.completedTrick },
         completedTrick: action.meta.completedTrick,
