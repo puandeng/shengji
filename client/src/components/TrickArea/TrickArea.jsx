@@ -4,12 +4,16 @@ import './TrickArea.css';
 
 /**
  * Largest card size that still fits the slot for that many cards.
- * `scale="lg"` is the centre-of-table size — a trick has to read at a glance.
+ * `scale="lg"` is the centre-of-table size — a trick has to read at a glance,
+ * and at the sizes below it did not: a pair dropped straight to `md`, so the
+ * cards on the table were smaller than the ones in your own hand even with the
+ * whole felt free. A four-card tractor at `lg` is 336px wide against 520 of
+ * slot, so only a genuinely long play needs to step down.
  */
 function cardSizeFor(count, scale) {
-  if (scale === 'lg') return count === 1 ? 'lg' : count <= 3 ? 'md' : 'sm';
-  if (scale === 'xs' || scale === 'sm') return 'sm';
-  return count > 2 ? 'sm' : 'md';
+  if (scale === 'lg') return count <= 3 ? 'lg' : count <= 6 ? 'md' : 'sm';
+  if (scale === 'md') return count <= 2 ? 'md' : 'sm';
+  return 'sm';
 }
 
 /**

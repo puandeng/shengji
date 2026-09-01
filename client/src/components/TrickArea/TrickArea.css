@@ -43,7 +43,7 @@
 /* Centre-of-table size: the played cards should read from across the room, so
    they take the space the empty felt used to. */
 .trick-area--lg {
-  max-width: 420px;
+  max-width: 520px;
   min-width: 200px;
   gap: 4px;
 }
@@ -107,8 +107,10 @@
   margin-left: -28px;
 }
 
-/* Overlap scales with the card so the rank corner stays readable. */
-.trick-area__combo--lg .card + .card { margin-left: -46px; }
+/* Overlap scales with the card so the rank corner stays readable. There is
+   room in the middle of the table now, so a pair overlaps by a third rather
+   than by half. */
+.trick-area__combo--lg .card + .card { margin-left: -30px; }
 .trick-area__combo--md .card + .card { margin-left: -32px; }
 .trick-area__combo--sm .card + .card { margin-left: -22px; }
 
