@@ -152,6 +152,53 @@ function setupRoomHandlers(io, socket, registry) {
     }
   });
 
+  // ── Add / remove bots ──────────────────────────────────────────────────────
+  socket.on('room:addBot', (_, callback) => {
+    try {
+      const room = registry.getRoomForSocket(socket.id);
+      if (!room) return callback?.({ error: 'Not in a room' });
+
+      const player = room.game.getPlayer(socket.id);
+      if (!player || player.seatIndex !== 0) {
+        return callback?.({ error: 'Only the host can add bots' });
+      }
+
+      const result = room.addBot();
+      if (result.error) return callback?.({ error: result.error });
+
+      io.to(room.code).emit('player:joined', {
+        player: result.player,
+        roomState: room.toLobbyJSON(),
+      });
+
+      callback?.({ success: true });
+    } catch (err) {
+      console.error('[room:addBot]', err);
+      callback?.({ error: 'Server error' });
+    }
+  });
+
+  socket.on('room:removeBot', (_, callback) => {
+    try {
+      const room = registry.getRoomForSocket(socket.id);
+      if (!room) return callback?.({ error: 'Not in a room' });
+
+      const player = room.game.getPlayer(socket.id);
+      if (!player || player.seatIndex !== 0) {
+        return callback?.({ error: 'Only the host can remove bots' });
+      }
+
+      const result = room.removeBot();
+      if (result.error) return callback?.({ error: result.error });
+
+      io.to(room.code).emit('player:left', { roomState: room.toLobbyJSON() });
+      callback?.({ success: true });
+    } catch (err) {
+      console.error('[room:removeBot]', err);
+      callback?.({ error: 'Server error' });
+    }
+  });
+
   // ── Chat ───────────────────────────────────────────────────────────────────
   socket.on('room:chat', ({ message }) => {
     const room = registry.getRoomForSocket(socket.id);

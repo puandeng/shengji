@@ -81,9 +81,29 @@ class Room {
     }
   }
 
+  addBot() {
+    if (this.isFull) return { error: 'Room is full' };
+    if (this.game.phase !== GAME_PHASES.WAITING) return { error: 'Game already started' };
+    const nextSeat = this.game.players.length;
+    const socketId = BotPlayer.generateBotId(nextSeat);
+    const result = this.game.addPlayer(socketId, BotPlayer.generateBotName(nextSeat));
+    if (result.error) return result;
+    const seated = this.game.getPlayer(socketId);
+    if (seated) seated.isBot = true;
+    return result;
+  }
+
+  removeBot() {
+    if (this.game.phase !== GAME_PHASES.WAITING) return { error: 'Game already started' };
+    const bot = [...this.game.players].reverse().find(p => p.isBot);
+    if (!bot) return { error: 'No bots to remove' };
+    this.game.removePlayer(bot.socketId);
+    return { success: true };
+  }
+
   startGame() {
-    if (this.devMode) this.fillWithBots();
-    if (!this.game.isReady()) return { error: 'Need 4 players to start' };
+    this.fillWithBots();
+    if (!this.game.isReady()) return { error: 'Need at least 1 player to start' };
     if (this.game.phase !== GAME_PHASES.WAITING) return { error: 'Game already started' };
     return this.game.deal();
   }
@@ -555,7 +575,7 @@ class Room {
       playerCount: this.playerCount,
       isFull:      this.isFull,
       phase:       this.game.phase,
-      players:     this.game.players.map(p => ({ name: p.name, seatIndex: p.seatIndex, teamIndex: p.teamIndex })),
+      players:     this.game.players.map(p => ({ name: p.name, seatIndex: p.seatIndex, teamIndex: p.teamIndex, isBot: !!p.isBot })),
       devMode:     this.devMode,
     };
   }
