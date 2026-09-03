@@ -5,7 +5,7 @@ import { suitName } from '../suits';
 
 const GameContext = createContext(null);
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
 // How long a completed trick stays frozen on the table before play resumes.
 // The server's TRICK_DISPLAY_DELAY_MS (2.5s) used to be a forced stare; the
