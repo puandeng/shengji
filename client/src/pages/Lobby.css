@@ -47,7 +47,6 @@
   font-weight: 800;
   letter-spacing: 0.5rem;
   color: var(--color-gold);
-  font-family: 'Courier New', monospace;
 }
 
 .lobby-code-hint {
@@ -59,7 +58,7 @@
 
 .lobby-players {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -69,6 +68,8 @@
   border: 2px solid;
   border-radius: 12px;
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .lobby-team h3 {
@@ -156,6 +157,27 @@
   color: var(--color-text-muted);
   font-size: 0.875rem;
   font-style: italic;
+}
+
+.lobby-bot-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.lobby-bot-controls .btn-secondary {
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+}
+
+.player-bot-badge {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  background: rgba(255,255,255,0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
 }
 
 .dev-mode-banner {

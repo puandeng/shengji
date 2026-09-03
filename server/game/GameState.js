@@ -524,8 +524,7 @@ class GameState {
   }
 
   isReady() {
-    if (this.devMode) return this.players.length >= 1 && this.players.length <= PLAYERS_PER_ROOM;
-    return this.players.length === PLAYERS_PER_ROOM;
+    return this.players.length >= 1 && this.players.length <= PLAYERS_PER_ROOM;
   }
 
   /**

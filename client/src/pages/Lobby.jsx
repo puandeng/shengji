@@ -7,19 +7,20 @@ const TEAM_COLORS = ['#3498db', '#e74c3c'];
 const SEAT_LABELS = ['Seat 1', 'Seat 2', 'Seat 3', 'Seat 4'];
 
 export default function Lobby() {
-  const { room, myPlayer, startGame, error, devMode } = useGame();
+  const { room, myPlayer, startGame, addBot, removeBot, error, devMode } = useGame();
 
   if (!room) return null;
 
   const isHost       = myPlayer?.seatIndex === 0;
-  const canStart     = devMode ? room.playerCount >= 1 : room.playerCount === 4;
   const emptySeats   = 4 - room.playerCount;
+  const hasBots      = room.players.some(p => p.isBot);
+  const canStart     = room.playerCount >= 1;
 
   return (
     <div className="lobby-container">
       <div className="lobby-card">
         {devMode && (
-          <div className="dev-mode-banner">DEV MODE -- Bots will fill empty seats</div>
+          <div className="dev-mode-banner">DEV MODE</div>
         )}
         <h2 className="lobby-title">Game Lobby</h2>
 
@@ -47,12 +48,25 @@ export default function Lobby() {
           </div>
         </div>
 
+        {isHost && emptySeats > 0 && (
+          <div className="lobby-bot-controls">
+            <button className="btn-secondary" onClick={addBot}>
+              + Add Bot
+            </button>
+            {hasBots && (
+              <button className="btn-secondary" onClick={removeBot}>
+                - Remove Bot
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="lobby-status">
           {canStart
-            ? (devMode && emptySeats > 0
-              ? `Ready! ${emptySeats} bot${emptySeats > 1 ? 's' : ''} will fill empty seats`
+            ? (emptySeats > 0
+              ? `Ready! ${emptySeats} bot${emptySeats > 1 ? 's' : ''} will fill remaining seats`
               : 'All players ready!')
-            : `Waiting for ${emptySeats} more player${emptySeats > 1 ? 's' : ''}…`}
+            : 'Waiting for players…'}
         </div>
 
         {error && <p className="error-text">{error}</p>}
@@ -63,7 +77,7 @@ export default function Lobby() {
             onClick={startGame}
             disabled={!canStart}
           >
-            Start Game
+            Start Game{emptySeats > 0 ? ` (${emptySeats} bot${emptySeats > 1 ? 's' : ''} will join)` : ''}
           </button>
         )}
 
@@ -86,11 +100,12 @@ function PlayerSlot({ seat, players, myPlayer }) {
       {player ? (
         <>
           <span className="player-avatar">
-            {player.name[0].toUpperCase()}
+            {player.isBot ? '🤖' : player.name[0].toUpperCase()}
           </span>
           <span className="player-name">
             {player.name}
             {isMe && <span className="player-you-badge"> (You)</span>}
+            {player.isBot && <span className="player-bot-badge">BOT</span>}
           </span>
         </>
       ) : (

@@ -777,3 +777,87 @@ describe('the round explains its own arithmetic', () => {
     expect(res.kittyResult.bonus).toBe(0);
   });
 });
+
+describe('two-round game plays to completion', () => {
+  const { Room } = require('../Room');
+
+  function playFullRound(room) {
+    const game = room.game;
+
+    // Trump call: first player with a rank card calls
+    for (const p of game.players) {
+      const rankCard = game.hands[p.socketId]?.find(c => c.rank === game.trumpRank && !c.isJoker);
+      if (rankCard) {
+        game.callTrump(p.socketId, [rankCard.id]);
+        break;
+      }
+    }
+    game.finishTrumpSelection();
+    game.giveKittyToDeclarer();
+
+    // Kitty discard: declarer discards first 8
+    const declarer = game.trumpDeclarer;
+    const discardIds = game.hands[declarer].slice(0, 8).map(c => c.id);
+    game.discardToKitty(declarer, discardIds);
+
+    // Play all 25 tricks
+    let trickCount = 0;
+    while (game.phase === 'PLAYING') {
+      const currentId = game.players.find(p => p.seatIndex === game.currentSeat).socketId;
+      const hand = game.hands[currentId];
+      if (!hand || hand.length === 0) break;
+
+      // Lead or follow with the first legal card
+      const cardId = hand[0].id;
+      const result = game.playCards(currentId, [cardId]);
+      if (result.error) {
+        // If the first card isn't legal (e.g. follow-suit), find one that is
+        for (const c of hand) {
+          const r = game.playCards(currentId, [c.id]);
+          if (!r.error) break;
+        }
+      }
+      if (game.phase === 'SCORING') trickCount++;
+      if (trickCount > 30) throw new Error('Too many tricks — infinite loop');
+    }
+
+    return game.phase;
+  }
+
+  it('transitions from round 1 to round 2 with correct state', () => {
+    const room = new Room('TEST');
+    room.game.addPlayer('p0', 'Alice');
+    room.game.addPlayer('p1', 'Bob');
+    room.game.addPlayer('p2', 'Carol');
+    room.game.addPlayer('p3', 'Dave');
+    room.game.deal();
+    room.game.finishDealing();
+
+    // Round 1
+    const phase1 = playFullRound(room);
+    expect(phase1).toBe('SCORING');
+
+    const r1Levels = { ...room.game.teamLevels };
+    const r1Attacking = room.game.attackingTeam;
+
+    // Start round 2
+    const result = room.startNewRound();
+    expect(result.error).toBeUndefined();
+    room.game.finishDealing();
+
+    // Verify round 2 state
+    expect(room.game.roundNumber).toBe(2);
+    expect(room.game.phase).toBe('TRUMP_SELECTION');
+    expect(room.game.kittyPickerSeat).not.toBeNull();
+    expect(room.game.trumpDeclarer).not.toBeNull();
+
+    // Every player should have 25 cards
+    for (const p of room.game.players) {
+      expect(room.game.hands[p.socketId].length).toBe(25);
+    }
+
+    // Round 2
+    const phase2 = playFullRound(room);
+    expect(phase2).toBe('SCORING');
+  });
+});
