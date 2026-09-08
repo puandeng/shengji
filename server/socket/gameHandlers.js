@@ -154,6 +154,16 @@ function setupGameHandlers(io, socket, registry) {
             roundScores:    result.roundScores || room.game.roundScores,
             winnerTeam:     result.winner,
             trickDisplayDelay: TRICK_DISPLAY_DELAY_MS,
+            roundResult:    result.roundOver ? {
+              attackingTeam:  result.attackingTeam,
+              attackingWon:   result.attackingWon,
+              threshold:      result.threshold,
+              tablePoints:    result.tablePoints,
+              kittyResult:    result.kittyResult,
+              levelsAdvanced: result.levelsAdvanced,
+              advancingTeam:  result.advancingTeam,
+              jackDemotion:   result.jackDemotion,
+            } : null,
             ...room.toGameStateFor(p.socketId),
           });
         });
@@ -238,6 +248,16 @@ function setupGameHandlers(io, socket, registry) {
             roundScores:    result.roundScores || room.game.roundScores,
             winnerTeam:     result.winner,
             trickDisplayDelay: TRICK_DISPLAY_DELAY_MS,
+            roundResult:    result.roundOver ? {
+              attackingTeam:  result.attackingTeam,
+              attackingWon:   result.attackingWon,
+              threshold:      result.threshold,
+              tablePoints:    result.tablePoints,
+              kittyResult:    result.kittyResult,
+              levelsAdvanced: result.levelsAdvanced,
+              advancingTeam:  result.advancingTeam,
+              jackDemotion:   result.jackDemotion,
+            } : null,
             ...room.toGameStateFor(p.socketId),
           });
         });

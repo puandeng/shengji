@@ -83,7 +83,7 @@ tests — before any training run is worth the compute.
   weeks (`Unexpected "}"` on every build).
 
 ### Still open
-- [x] **Any player can call trump, not just the defending team.** Already works correctly: in round 1 any player can call trump and become the declarer. In rounds 2+ only the declaring team can call, because the trump rank is their team's level — letting opponents pick the suit would be unfair. This is correct traditional Sheng Ji behavior.
+- [x] **Any player can call trump, not just the defending team.** Revised: in round 1 any player can call and becomes the declarer. In rounds 2+ any player on either team can now call trump to pick the suit, but roles stay fixed — the pre-assigned declarer still takes the kitty and defends. The restriction that blocked the non-declaring team has been removed from `callTrump()` in `GameState.js`.
 - [x] **Bots should be available outside dev mode.** Done — the host can add/remove bots from the lobby via `+ Add Bot` / `- Remove Bot` buttons. Starting with fewer than 4 humans auto-fills remaining seats with bots. No `DEV_MODE` required. Bot players show a robot avatar and BOT badge in the lobby. Socket events: `room:addBot`, `room:removeBot`.
 - [x] **Trick review has no seat attribution** — done. The panel is now a centred
   overlay showing the plays in play order with each player's name, `led` /
@@ -93,6 +93,8 @@ tests — before any training run is worth the compute.
 - [x] **Button styles have not been consolidated** — reviewed: three base variants (`btn-primary`, `btn-secondary`, `btn-danger`) with contextual size overrides per component. The overrides are intentional (action bar buttons are compact, lobby start is large) and scoped to their CSS modules.
 - [ ] **Cards are not keyboard reachable.** They are `div`s with `onClick`; the accessibility tree contains no cards.
 - [x] **Round 2+ has never been played to completion.** Done — integration test plays two full rounds end to end via the Room class: deal → trump call → kitty discard → all 25 tricks → scoring → `startNewRound()` → repeat. Verifies round number, phase transitions, kitty picker assignment, and hand sizes.
+- [x] **Round-end hold: reveal kitty and keep last trick before scoring.** When the final trick completes, the board stays visible with the last trick on the table, and a "Round Complete" overlay reveals the kitty cards with points/capture info. Clicking "Continue" dismisses the overlay and shows the full scoring modal. `roundEndPending` flag in GameContext gates the transition.
+- [x] **Both teams can call trump in rounds 2+.** The restriction that only the declaring team could call trump in later rounds has been removed. Any player may call trump to pick the suit; the pre-assigned declarer and team roles remain unchanged.
 
 
 

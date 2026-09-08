@@ -8,7 +8,7 @@ import DevMenu from '../components/DevMenu/DevMenu';
 import './Game.css';
 
 export default function Game() {
-  const { gameState, notification, devMode } = useGame();
+  const { gameState, notification, devMode, roundEndPending } = useGame();
 
   if (!gameState) {
     return (
@@ -30,7 +30,7 @@ export default function Game() {
       <GameBoard />
       <ChatPanel />
 
-      {(isScoring || isGameOver) && <ScoringModal />}
+      {(isScoring || isGameOver) && !roundEndPending && <ScoringModal />}
     </div>
   );
 }
