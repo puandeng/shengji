@@ -117,6 +117,17 @@
   }
 }
 
+/* Card play animation — cards fly upward when played */
+.hand__card-slot--playing {
+  animation: card-play 0.25s ease-in forwards;
+  z-index: 20;
+}
+
+@keyframes card-play {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-120px) scale(0.7); opacity: 0; }
+}
+
 .hand__cards > .hand__card-slot:hover,
 .hand__cards > .hand__card-slot:has(.card--selected) {
   z-index: 10;

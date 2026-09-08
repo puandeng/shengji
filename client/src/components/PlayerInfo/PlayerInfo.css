@@ -104,6 +104,35 @@
   50% { opacity: 0.3; }
 }
 
+.player-info__trump-bid {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255,215,0,0.15);
+  border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin-top: 4px;
+  animation: bid-appear 0.3s ease-out;
+}
+
+.trump-bid__label {
+  font-size: 0.65rem;
+  color: var(--color-gold);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.trump-bid__cards {
+  display: flex;
+  gap: 2px;
+}
+
+@keyframes bid-appear {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
 @media (max-width: 768px) {
   .player-info {
     padding: 0.25rem 0.4rem;

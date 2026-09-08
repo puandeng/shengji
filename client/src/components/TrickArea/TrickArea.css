@@ -76,35 +76,37 @@
    the cross to roughly three card heights, which is exactly what the scale
    thresholds in GameBoard are solved against. */
 .trick-area__placeholder {
-  width: 22px;
-  height: 30px;
-  border: 1px dashed rgba(255,255,255,0.10);
-  border-radius: 5px;
+  width: 42px;
+  height: 60px;
+  border: 1px dashed rgba(255,255,255,0.15);
+  border-radius: 4px;
 }
 
 .trick-area__centre {
-  width: 18px;
-  height: 30px;
+  width: 42px;
+  height: 60px;
 }
 
 .trick-area--md .trick-area__placeholder {
-  width: 26px;
-  height: 36px;
+  width: 62px;
+  height: 88px;
+  border-radius: 5px;
 }
 
 .trick-area--md .trick-area__centre {
-  width: 20px;
-  height: 36px;
+  width: 62px;
+  height: 88px;
 }
 
 .trick-area--lg .trick-area__placeholder {
-  width: 30px;
-  height: 42px;
+  width: 84px;
+  height: 118px;
+  border-radius: 7px;
 }
 
 .trick-area--lg .trick-area__centre {
-  width: 24px;
-  height: 42px;
+  width: 84px;
+  height: 118px;
 }
 
 .trick-area__combo {

@@ -94,6 +94,13 @@ tests — before any training run is worth the compute.
 - [ ] **Cards are not keyboard reachable.** They are `div`s with `onClick`; the accessibility tree contains no cards.
 - [x] **Round 2+ has never been played to completion.** Done — integration test plays two full rounds end to end via the Room class: deal → trump call → kitty discard → all 25 tricks → scoring → `startNewRound()` → repeat. Verifies round number, phase transitions, kitty picker assignment, and hand sizes.
 
+### UI / UX improvements
+- [x] **Trump level announcement animation.** Full-screen overlay announces the trump level and round number at the start of dealing, with fade-in, rank pulse, and fade-out animations. Auto-dismisses after 4s or immediately when trump is called / kitty phase begins. `gameboard__level-announce` in `GameBoard.css`.
+- [x] **Dotted placeholders match played card size.** Placeholder dimensions now match actual card sizes at each breakpoint: sm 42×60, md 62×88, lg 84×118.
+- [x] **Card play animation.** Selected cards fly upward with scale-down and fade-out (250ms) before the `playCards` call fires. `hand__card-slot--playing` in `Hand.css`.
+- [ ] **Redesign the playing table.** The felt was updated to a gold-tinted circular radial gradient with a subtle gold border glow. Further design iterations are still open.
+- [x] **Trump bid shown at the bidder's seat.** The trump declaration cards now appear at the calling player's `PlayerInfo` component instead of a top-centre popup. The current player's own bid shows near their hand area. `player-info__trump-bid` in `PlayerInfo.css`.
+
 
 
 ### Kitty bury
