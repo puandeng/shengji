@@ -35,6 +35,7 @@ const INITIAL_STATE = {
   trickSummary:   null,    // one-line narration of the trick just finished
   trickCredited:  0,
   dealPause:      null,    // { windowIndex, totalWindows, deadline, durationMs } while dealing is paused
+  roundEndPending: false,  // true between the final trick and the scoring modal — keeps the board visible
 };
 
 function reducer(state, action) {
@@ -64,9 +65,10 @@ function reducer(state, action) {
         // A fresh snapshot replaces the round wholesale — a dev scenario can
         // even wind it backwards — so nothing left over from the last one
         // should still be on screen.
-        completedTrick: null,
-        trickWinner:    null,
-        roundResult:    null,
+        completedTrick:  null,
+        trickWinner:     null,
+        roundResult:     null,
+        roundEndPending: false,
       };
 
     case 'UPDATE_GAME_STATE':
@@ -188,6 +190,7 @@ function reducer(state, action) {
         roundResult:   action.meta?.roundResult ?? state.roundResult,
         trickSummary:  action.meta?.trickSummary ?? null,
         trickCredited: action.meta?.trickCredited ?? 0,
+        roundEndPending: !!(action.meta?.roundResult),
         screen: 'game',
         gameState: { ...action.payload, currentTrick: action.meta.completedTrick },
         completedTrick: action.meta.completedTrick,
@@ -207,6 +210,9 @@ function reducer(state, action) {
         completedTrick: null,
         trickWinner: null,
       };
+
+    case 'DISMISS_ROUND_END':
+      return { ...state, roundEndPending: false, completedTrick: null, trickWinner: null };
 
     case 'RESET':
       return { ...INITIAL_STATE };
@@ -319,7 +325,9 @@ export function GameProvider({ children }) {
       dispatch({ type: 'TRICK_COMPLETE', payload: gameState, meta: { completedTrick, trickWinner, trickSummary: serverTrick?.summary ?? null, trickCredited: serverTrick?.credited ?? 0, roundResult: gameState.roundResult } });
       playTrickWon();
       clearTimeout(trickClearTimer.current);
-      trickClearTimer.current = setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
+      if (!gameState.roundOver && !gameState.gameOver) {
+        trickClearTimer.current = setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
+      }
 
       if (gameState.gameOver) {
         dispatch({ type: 'SET_NOTIFICATION', payload: `Team ${gameState.winnerTeam + 1} wins the game!` });
@@ -559,6 +567,7 @@ export function GameProvider({ children }) {
       startNewRound,
       setupScenario,
       clearError,
+      dismissRoundEnd: () => dispatch({ type: 'DISMISS_ROUND_END' }),
     }}>
       {children}
     </GameContext.Provider>

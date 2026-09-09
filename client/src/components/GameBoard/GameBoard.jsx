@@ -27,6 +27,7 @@ export default function GameBoard() {
   const {
     gameState, myPlayer, declareTrump, callTrump, passTrump, discardKitty, playCards,
     previewPlay, error, newCardIds, completedTrick, trickWinner, trickSummary, trickCredited, lastTrick, dealPause, kittyCardIds,
+    roundEndPending, dismissRoundEnd, roundResult,
   } = useGame();
   const [selectedCards, setSelectedCards] = useState([]);
   const [secondsLeft, setSecondsLeft]     = useState(0);
@@ -707,6 +708,33 @@ export default function GameBoard() {
           credited={trickCredited}
           onClose={() => setShowLastTrick(false)}
         />
+      )}
+
+      {/* Round-end hold: last trick stays visible, kitty revealed, Continue to scoring */}
+      {roundEndPending && roundResult && (
+        <div className="gameboard__round-end">
+          <div className="round-end__content">
+            <h3 className="round-end__title">Round Complete</h3>
+            {roundResult.kittyResult?.cards?.length > 0 && (
+              <div className="round-end__kitty">
+                <span className="round-end__kitty-label">
+                  Kitty ({roundResult.kittyResult.points} pts)
+                  {roundResult.kittyResult.captured
+                    ? ` — captured ×${roundResult.kittyResult.multiplier} = +${roundResult.kittyResult.bonus}`
+                    : ' — protected'}
+                </span>
+                <div className="round-end__kitty-cards">
+                  {roundResult.kittyResult.cards.map((c, i) => (
+                    <Card key={c.id || i} card={c} size="sm" highlight={c.points > 0} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <button className="btn-primary round-end__btn" onClick={dismissRoundEnd}>
+              Continue
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

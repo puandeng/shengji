@@ -745,16 +745,6 @@ class GameState {
 
     const caller = this.getPlayer(socketId);
 
-    // From round 2 the declarer is pre-assigned, and the rank being played is
-    // their team's level. Letting an opponent name the suit would hand the
-    // declarer whichever trump they are weakest in — no ruleset allows it.
-    if (this.kittyPickerSeat !== null) {
-      const declarer = this.getPlayer(this.trumpDeclarer);
-      if (declarer && caller.teamIndex !== declarer.teamIndex) {
-        return { error: 'Only the declaring team names trump this round — they are defending their own level.' };
-      }
-    }
-
     this.trumpSuit         = suit;
     this.trumpCallStrength = strength;
     this.trumpDeclareCards = cards.map(c => c.toJSON());

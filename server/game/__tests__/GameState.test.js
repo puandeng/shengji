@@ -610,8 +610,9 @@ describe('traditional roles: calling trump means defending', () => {
 });
 
 describe('trump calling from round 2 onward', () => {
-  // From round 2 the declarer is pre-assigned to the kitty picker and the rank
-  // played is their team's level, so only their team may name the suit.
+  // From round 2 the declarer is pre-assigned to the kitty picker. Any player
+  // on either team may call trump to pick the suit, but the declarer and
+  // attacking/defending roles remain unchanged.
   function roundTwo() {
     const game = createReadyGame();
     game.deal();
@@ -626,13 +627,15 @@ describe('trump calling from round 2 onward', () => {
     return game.hands[id].find(c => c.rank === game.trumpRank && !c.isJoker);
   }
 
-  it('refuses a call from the attacking team', () => {
+  it('allows the attacking team to call trump without changing roles', () => {
     const game = roundTwo();
     const card = rankCardOf(game, 'p1');
     if (!card) return;
-    const { error } = game.callTrump('p1', [card.id]);
-    expect(error).toMatch(/declaring team/i);
-    expect(game.trumpSuit).toBeNull();
+    const result = game.callTrump('p1', [card.id]);
+    expect(result.success).toBe(true);
+    expect(game.trumpSuit).toBe(card.suit);
+    expect(game.trumpDeclarer).toBe('p0');  // declarer unchanged
+    expect(game.attackingTeam).toBe(1);     // roles unchanged
   });
 
   it('allows the declaring team to name the suit without changing the roles', () => {
