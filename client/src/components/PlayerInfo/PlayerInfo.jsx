@@ -1,13 +1,11 @@
 import React from 'react';
 import { SUIT_SYMBOLS } from '../../suits';
+import Card from '../Card/Card';
 import './PlayerInfo.css';
 
 const TEAM_COLORS = ['var(--color-team0)', 'var(--color-team1)'];
 
-// No cardCount here on purpose: every player plays the lead count every trick,
-// so all four hands are always equal and a per-seat number says nothing. The
-// single "cards left" figure lives on the round line instead.
-export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam, vertical }) {
+export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam, vertical, trumpBid }) {
   if (!player) {
     return (
       <div className={`player-info player-info--empty ${vertical ? 'player-info--vertical' : ''}`}>
@@ -46,6 +44,16 @@ export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam,
         )}
       </div>
       {isActive && <div className="player-info__turn-indicator">●</div>}
+      {trumpBid && (
+        <div className="player-info__trump-bid">
+          <span className="trump-bid__label">Called:</span>
+          <div className="trump-bid__cards">
+            {trumpBid.cards.map((card, i) => (
+              <Card key={card.id || i} card={card} size="sm" />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

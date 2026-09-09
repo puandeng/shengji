@@ -153,8 +153,10 @@ export default function Hand({
   capacity = 25,
   playableIds = null,
   kittyIds = [],
+  playingIds = [],
 }) {
   const newIdSet = new Set(newCardIds);
+  const playingSet = new Set(playingIds);
   // Which cards can legally begin a play, straight from the server. Null means
   // "no restriction known", so nothing is dimmed.
   const playableSet = playableIds ? new Set(playableIds) : null;
@@ -290,6 +292,7 @@ export default function Hand({
           const isDrawing     = newIdSet.has(card.id);
           const isUnplayable  = !!playableSet && !playableSet.has(card.id);
           const fromKitty     = kittySet.has(card.id);
+          const isPlaying     = playingSet.has(card.id);
 
           const slotClasses = [
             'hand__card-slot',
@@ -297,7 +300,8 @@ export default function Hand({
             major        ? 'hand__card-slot--major'      : '',
             isUnplayable ? 'hand__card-slot--unplayable' : '',
             fromKitty    ? 'hand__card-slot--kitty'       : '',
-            isDrawing ? 'hand__card-slot--drawing'  : '',
+            isDrawing    ? 'hand__card-slot--drawing'     : '',
+            isPlaying    ? 'hand__card-slot--playing'     : '',
           ].filter(Boolean).join(' ');
 
           return (

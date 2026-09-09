@@ -33,6 +33,8 @@ export default function GameBoard() {
   const [hasPassed, setHasPassed] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
   const [showLastTrick, setShowLastTrick] = useState(false);
+  const [showLevelAnnounce, setShowLevelAnnounce] = useState(false);
+  const [playingCardIds, setPlayingCardIds] = useState([]);
 
   // Live server verdict on the selection. Enabled only while the selection could
   // actually be played, so idle phases make no round trips.
@@ -40,6 +42,24 @@ export default function GameBoard() {
     && gameState?.currentSeat === myPlayer?.seatIndex
     && !completedTrick;
   const preview = usePlayPreview(selectedCards, previewPlay, previewEnabled);
+
+  // Show level announcement at the start of dealing, hide when trump is called or kitty begins.
+  useEffect(() => {
+    if (gameState?.phase === 'DEALING') {
+      setShowLevelAnnounce(true);
+      const timer = setTimeout(() => setShowLevelAnnounce(false), 4000);
+      return () => clearTimeout(timer);
+    }
+    if (gameState?.phase === 'KITTY' || gameState?.phase === 'PLAYING') {
+      setShowLevelAnnounce(false);
+    }
+  }, [gameState?.phase]);
+
+  useEffect(() => {
+    if (gameState?.trumpSuit || gameState?.trumpCallStrength > 0) {
+      setShowLevelAnnounce(false);
+    }
+  }, [gameState?.trumpSuit, gameState?.trumpCallStrength]);
 
   // A reopened trick must not sit over the table while the next one is played.
   useEffect(() => {
@@ -196,7 +216,14 @@ export default function GameBoard() {
 
   function handlePlaySelected() {
     if (selectedCards.length === 0) return;
-    playCards(selectedCards).then(() => setSelectedCards([])).catch(() => {});
+    const ids = [...selectedCards];
+    setPlayingCardIds(ids);
+    setTimeout(() => {
+      playCards(ids).then(() => {
+        setSelectedCards([]);
+        setPlayingCardIds([]);
+      }).catch(() => setPlayingCardIds([]));
+    }, 250);
   }
 
   // Determine click handler and selection mode for the Hand
@@ -504,6 +531,16 @@ export default function GameBoard() {
         </span>
       </div>
 
+      {showLevelAnnounce && trumpRank && (
+        <div className="gameboard__level-announce">
+          <div className="level-announce__content">
+            <span className="level-announce__label">Trump Level</span>
+            <span className="level-announce__rank">{trumpRank}</span>
+            <span className="level-announce__sub">Round {gameState.roundNumber || 1}</span>
+          </div>
+        </div>
+      )}
+
       {/* The table: three seats around the felt, the trick in the middle. The
           seats are positioned over the felt rather than stacked in their own
           grid rows — those rows were spending 200px of height on chrome while
@@ -520,6 +557,8 @@ export default function GameBoard() {
             isActive={currentSeat === oppositeSeat}
             trumpSuit={trumpSuit}
             attackingTeam={rolesDecided ? attackingTeam : undefined}
+            trumpBid={isTrumpPhase && gameState.trumpCallerSeat === oppositeSeat && trumpDeclareCards?.length > 0
+              ? { cards: trumpDeclareCards } : null}
           />
           {!hideOppBacks && (
             <div className="gameboard__opp-cards">
@@ -537,6 +576,8 @@ export default function GameBoard() {
             trumpSuit={trumpSuit}
             attackingTeam={rolesDecided ? attackingTeam : undefined}
             vertical
+            trumpBid={isTrumpPhase && gameState.trumpCallerSeat === leftSeat && trumpDeclareCards?.length > 0
+              ? { cards: trumpDeclareCards } : null}
           />
           <div className="gameboard__side-cards">
             {Array.from({ length: Math.min(handCounts?.[getPlayer(leftSeat)?.socketId] ?? 0, 6) }).map((_, i) => (
@@ -552,6 +593,8 @@ export default function GameBoard() {
             trumpSuit={trumpSuit}
             attackingTeam={rolesDecided ? attackingTeam : undefined}
             vertical
+            trumpBid={isTrumpPhase && gameState.trumpCallerSeat === rightSeat && trumpDeclareCards?.length > 0
+              ? { cards: trumpDeclareCards } : null}
           />
           <div className="gameboard__side-cards">
             {Array.from({ length: Math.min(handCounts?.[getPlayer(rightSeat)?.socketId] ?? 0, 6) }).map((_, i) => (
@@ -573,20 +616,14 @@ export default function GameBoard() {
             </div>
           )}
 
-          {/* Trump declaration cards sit over the felt while trump is being
-              called; in play they cost nothing at all. */}
-          {(trumpDeclareCards || []).length > 0 && isTrumpPhase && (
-            <div className="gameboard__trump-declare">
-              <span className="trump-declare__label">
-                {/* The revealer, not the declarer. From round 2 the declarer is
-                    pre-assigned to the kitty picker, so captioning their name over
-                    somebody else's cards credited the call to the wrong player. */}
-                {(players.find(p => p.seatIndex === gameState.trumpCallerSeat)
-                  ?? players.find(p => p.socketId === gameState.trumpDeclarer))?.name ?? 'Player'} called:
-              </span>
+          {/* Trump bid now displays at the caller's seat via PlayerInfo.
+              For the current player's own bid, show it above the hand area. */}
+          {isTrumpPhase && gameState.trumpCallerSeat === mySeat && trumpDeclareCards?.length > 0 && (
+            <div className="gameboard__my-trump-bid">
+              <span className="trump-declare__label">You called:</span>
               <div className="trump-declare__cards">
                 {trumpDeclareCards.map((card, i) => (
-                  <Card key={card.id || i} card={card} size="md" />
+                  <Card key={card.id || i} card={card} size="sm" />
                 ))}
               </div>
             </div>
@@ -657,6 +694,7 @@ export default function GameBoard() {
         capacity={Math.round((gameState.dealTotal || 100) / (players.length || 4))}
         playableIds={isMyTurn && !showTrickDisplay ? gameState.playableCardIds : null}
         kittyIds={isKittyPhase ? kittyCardIds : []}
+        playingIds={playingCardIds}
       />
 
       {/* Reopened previous trick — a deliberate look, so it gets the screen */}
