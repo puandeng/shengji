@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import DevMenu from '../components/DevMenu/DevMenu';
 import './Lobby.css';
 
 const TEAM_COLORS = ['#3498db', '#e74c3c'];
-const SEAT_LABELS = ['Seat 1', 'Seat 2', 'Seat 3', 'Seat 4'];
 
 export default function Lobby() {
-  const { room, myPlayer, startGame, addBot, removeBot, error, devMode } = useGame();
+  const { room, myPlayer, startGame, addBot, removeBot, setTeamName, error, devMode } = useGame();
 
   if (!room) return null;
 
@@ -33,7 +32,13 @@ export default function Lobby() {
         <div className="lobby-players">
           {/* Team 0: seats 0 & 2 */}
           <div className="lobby-team" style={{ borderColor: TEAM_COLORS[0] }}>
-            <h3 style={{ color: TEAM_COLORS[0] }}>Team 1</h3>
+            <TeamName
+              teamIndex={0}
+              name={room.teamNames?.[0] || 'Team 1'}
+              color={TEAM_COLORS[0]}
+              canEdit={myPlayer?.teamIndex === 0}
+              onSave={setTeamName}
+            />
             <PlayerSlot seat={0} players={room.players} myPlayer={myPlayer} />
             <PlayerSlot seat={2} players={room.players} myPlayer={myPlayer} />
           </div>
@@ -42,7 +47,13 @@ export default function Lobby() {
 
           {/* Team 1: seats 1 & 3 */}
           <div className="lobby-team" style={{ borderColor: TEAM_COLORS[1] }}>
-            <h3 style={{ color: TEAM_COLORS[1] }}>Team 2</h3>
+            <TeamName
+              teamIndex={1}
+              name={room.teamNames?.[1] || 'Team 2'}
+              color={TEAM_COLORS[1]}
+              canEdit={myPlayer?.teamIndex === 1}
+              onSave={setTeamName}
+            />
             <PlayerSlot seat={1} players={room.players} myPlayer={myPlayer} />
             <PlayerSlot seat={3} players={room.players} myPlayer={myPlayer} />
           </div>
@@ -88,6 +99,48 @@ export default function Lobby() {
         {devMode && <DevMenu variant="panel" />}
       </div>
     </div>
+  );
+}
+
+function TeamName({ teamIndex, name, color, canEdit, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== name) {
+      onSave(teamIndex, trimmed).catch(() => {});
+    }
+    setEditing(false);
+  }
+
+  if (editing && canEdit) {
+    return (
+      <form className="team-name-form" onSubmit={handleSubmit}>
+        <input
+          className="team-name-input"
+          style={{ color }}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          maxLength={20}
+          autoFocus
+          onBlur={handleSubmit}
+        />
+      </form>
+    );
+  }
+
+  return (
+    <h3
+      className={`lobby-team-name ${canEdit ? 'lobby-team-name--editable' : ''}`}
+      style={{ color }}
+      onClick={() => { if (canEdit) { setDraft(name); setEditing(true); } }}
+      title={canEdit ? 'Click to edit team name' : undefined}
+    >
+      {name}
+      {canEdit && <span className="team-name-edit-hint">✎</span>}
+    </h3>
   );
 }
 

@@ -7,10 +7,11 @@ export default function Home() {
   const { createRoom, joinRoom, error, clearError } = useGame();
   const { connected } = useSocket();
 
-  const [tab,      setTab]      = useState('create'); // 'create' | 'join'
-  const [name,     setName]     = useState('');
-  const [code,     setCode]     = useState('');
-  const [loading,  setLoading]  = useState(false);
+  const [tab,        setTab]        = useState('create'); // 'create' | 'join'
+  const [name,       setName]       = useState('');
+  const [code,       setCode]       = useState('');
+  const [loading,    setLoading]    = useState(false);
+  const [showRules,  setShowRules]  = useState(false);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -105,21 +106,61 @@ export default function Home() {
           </form>
         )}
 
-        <div className="home-rules">
-          <h3>How to Play</h3>
-          <p>
-            200 is a 4-player trick-taking game played in 2 teams of 2.
-            The attacking team collects <strong>5s (5pts)</strong>,{' '}
-            <strong>10s (10pts)</strong> and <strong>Kings (10pts)</strong> —{' '}
-            200 points in play. Reach the round&rsquo;s target and you climb a
-            level; hold the attackers well short and you climb instead. The
-            bigger the margin, the more levels you take.
-          </p>
-          <p>
-            Both teams start at <strong>2</strong> and climb toward{' '}
-            <strong>A</strong>. First team past <strong>A</strong> wins the match.
-          </p>
-        </div>
+        <button
+          className="btn-secondary home-rules-btn"
+          onClick={() => setShowRules(v => !v)}
+        >
+          {showRules ? 'Hide Rules' : 'Rules'}
+        </button>
+
+        {showRules && (
+          <div className="home-rules">
+            <h3>Overview</h3>
+            <p>
+              200 (Sheng Ji) is a 4-player trick-taking game in 2 fixed teams.
+              Two decks + 4 jokers = 108 cards. Each player gets 25; 8 go to the kitty.
+            </p>
+
+            <h3>Point Cards</h3>
+            <p>
+              <strong>5</strong> = 5 pts, <strong>10</strong> = 10 pts,{' '}
+              <strong>K</strong> = 10 pts. Total: 200 points across both decks.
+            </p>
+
+            <h3>Trump Calling</h3>
+            <p>
+              During the deal, reveal a card matching the round&rsquo;s rank to call
+              trump. A pair overrides a single; a joker pair overrides everything.
+              The caller&rsquo;s team <strong>defends</strong> (takes the kitty and
+              tries to deny points). The other team <strong>attacks</strong> (collects
+              points to reach the threshold).
+            </p>
+
+            <h3>Kitty</h3>
+            <p>
+              The declarer picks up the 8 kitty cards, then buries 8 back. If the
+              attacking team wins the <strong>last trick</strong>, they capture the
+              kitty at kitty points &times; (2 &times; cards in the winning play).
+            </p>
+
+            <h3>Trick-Taking</h3>
+            <p>
+              Play singles, pairs, tractors (consecutive pairs), or throws
+              (single + pair). Must follow the lead suit if held.
+              Trump order: Big Joker &gt; Small Joker &gt; in-suit rank card &gt;
+              off-suit rank card &gt; trump suit by rank.
+            </p>
+
+            <h3>Scoring &amp; Levels</h3>
+            <p>
+              Attackers need <strong>80 pts</strong> (120 at level A) to break
+              through. The margin decides how many levels the winner advances
+              (1&ndash;3). Both teams start at <strong>2</strong> and climb
+              toward <strong>A</strong>. First team past A wins.
+              Levels 5, 10, K, and A cannot be skipped on first visit.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

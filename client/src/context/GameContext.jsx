@@ -253,6 +253,7 @@ export function GameProvider({ children }) {
     // Lobby events
     on('player:joined',       ({ roomState })    => dispatch({ type: 'UPDATE_ROOM', payload: roomState }));
     on('player:left',         ({ roomState })    => dispatch({ type: 'UPDATE_ROOM', payload: roomState }));
+    on('room:teamNameChanged', ({ roomState })   => dispatch({ type: 'UPDATE_ROOM', payload: roomState }));
 
     // Game events
     on('game:started',        (gameState)        => dispatch({ type: 'GAME_STATE',  payload: gameState }));
@@ -350,6 +351,7 @@ export function GameProvider({ children }) {
     return () => {
       socket.off('player:joined');
       socket.off('player:left');
+      socket.off('room:teamNameChanged');
       socket.off('game:started');
       socket.off('game:newRound');
       socket.off('game:trumpCalled');
@@ -422,6 +424,17 @@ export function GameProvider({ children }) {
   const removeBot = useCallback(() => {
     return new Promise((resolve, reject) => {
       socket.emit('room:removeBot', {}, (res) => {
+        if (res?.error) {
+          dispatch({ type: 'SET_ERROR', payload: res.error });
+          reject(res.error);
+        } else resolve(res);
+      });
+    });
+  }, [socket]);
+
+  const setTeamName = useCallback((teamIndex, name) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('room:setTeamName', { teamIndex, name }, (res) => {
         if (res?.error) {
           dispatch({ type: 'SET_ERROR', payload: res.error });
           reject(res.error);
@@ -556,6 +569,7 @@ export function GameProvider({ children }) {
       startGame,
       addBot,
       removeBot,
+      setTeamName,
       declareTrump,
       callTrump,
       passTrump,
