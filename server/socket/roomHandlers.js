@@ -199,6 +199,26 @@ function setupRoomHandlers(io, socket, registry) {
     }
   });
 
+  // ── Set team name ──────────────────────────────────────────────────────────
+  socket.on('room:setTeamName', ({ teamIndex, name }, callback) => {
+    try {
+      const room = registry.getRoomForSocket(socket.id);
+      if (!room) return callback?.({ error: 'Not in a room' });
+
+      const result = room.setTeamName(socket.id, teamIndex, name);
+      if (result.error) return callback?.({ error: result.error });
+
+      io.to(room.code).emit('room:teamNameChanged', {
+        teamNames: result.teamNames,
+        roomState: room.toLobbyJSON(),
+      });
+      callback?.({ success: true });
+    } catch (err) {
+      console.error('[room:setTeamName]', err);
+      callback?.({ error: 'Server error' });
+    }
+  });
+
   // ── Chat ───────────────────────────────────────────────────────────────────
   socket.on('room:chat', ({ message }) => {
     const room = registry.getRoomForSocket(socket.id);

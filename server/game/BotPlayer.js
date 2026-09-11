@@ -22,31 +22,18 @@ function generateBotName(seatIndex) {
 
 /**
  * Pick legal card(s) to play. Returns an array of card IDs.
- *
- * When leading: plays a single card.
- * When following: plays the same number of cards as the lead,
- * prioritizing lead-suit cards and matching shapes where possible.
  */
 function chooseLegalCards(hand, currentTrick, trumpSuit, trumpRank, ctx = {}) {
     if (hand.length === 0) return [];
 
-    const { partnerWinning = false } = ctx;
+    const { partnerWinning = false, isAttacking = false, trickPoints = 0 } = ctx;
     const isTrumpCard = c => c.isTrump(trumpSuit, trumpRank);
     const byRankAsc   = (a, b) => (a.rankValue || 0) - (b.rankValue || 0);
+    const byRankDesc  = (a, b) => (b.rankValue || 0) - (a.rankValue || 0);
 
     // ── Leading ──────────────────────────────────────────────────────────────
-    // Bots used to lead hand[0] of an unsorted hand, so a pair or tractor never
-    // appeared in a solo game and the human never had to follow one.
     if (currentTrick.length === 0) {
-        const sideCards = hand.filter(c => !isTrumpCard(c));
-        const pool = sideCards.length > 0 ? sideCards : hand;
-
-        const pair = findPairInCards(pool);
-        if (pair && pool.length > 2) return pair.map(c => c.id);
-
-        // Otherwise lead a middling side card and keep the top ones back.
-        const sorted = [...pool].sort(byRankAsc);
-        return [sorted[Math.floor(sorted.length / 2)].id];
+        return chooseLead(hand, isTrumpCard, byRankAsc, byRankDesc);
     }
 
     const leadEntry = currentTrick[0];
@@ -76,30 +63,64 @@ function chooseLegalCards(hand, currentTrick, trumpSuit, trumpRank, ctx = {}) {
         }
     }
 
+    const pointsOnBoard = trickPoints > 0;
+
     const selected = [];
 
     if (suitCards.length >= n) {
-        // Must follow suit. Feed points to a partner who is taking the trick;
-        // otherwise throw the cheapest cards and keep points off the table.
-        const sorted = [...suitCards].sort(partnerWinning
-            ? (a, b) => (b.points - a.points) || byRankAsc(a, b)   // points first
-            : (a, b) => (a.points - b.points) || byRankAsc(a, b)); // points last
-        selected.push(...sorted.slice(0, n));
+        // Must follow suit.
+        if (partnerWinning) {
+            // Feed points to partner who is taking the trick.
+            const sorted = [...suitCards].sort(
+                (a, b) => (b.points - a.points) || byRankAsc(a, b));
+            selected.push(...sorted.slice(0, n));
+        } else if (pointsOnBoard) {
+            // Points on the board — try to win the trick with high cards.
+            const sorted = [...suitCards].sort(byRankDesc);
+            selected.push(...sorted.slice(0, n));
+        } else {
+            // No points at stake — play cheap cards.
+            const sorted = [...suitCards].sort(
+                (a, b) => (a.points - b.points) || byRankAsc(a, b));
+            selected.push(...sorted.slice(0, n));
+        }
     } else {
         selected.push(...suitCards);
         const remaining = n - selected.length;
 
-        // Void in the lead suit. Never ruff a trick the partner already has —
-        // bots used to trump their own winner, including with the big joker.
-        const discardPool = partnerWinning
-            ? [...otherCards].sort((a, b) => (b.points - a.points) || byRankAsc(a, b))
-            : [...otherCards].sort((a, b) => (a.points - b.points) || byRankAsc(a, b));
-
-        const noRuff = partnerWinning
-            ? discardPool.filter(c => !isTrumpCard(c))
-            : discardPool;
-
-        selected.push(...(noRuff.length >= remaining ? noRuff : discardPool).slice(0, remaining));
+        // Void in the lead suit.
+        if (partnerWinning) {
+            // Partner winning — don't ruff, dump points or junk.
+            const discardPool = [...otherCards].sort(
+                (a, b) => (b.points - a.points) || byRankAsc(a, b));
+            const noRuff = discardPool.filter(c => !isTrumpCard(c));
+            selected.push(...(noRuff.length >= remaining ? noRuff : discardPool).slice(0, remaining));
+        } else if (pointsOnBoard && !isAttacking) {
+            // Defending and points on board — ruff with lowest trump to prevent capture.
+            const trumpCards = otherCards.filter(c => isTrumpCard(c)).sort(byRankAsc);
+            const nonTrump = otherCards.filter(c => !isTrumpCard(c)).sort(byRankAsc);
+            if (trumpCards.length >= remaining) {
+                selected.push(...trumpCards.slice(0, remaining));
+            } else {
+                selected.push(...trumpCards);
+                selected.push(...nonTrump.slice(0, remaining - trumpCards.length));
+            }
+        } else if (pointsOnBoard && isAttacking) {
+            // Attacking and points on board — ruff with lowest trump to capture.
+            const trumpCards = otherCards.filter(c => isTrumpCard(c)).sort(byRankAsc);
+            const nonTrump = otherCards.filter(c => !isTrumpCard(c)).sort(byRankAsc);
+            if (trumpCards.length >= remaining) {
+                selected.push(...trumpCards.slice(0, remaining));
+            } else {
+                selected.push(...trumpCards);
+                selected.push(...nonTrump.slice(0, remaining - trumpCards.length));
+            }
+        } else {
+            // No points at stake — dump cheapest cards.
+            const discardPool = [...otherCards].sort(
+                (a, b) => (a.points - b.points) || byRankAsc(a, b));
+            selected.push(...discardPool.slice(0, remaining));
+        }
     }
 
     // Fallback: top up from anywhere if the rules above came up short.
@@ -112,6 +133,54 @@ function chooseLegalCards(hand, currentTrick, trumpSuit, trumpRank, ctx = {}) {
     }
 
     return selected.slice(0, n).map(c => c.id);
+}
+
+/**
+ * Choose what to lead with. Heuristics:
+ * 1. Lead pairs/combos over singles when available.
+ * 2. Lead high side-suit cards (aces, kings) early to establish control.
+ * 3. When only low side-suit cards remain (no pairs, aces, or kings),
+ *    lead the lowest trump to flush out opponents' trump.
+ */
+function chooseLead(hand, isTrumpCard, byRankAsc, byRankDesc) {
+    const sideCards = hand.filter(c => !isTrumpCard(c));
+    const trumpCards = hand.filter(c => isTrumpCard(c));
+
+    // Try to lead a pair from side suits first.
+    if (sideCards.length >= 2) {
+        const pair = findPairInCards(sideCards);
+        if (pair) return pair.map(c => c.id);
+    }
+
+    // Lead high side-suit cards (A, K) to establish winners.
+    if (sideCards.length > 0) {
+        const highCards = sideCards.filter(c => (c.rankValue || 0) >= 12);
+        if (highCards.length > 0) {
+            const sorted = [...highCards].sort(byRankDesc);
+            return [sorted[0].id];
+        }
+    }
+
+    // Still have side-suit cards but none are high — lead the largest to
+    // clear suits and potentially draw out trump from opponents.
+    if (sideCards.length > 0) {
+        const sorted = [...sideCards].sort(byRankDesc);
+        return [sorted[0].id];
+    }
+
+    // Only trump left — try a trump pair first.
+    if (trumpCards.length >= 2) {
+        const pair = findPairInCards(trumpCards);
+        if (pair) return pair.map(c => c.id);
+    }
+
+    // Lead lowest trump to flush opponents.
+    if (trumpCards.length > 0) {
+        const sorted = [...trumpCards].sort(byRankAsc);
+        return [sorted[0].id];
+    }
+
+    return [hand[0].id];
 }
 
 /**
@@ -136,10 +205,6 @@ function chooseLegalCard(hand, currentTrick, trumpSuit, trumpRank) {
     return ids.length > 0 ? ids[0] : null;
 }
 
-/**
- * Choose cards to discard from kitty. Returns array of card IDs.
- * No strategy — just picks the first N cards.
- */
 /**
  * Choose 8 cards to bury. Previously `hand.slice(0, kittySize)` off an unsorted
  * hand, which routinely buried the bot's own jokers, trumps and point cards —

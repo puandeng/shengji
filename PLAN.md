@@ -106,6 +106,19 @@ tests — before any training run is worth the compute.
 - [x] **Point card badge misaligned hand.** The points badge sat at `top: -4px` and `card--highlight` shifted the corner index down 12px to avoid it, making point cards look indented in the fan. Badge moved to `bottom: 2px; left: 2px` and the corner shift removed — all cards now align consistently.
 - [x] **Card selection blocked by adjacent cards in the fan.** Hovering a card elevated its slot to z-index 10, making the full card width cover adjacent slivers and steal their clicks. Hover no longer changes z-index — the card lifts visually but stays behind the next card's strip, so every sliver stays clickable. Selected cards still elevate fully.
 
+### Lobby / Home
+- [x] **Editable team names.** Players on each team can click the team header in the lobby to rename it (max 20 chars). The first person to set it owns the name; teammates see it but cannot change it. Server: `room:setTeamName` event, `Room.setTeamName()`. Client: `TeamName` component in `Lobby.jsx` with inline editing.
+- [x] **Rules button on home screen.** A "Rules" toggle on the home page opens a concise summary covering point cards, trump calling, kitty, trick-taking, scoring bands, levels, and mandatory stops. Replaces the old static "How to Play" paragraph.
+
+### Bot AI
+- [x] **Smarter bot play.** Improved `chooseLegalCards` in `BotPlayer.js`:
+  - Leads pairs over singles when available.
+  - Leads high side-suit cards (A, K) to establish control early.
+  - When all side-suit cards are low, leads the largest to clear suits.
+  - When only trump remains, leads lowest trump to flush opponents.
+  - When following: plays high cards to capture points on the board, feeds points to a partner who is winning, ruffs with lowest trump when void and points are at stake.
+  - Role-aware: `isAttacking` flag passed from `Room.autoPlayChoice()`.
+
 ### Kitty bury
 - [x] **The bury mechanism already existed** — `giveKittyToDeclarer()` takes the declarer 25 → 33, `discardToKitty()` takes 8 cards of their choosing back to 25, gated to the declarer and to exactly 8. Three tests now pin it, including that the buried cards are the ones chosen and that they leave the hand.
 - [x] **Humans practically never became declarer, so nobody ever saw it.** Bots called 700ms into a 5s window (`BOT_PLAY_DELAY_MS * (i+1)`), and since an equal-strength call never overrides, any bot holding a trump-rank card declared before a human could finish reading their hand. Bots now deliberate `BOT_CALL_REACTION_MS` (2500ms) before calling, leaving the human first refusal; a bot can still override with a genuinely stronger call.

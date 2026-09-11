@@ -19,6 +19,8 @@ class Room {
     this.game.devMode = this.devMode;
     this.logger    = new GameLogger(roomCode);
     this.game.logger = this.logger;
+    this.teamNames = ['Team 1', 'Team 2']; // editable by the first player on each team
+    this.teamNameSetBy = [null, null];    // socketId of the player who named each team
     this.chatLog   = [];                  // [{ name, message, timestamp }]
     this._trumpTimer = null;
     this._io         = null;              // Socket.io server instance (set via setIO)
@@ -445,9 +447,11 @@ class Room {
       (sum, e) => sum + e.cards.reduce((s, c) => s + c.points, 0), 0
     );
 
+    const isAttacking = me && me.teamIndex === this.game.attackingTeam;
+
     return BotPlayer.chooseLegalCards(
       hand, this.game.currentTrick, this.game.trumpSuit, this.game.trumpRank,
-      { partnerWinning, trickPoints }
+      { partnerWinning, trickPoints, isAttacking }
     );
   }
 
@@ -568,6 +572,21 @@ class Room {
   // Serialisation
   // ─────────────────────────────────────────────
 
+  setTeamName(socketId, teamIndex, name) {
+    if (teamIndex !== 0 && teamIndex !== 1) return { error: 'Invalid team index' };
+    if (!name || name.trim().length < 1) return { error: 'Team name is required' };
+    const trimmed = name.trim().slice(0, 20);
+    const player = this.game.getPlayer(socketId);
+    if (!player) return { error: 'Not in this room' };
+    if (player.teamIndex !== teamIndex) return { error: 'You can only name your own team' };
+    if (this.teamNameSetBy[teamIndex] && this.teamNameSetBy[teamIndex] !== socketId) {
+      return { error: 'Team name already set by another player' };
+    }
+    this.teamNames[teamIndex] = trimmed;
+    this.teamNameSetBy[teamIndex] = socketId;
+    return { success: true, teamNames: this.teamNames };
+  }
+
   toLobbyJSON() {
     return {
       id:          this.id,
@@ -576,6 +595,7 @@ class Room {
       isFull:      this.isFull,
       phase:       this.game.phase,
       players:     this.game.players.map(p => ({ name: p.name, seatIndex: p.seatIndex, teamIndex: p.teamIndex, isBot: !!p.isBot })),
+      teamNames:   this.teamNames,
       devMode:     this.devMode,
     };
   }

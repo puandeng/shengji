@@ -72,13 +72,6 @@
   flex-direction: column;
 }
 
-.lobby-team h3 {
-  text-align: center;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 0.8rem;
-}
 
 .lobby-vs {
   display: flex;
@@ -178,6 +171,46 @@
   padding: 1px 6px;
   border-radius: 4px;
   margin-left: 4px;
+}
+
+.lobby-team-name {
+  text-align: center;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.8rem;
+}
+
+.lobby-team-name--editable {
+  cursor: pointer;
+}
+
+.lobby-team-name--editable:hover {
+  opacity: 0.8;
+}
+
+.team-name-edit-hint {
+  margin-left: 4px;
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
+.team-name-form {
+  margin-bottom: 0.8rem;
+  text-align: center;
+}
+
+.team-name-input {
+  width: 100%;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
 }
 
 .dev-mode-banner {
