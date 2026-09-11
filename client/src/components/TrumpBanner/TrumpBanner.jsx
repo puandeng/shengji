@@ -9,6 +9,11 @@ export default function TrumpBanner({ trumpSuit, trumpRank, trumpCallStrength, p
   const noTrumpCalled = !trumpSuit && trumpCallStrength === 3;
   const undecided = !trumpSuit && !noTrumpCalled;
 
+  let suitClass = '';
+  if (!undecided && !noTrumpCalled && trumpSuit) {
+    suitClass = RED_SUITS.has(trumpSuit) ? 'trump-info__value--red' : 'trump-info__value--black';
+  }
+
   return (
     <div className="trump-info">
       <div className="trump-info__row">
@@ -18,16 +23,16 @@ export default function TrumpBanner({ trumpSuit, trumpRank, trumpCallStrength, p
             {isTrumpPhase ? '?' : '—'}
           </span>
         ) : noTrumpCalled ? (
-          <span className="trump-info__value">NT</span>
+          <span className="trump-info__value trump-info__value--nt">NT</span>
         ) : (
-          <span className={`trump-info__value ${RED_SUITS.has(trumpSuit) ? 'trump-info__value--red' : ''}`}>
+          <span className={`trump-info__value ${suitClass}`}>
             {suitSymbol(trumpSuit)}
           </span>
         )}
       </div>
       <div className="trump-info__row">
         <span className="trump-info__label">Rank</span>
-        <span className="trump-info__value">{trumpRank || '—'}</span>
+        <span className="trump-info__value trump-info__value--rank">{trumpRank || '—'}</span>
       </div>
     </div>
   );
