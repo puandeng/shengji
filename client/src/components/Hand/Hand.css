@@ -128,13 +128,9 @@
   100% { transform: translateY(-120px) scale(0.7); opacity: 0; }
 }
 
-/* Only selected cards elevate above the fan. Hovering does NOT change z-index:
-   the lifted card's top extends above the fan (visible, clickable) while its
-   right side stays behind the next card — which keeps adjacent slivers
-   clickable instead of buried under the hovered card's full width. */
-.hand__cards > .hand__card-slot:has(.card--selected) {
-  z-index: 10;
-}
+/* Neither hover nor selection changes the slot's z-index. The card lifts
+   visually (translateY) but the slot stays behind the next card's strip,
+   so every sliver remains clickable. */
 
 .hand__play-btn-row {
   display: flex;
@@ -186,7 +182,6 @@
 
 .hand__cards .card--selected {
     transform: translateY(-18px);
-    z-index: 25;
 }
 
 .hand__cards .card--clickable:hover .card__corner--top-left,

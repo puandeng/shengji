@@ -133,6 +133,10 @@ const BOT_PLAY_DELAY_MS = 700;
 // the human first refusal; a bot can still override with a stronger call.
 const BOT_CALL_REACTION_MS = 2500;
 
+// Delay before the first card is dealt, so the client's level announcement
+// overlay has time to display before cards start arriving (ms)
+const DEAL_START_DELAY_MS = 2500;
+
 // Delay between each card dealt during animated dealing (ms)
 const DEAL_CARD_INTERVAL_MS = 120;
 
@@ -175,6 +179,7 @@ module.exports = {
   TRUMP_DECLARATION_TIMEOUT,
   BOT_PLAY_DELAY_MS,
   BOT_CALL_REACTION_MS,
+  DEAL_START_DELAY_MS,
   DEAL_CARD_INTERVAL_MS,
   DEAL_PAUSE_EVERY_CARDS,
   DEAL_PAUSE_MS,
