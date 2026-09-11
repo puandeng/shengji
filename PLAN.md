@@ -126,6 +126,15 @@ tests — before any training run is worth the compute.
 - [x] **Editable team names.** Players on each team can click the team header in the lobby to rename it (max 20 chars). The first person to set it owns the name; teammates see it but cannot change it. Server: `room:setTeamName` event, `Room.setTeamName()`. Client: `TeamName` component in `Lobby.jsx` with inline editing.
 - [x] **Rules button on home screen.** A "Rules" toggle on the home page opens a concise summary covering point cards, trump calling, kitty, trick-taking, scoring bands, levels, and mandatory stops. Replaces the old static "How to Play" paragraph.
 
+### UI / UX improvements (batch 3)
+- [x] **Remove duplicate kitty info from round results.** Removed the kitty card display from the scoring modal — the round-end overlay already shows it. Kept the kitty points row in the scoring summary.
+- [x] **Trump call cards shift the board layout.** Changed trump bid in `PlayerInfo` to `position: absolute` so it floats below the player badge without displacing other elements.
+- [x] **Trump info box too small and plain.** Enlarged the top-left trump info (1.25rem values, 10px border-radius, more padding) and added suit-colored text (red for hearts/diamonds, light for spades/clubs, gold for rank and NT).
+- [x] **Auto-deselect previous cards when selecting new ones.** When following a single-card lead, clicking a new card replaces the selection. For multi-card follows at capacity, the oldest card is swapped out.
+
+### Bugs
+- [ ] **Cards disappear from playing table and bots speed up.** Trick-area cards sometimes vanish mid-trick and bots play their cards faster than normal, suggesting a timing/state-sync issue in the trick flow.
+
 ### Bot AI
 - [x] **Smarter bot play.** Improved `chooseLegalCards` in `BotPlayer.js`:
   - Leads pairs over singles when available.

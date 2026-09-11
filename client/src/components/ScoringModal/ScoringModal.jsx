@@ -1,6 +1,5 @@
 import React from 'react';
 import { useGame } from '../../context/GameContext';
-import Card from '../Card/Card';
 import './ScoringModal.css';
 
 export default function ScoringModal() {
@@ -71,16 +70,6 @@ export default function ScoringModal() {
           )}
         </div>
 
-        {kitty && kitty.cards?.length > 0 && (
-          <div className="scoring-kitty">
-            <h3>The kitty {kitty.captured ? '— captured' : '— protected'}</h3>
-            <div className="scoring-kitty__cards">
-              {kitty.cards.map((c, i) => (
-                <Card key={c.id || i} card={c} size="sm" highlight={c.points > 0} />
-              ))}
-            </div>
-          </div>
-        )}
 
         {advancing != null && (
           <p className="scoring-outcome">
