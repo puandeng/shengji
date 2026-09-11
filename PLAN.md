@@ -102,8 +102,9 @@ tests — before any training run is worth the compute.
 - [x] **Card play animation.** Selected cards fly upward with scale-down and fade-out (250ms) before the `playCards` call fires. `hand__card-slot--playing` in `Hand.css`.
 - [ ] **Redesign the playing table.** The felt was updated to a gold-tinted circular radial gradient with a subtle gold border glow. Further design iterations are still open.
 - [x] **Trump bid shown at the bidder's seat.** The trump declaration cards now appear at the calling player's `PlayerInfo` component instead of a top-centre popup. The current player's own bid shows near their hand area. `player-info__trump-bid` in `PlayerInfo.css`.
-
-
+- [x] **Declarer crown indicator.** A crown symbol appears above the trump declarer's avatar in `PlayerInfo` once roles are decided, so the table always shows who called trump. `player-info__crown` in `PlayerInfo.css`.
+- [x] **Point card badge misaligned hand.** The points badge sat at `top: -4px` and `card--highlight` shifted the corner index down 12px to avoid it, making point cards look indented in the fan. Badge moved to `bottom: 2px; left: 2px` and the corner shift removed — all cards now align consistently.
+- [x] **Card selection blocked by adjacent cards in the fan.** Hovering a card elevated its slot to z-index 10, making the full card width cover adjacent slivers and steal their clicks. Hover no longer changes z-index — the card lifts visually but stays behind the next card's strip, so every sliver stays clickable. Selected cards still elevate fully.
 
 ### Kitty bury
 - [x] **The bury mechanism already existed** — `giveKittyToDeclarer()` takes the declarer 25 → 33, `discardToKitty()` takes 8 cards of their choosing back to 25, gated to the declarer and to exactly 8. Three tests now pin it, including that the buried cards are the ones chosen and that they leave the hand.

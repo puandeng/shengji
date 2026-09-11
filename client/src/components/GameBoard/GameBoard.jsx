@@ -558,6 +558,7 @@ export default function GameBoard() {
             isActive={currentSeat === oppositeSeat}
             trumpSuit={trumpSuit}
             attackingTeam={rolesDecided ? attackingTeam : undefined}
+            isDeclarer={rolesDecided && getPlayer(oppositeSeat)?.socketId === gameState.trumpDeclarer}
             trumpBid={isTrumpPhase && gameState.trumpCallerSeat === oppositeSeat && trumpDeclareCards?.length > 0
               ? { cards: trumpDeclareCards } : null}
           />
@@ -576,6 +577,7 @@ export default function GameBoard() {
             isActive={currentSeat === leftSeat}
             trumpSuit={trumpSuit}
             attackingTeam={rolesDecided ? attackingTeam : undefined}
+            isDeclarer={rolesDecided && getPlayer(leftSeat)?.socketId === gameState.trumpDeclarer}
             vertical
             trumpBid={isTrumpPhase && gameState.trumpCallerSeat === leftSeat && trumpDeclareCards?.length > 0
               ? { cards: trumpDeclareCards } : null}
@@ -593,6 +595,7 @@ export default function GameBoard() {
             isActive={currentSeat === rightSeat}
             trumpSuit={trumpSuit}
             attackingTeam={rolesDecided ? attackingTeam : undefined}
+            isDeclarer={rolesDecided && getPlayer(rightSeat)?.socketId === gameState.trumpDeclarer}
             vertical
             trumpBid={isTrumpPhase && gameState.trumpCallerSeat === rightSeat && trumpDeclareCards?.length > 0
               ? { cards: trumpDeclareCards } : null}

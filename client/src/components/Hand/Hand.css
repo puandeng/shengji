@@ -128,7 +128,10 @@
   100% { transform: translateY(-120px) scale(0.7); opacity: 0; }
 }
 
-.hand__cards > .hand__card-slot:hover,
+/* Only selected cards elevate above the fan. Hovering does NOT change z-index:
+   the lifted card's top extends above the fan (visible, clickable) while its
+   right side stays behind the next card — which keeps adjacent slivers
+   clickable instead of buried under the hovered card's full width. */
 .hand__cards > .hand__card-slot:has(.card--selected) {
   z-index: 10;
 }
@@ -174,11 +177,11 @@
   }
 }
 
-/* Fanned hand: only the top-left corner of each card shows, so lift the one
-   under the pointer clear of its neighbours to read it in full. */
+/* Fanned hand: lift the hovered card so its top clears the fan line. No
+   z-index here — the card stays behind the next card's strip, which is what
+   keeps adjacent slivers clickable. */
 .hand__cards .card--clickable:hover {
     transform: translateY(-14px);
-    z-index: 20;
 }
 
 .hand__cards .card--selected {

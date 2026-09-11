@@ -5,7 +5,7 @@ import './PlayerInfo.css';
 
 const TEAM_COLORS = ['var(--color-team0)', 'var(--color-team1)'];
 
-export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam, vertical, trumpBid }) {
+export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam, vertical, isDeclarer, trumpBid }) {
   if (!player) {
     return (
       <div className={`player-info player-info--empty ${vertical ? 'player-info--vertical' : ''}`}>
@@ -32,8 +32,11 @@ export default function PlayerInfo({ player, isActive, trumpSuit, attackingTeam,
       ].filter(Boolean).join(' ')}
       style={{ '--team-color': teamColor }}
     >
-      <div className="player-info__avatar" style={{ background: teamColor }}>
-        {player.name[0].toUpperCase()}
+      <div className="player-info__avatar-wrap">
+        <div className="player-info__avatar" style={{ background: teamColor }}>
+          {player.name[0].toUpperCase()}
+        </div>
+        {isDeclarer && <span className="player-info__crown" title="Trump declarer">&#9813;</span>}
       </div>
       <div className="player-info__details">
         <span className="player-info__name">{player.name}</span>
