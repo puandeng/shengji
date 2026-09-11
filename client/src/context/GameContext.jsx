@@ -328,7 +328,14 @@ export function GameProvider({ children }) {
       playTrickWon();
       clearTimeout(trickClearTimer.current);
       if (!gameState.roundOver && !gameState.gameOver) {
-        trickClearTimer.current = setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
+        // Only auto-clear the frozen trick when the human leads next.
+        // Otherwise the next game:cardsPlayed event clears it naturally
+        // (CARD_PLAYED sets completedTrick: null), avoiding a gap where
+        // the table goes empty between the clear and the next card arriving.
+        const myTurnNext = gameState.currentSeat === stateRef.current.myPlayer?.seatIndex;
+        if (myTurnNext) {
+          trickClearTimer.current = setTimeout(() => dispatch({ type: 'CLEAR_COMPLETED_TRICK' }), delay);
+        }
       }
 
       if (gameState.gameOver) {
