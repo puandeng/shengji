@@ -1,68 +1,68 @@
-.trump-banner {
+.trump-info {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+  min-width: 56px;
+}
+
+.trump-info__row {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 0.4rem;
-  padding: 0.2rem 0.8rem;
-  background: rgba(0,0,0,0.5);
-  border-radius: 20px;
-  font-size: 0.75rem;
-  width: fit-content;
-  margin: 0 auto;
-  border: 1px solid rgba(255,255,255,0.1);
 }
 
-.trump-banner--waiting {
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.trump-banner__label {
+.trump-info__label {
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   text-transform: uppercase;
-  font-size: var(--text-xs);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
-.trump-banner__suit {
+.trump-info__value {
+  font-size: 0.9rem;
   font-weight: 700;
-  color: var(--color-black);
-  background: var(--color-card-bg);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 0.85rem;
 }
 
-.trump-banner__suit--red {
+.trump-info__value--red {
   color: var(--color-red);
 }
 
-.trump-banner__divider {
-  color: rgba(255,255,255,0.2);
-}
-
-.trump-banner__attacking {
-  color: var(--color-gold);
-  font-size: 0.75rem;
+.trump-info__value--pending {
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 
 @media (max-width: 768px) {
-  .trump-banner {
-    gap: 0.3rem;
-    padding: 0.2rem 0.6rem;
+  .trump-info {
+    padding: 0.2rem 0.4rem;
+    min-width: 48px;
+  }
+
+  .trump-info__value {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .trump-info {
+    padding: 0.15rem 0.3rem;
+    min-width: 40px;
+  }
+
+  .trump-info__label {
     font-size: var(--text-xs);
   }
 
-  .trump-banner__label {
-    font-size: var(--text-xs);
-  }
-
-  .trump-banner__suit {
+  .trump-info__value {
     font-size: 0.75rem;
-    padding: 1px 4px;
-  }
-
-  .trump-banner__attacking {
-    font-size: var(--text-xs);
   }
 }

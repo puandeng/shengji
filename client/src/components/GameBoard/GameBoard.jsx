@@ -495,35 +495,14 @@ export default function GameBoard() {
 
       <HelpPanel trumpRank={trumpRank} threshold={thresh} />
 
-      {/* Both teams' levels are reference, not action: they belong in the
-          corners of the felt, not in a full-width row that cost the trick 94px
-          of the height it needed to be readable. */}
-      <LevelCard
-        label="Team 1"
-        level={gameState.teamLevels?.[0] ?? '2'}
-        isAttacking={attackingTeam === 0}
-        rolesDecided={rolesDecided}
-        teamIdx={0}
-        corner="left"
-      />
-      <LevelCard
-        label="Team 2"
-        level={gameState.teamLevels?.[1] ?? '2'}
-        isAttacking={attackingTeam === 1}
-        rolesDecided={rolesDecided}
-        teamIdx={1}
-        corner="right"
+      <TrumpBanner
+        trumpSuit={trumpSuit}
+        trumpRank={trumpRank}
+        trumpCallStrength={trumpCallStrength}
+        phase={phase}
       />
 
       <div className="gameboard__topbar">
-        <TrumpBanner
-          trumpSuit={trumpSuit}
-          trumpRank={trumpRank}
-          trumpCallStrength={trumpCallStrength}
-          attackingTeam={rolesDecided ? attackingTeam : undefined}
-          players={players}
-          phase={phase}
-        />
         <span className="gameboard__round">
           Round {gameState.roundNumber || 1}
           {(myHand || []).length > 0 && phase === 'PLAYING' && (
@@ -743,19 +722,3 @@ export default function GameBoard() {
   );
 }
 
-function LevelCard({ label, level = '2', isAttacking, rolesDecided, teamIdx, corner }) {
-  const suit = teamIdx === 0 ? 'S' : 'H';
-  const card = { id: `level-${teamIdx}`, suit, rank: level, isJoker: false };
-  const roleClass = !rolesDecided ? '' : isAttacking ? ' level-card--attacking' : ' level-card--defending';
-  return (
-    <div className={`level-card level-card--${corner}${roleClass}`} title={`${label} is playing at level ${level}`}>
-      <span className="level-card__label">{label}</span>
-      <Card card={card} size="sm" />
-      {rolesDecided && (
-        <span className={`level-card__role ${isAttacking ? 'level-card__role--atk' : 'level-card__role--def'}`}>
-          {isAttacking ? 'ATK' : 'DEF'}
-        </span>
-      )}
-    </div>
-  );
-}

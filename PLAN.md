@@ -105,6 +105,22 @@ tests — before any training run is worth the compute.
 - [x] **Declarer crown indicator.** A crown symbol appears above the trump declarer's avatar in `PlayerInfo` once roles are decided, so the table always shows who called trump. `player-info__crown` in `PlayerInfo.css`.
 - [x] **Point card badge misaligned hand.** The points badge sat at `top: -4px` and `card--highlight` shifted the corner index down 12px to avoid it, making point cards look indented in the fan. Badge moved to `bottom: 2px; left: 2px` and the corner shift removed — all cards now align consistently.
 - [x] **Card selection blocked by adjacent cards in the fan.** Hovering a card elevated its slot to z-index 10, making the full card width cover adjacent slivers and steal their clicks. Hover no longer changes z-index — the card lifts visually but stays behind the next card's strip, so every sliver stays clickable. Selected cards still elevate fully.
+- [x] **Crown indicator too small.** Increased crown font-size from 14px to 20px (16px on tablet, 13px on small mobile) with adjusted positioning so it's clearly visible above the avatar.
+- [x] **Selected card blocks right-neighbor selection.** Removed z-index elevation from selected card slots entirely — the card lifts visually via translateY but the slot stays behind the next card's strip, keeping every sliver clickable.
+- [x] **Trump level announcement finishes before dealing.** Added a 2.5s `DEAL_START_DELAY_MS` server-side delay before the first card is dealt, giving the client's level announcement overlay time to display.
+- [x] **Compact trump info replaces level cards and top bar.** Removed the corner level cards and the full-width TrumpBanner. Replaced with a small top-left info box showing only the trump suit symbol and rank.
+- [x] **Trump declaration shown immediately during dealing.** Added `trumpCallerSeat` to the `UPDATE_GAME_STATE` dispatch in the `game:trumpCalled` handler during dealing, so the bid appears at the caller's seat in real time.
+
+### Lobby / Home
+- [ ] **Editable team names.** The first player to join each team can edit the team name. Other teammates see the name but cannot change it.
+- [ ] **Rules button on home screen.** Add a "Rules" button on the home page (before creating/joining a lobby) that opens a concise, accurate summary of the Sheng Ji rule set — card values, trump calling, trick-taking, scoring bands, level progression, and kitty capture.
+
+### Bot AI
+- [ ] **Smarter bot play.** Improve bot decision-making beyond the current stub logic:
+  - Lead with the largest cards of each side suit in the early phase of the game.
+  - When points are on the board, prioritize capturing (attacking) or protecting (defending) based on team role.
+  - Prefer playing combos (pairs, tractors) over singles when possible.
+  - When leading a trick with no strong non-trump cards (no pairs, aces, or kings in side suits), lead the lowest trump card instead.
 
 ### Lobby / Home
 - [x] **Editable team names.** Players on each team can click the team header in the lobby to rename it (max 20 chars). The first person to set it owns the name; teammates see it but cannot change it. Server: `room:setTeamName` event, `Room.setTeamName()`. Client: `TeamName` component in `Lobby.jsx` with inline editing.

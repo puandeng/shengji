@@ -1,4 +1,4 @@
-const { MAX_CALL_STRENGTH } = require('../game/constants');
+const { MAX_CALL_STRENGTH, DEAL_START_DELAY_MS } = require('../game/constants');
 
 /**
  * Wire the animated deal to a room's sockets.
@@ -9,6 +9,10 @@ const { MAX_CALL_STRENGTH } = require('../game/constants');
  * other.
  */
 function runAnimatedDeal(io, room) {
+  setTimeout(() => _startDeal(io, room), DEAL_START_DELAY_MS);
+}
+
+function _startDeal(io, room) {
   room.startAnimatedDeal(
     (entry, idx) => {
       // Each card dealt — send updated partial hand to each player

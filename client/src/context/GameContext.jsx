@@ -268,6 +268,7 @@ export function GameProvider({ children }) {
           trumpDeclarer: gameState.trumpDeclarer,
           trumpCallStrength: gameState.trumpCallStrength,
           trumpDeclareCards: gameState.trumpDeclareCards,
+          trumpCallerSeat: gameState.trumpCallerSeat,
           attackingTeam: gameState.attackingTeam,
         }});
       } else {
