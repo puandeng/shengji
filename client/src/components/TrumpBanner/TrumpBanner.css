@@ -6,8 +6,11 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: rgba(0,0,0,0.6);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: linear-gradient(180deg, rgba(34, 19, 15, 0.92) 0%, rgba(18, 11, 9, 0.96) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 235, 190, 0.1);
   border-radius: 10px;
   padding: 0.4rem 0.7rem;
   min-width: 72px;
@@ -31,10 +34,11 @@
 .trump-info__value {
   font-size: 1.25rem;
   font-weight: 800;
+  color: var(--color-gold);
 }
 
 .trump-info__value--red {
-  color: #e74c3c;
+  color: #ff6b6b;
 }
 
 .trump-info__value--black {
