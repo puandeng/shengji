@@ -1,4 +1,5 @@
 .player-info {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -121,6 +122,11 @@
 }
 
 .player-info__trump-bid {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -128,8 +134,9 @@
   border: 1px solid rgba(255,215,0,0.3);
   border-radius: 6px;
   padding: 2px 6px;
-  margin-top: 4px;
   animation: bid-appear 0.3s ease-out;
+  white-space: nowrap;
+  z-index: 5;
 }
 
 .trump-bid__label {

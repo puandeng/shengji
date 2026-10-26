@@ -210,7 +210,10 @@ export default function GameBoard() {
     if (!isMyTurn) return;
     setSelectedCards(prev => {
       if (prev.includes(card.id)) return prev.filter(id => id !== card.id);
-      if (leadCount && prev.length >= leadCount) return prev;
+      if (leadCount === 1) return [card.id];
+      if (leadCount && prev.length >= leadCount) {
+        return [...prev.slice(1), card.id];
+      }
       return [...prev, card.id];
     });
   }
