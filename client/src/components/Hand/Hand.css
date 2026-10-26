@@ -93,7 +93,8 @@
 }
 
 .hand__cards .card {
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.28);
 }
 
 /* Kitty draw animation — cards slide in from above with a slight stagger */

@@ -78,13 +78,41 @@
 .trick-area__placeholder {
   width: 42px;
   height: 60px;
-  border: 1px dashed rgba(255,255,255,0.15);
-  border-radius: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background: radial-gradient(circle, rgba(8, 22, 14, 0.26) 0%, rgba(8, 22, 14, 0.08) 100%);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.28);
+  border-radius: 5px;
 }
 
 .trick-area__centre {
   width: 42px;
   height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Traditional Chinese coin / compass medallion (方孔圆钱) anchoring the four directions */
+.trick-area__medallion {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(212, 175, 55, 0.28);
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, rgba(0, 0, 0, 0.16) 100%);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trick-area__medallion::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid rgba(212, 175, 55, 0.34);
+  background: rgba(14, 34, 22, 0.65);
+  transform: rotate(45deg);
 }
 
 .trick-area--md .trick-area__placeholder {
@@ -98,6 +126,16 @@
   height: 88px;
 }
 
+.trick-area--md .trick-area__medallion {
+  width: 38px;
+  height: 38px;
+}
+
+.trick-area--md .trick-area__medallion::after {
+  width: 11px;
+  height: 11px;
+}
+
 .trick-area--lg .trick-area__placeholder {
   width: 84px;
   height: 118px;
@@ -109,10 +147,21 @@
   height: 118px;
 }
 
+.trick-area--lg .trick-area__medallion {
+  width: 46px;
+  height: 46px;
+}
+
+.trick-area--lg .trick-area__medallion::after {
+  width: 13px;
+  height: 13px;
+}
+
 .trick-area__combo {
   position: relative;
   display: flex;
   align-items: center;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.42));
 }
 
 .trick-area__combo .card + .card {
@@ -127,7 +176,7 @@
 .trick-area__combo--sm .card + .card { margin-left: -22px; }
 
 .trick-area__combo--winner {
-  filter: drop-shadow(0 0 8px var(--color-gold));
+  filter: drop-shadow(0 0 10px var(--color-gold)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
 }
 
 .trick-area__winner-badge {
@@ -135,12 +184,14 @@
   bottom: -10px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--color-gold);
-  color: #111;
+  background: linear-gradient(180deg, #f5cf56 0%, #d4a428 100%);
+  color: #1a1008;
   font-size: var(--text-xs);
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: 4px;
+  border: 1px solid rgba(255, 245, 200, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -179,30 +230,14 @@
 
 @media (max-width: 768px) {
   .trick-area {
-    max-width: 220px;
+    max-width: 260px;
     min-width: 140px;
     gap: 2px;
   }
 
   .trick-area--lg {
-    max-width: 320px;
+    max-width: 360px;
     min-width: 170px;
-  }
-
-  .trick-area__centre {
-    width: 50px;
-    height: 72px;
-  }
-
-  .trick-area__placeholder {
-    width: 50px;
-    height: 72px;
-  }
-
-  .trick-area--lg .trick-area__placeholder,
-  .trick-area--lg .trick-area__centre {
-    width: 26px;
-    height: 36px;
   }
 
   .trick-area__combo .card + .card {
@@ -216,29 +251,63 @@
 
 @media (max-width: 480px) {
   .trick-area {
-    max-width: 180px;
+    max-width: 220px;
     min-width: 120px;
   }
 
   .trick-area--lg {
-    max-width: 260px;
+    max-width: 280px;
     min-width: 150px;
   }
 
+  /* Match Card.css 480px card dimensions: sm=36x52, md=50x72, lg=66x94 */
+  .trick-area__placeholder,
   .trick-area__centre {
-    width: 40px;
-    height: 58px;
+    width: 36px;
+    height: 52px;
   }
 
-  .trick-area__placeholder {
-    width: 40px;
-    height: 58px;
+  .trick-area--md .trick-area__placeholder,
+  .trick-area--md .trick-area__centre {
+    width: 50px;
+    height: 72px;
   }
 
   .trick-area--lg .trick-area__placeholder,
   .trick-area--lg .trick-area__centre {
-    width: 22px;
+    width: 66px;
+    height: 94px;
+  }
+
+  .trick-area__medallion {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .trick-area--md .trick-area__medallion {
+    width: 30px;
     height: 30px;
+  }
+
+  .trick-area--lg .trick-area__medallion {
+    width: 36px;
+    height: 36px;
+  }
+
+  .trick-area__medallion::after {
+    width: 7px;
+    height: 7px;
+  }
+
+  .trick-area--md .trick-area__medallion::after {
+    width: 9px;
+    height: 9px;
+  }
+
+  .trick-area--lg .trick-area__medallion::after {
+    width: 10px;
+    height: 10px;
   }
 
   .trick-area__combo--lg .card + .card { margin-left: -30px; }

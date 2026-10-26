@@ -29,11 +29,13 @@
 .card--red   { color: var(--color-red); }
 .card--black { color: var(--color-black); }
 
-/* States */
+/* States — never use opacity < 1 on .card--disabled: in a fanned hand, making
+   cards translucent lets the covered card's bottom-right corner and glow bleed
+   through the card in front of it. */
 .card--clickable { cursor: pointer; }
 .card--clickable:hover { transform: translateY(-8px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
 .card--selected  { transform: translateY(-10px); box-shadow: 0 0 0 2px var(--color-gold), 0 8px 20px rgba(0,0,0,0.5); }
-.card--disabled  { opacity: 0.5; cursor: not-allowed; }
+.card--disabled  { filter: brightness(0.78) saturate(0.85); cursor: default; }
 .card--highlight { box-shadow: 0 0 8px 2px rgba(240,192,64,0.6); }
 .card--trump     { border-color: rgba(240,192,64,0.5); }
 
@@ -49,19 +51,30 @@
   border-color: #7a8a9a;
 }
 
-/* Face-down */
-.card--facedown { background: #2c3e50; border-color: #1a2a3a; }
+/* Face-down — crimson lacquer & gold lattice back */
+.card--facedown {
+  background: linear-gradient(135deg, #631915 0%, #3d0d0b 100%);
+  border-color: rgba(212, 175, 55, 0.5);
+}
 .card__back {
   width: 100%;
   height: 100%;
   background:
     repeating-linear-gradient(
       45deg,
-      rgba(255,255,255,0.05) 0px,
-      rgba(255,255,255,0.05) 2px,
-      transparent 2px,
-      transparent 8px
+      rgba(212, 175, 55, 0.09) 0px,
+      rgba(212, 175, 55, 0.09) 1.5px,
+      transparent 1.5px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(212, 175, 55, 0.09) 0px,
+      rgba(212, 175, 55, 0.09) 1.5px,
+      transparent 1.5px,
+      transparent 7px
     );
+  box-shadow: inset 0 0 0 2px rgba(212, 175, 55, 0.28);
   border-radius: inherit;
 }
 
@@ -99,20 +112,15 @@
   line-height: 1;
 }
 
-/* Centre pip — decoration the fan hides, so it is dropped at the sizes the
-   hand actually uses and kept faint at the largest. */
+/* Centre pip — hidden on standard suit cards (where a faint watermark in the
+   middle reads as a ghost artifact alongside the corner suit), and shown at
+   full contrast on jokers where the star is the card's identity. */
 .card__center {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  opacity: 0.12;
   display: none;
-}
-
-.card--lg .card__center {
-  display: block;
-  font-size: 26px;
 }
 
 /* Joker centre pip — the card's identity, not decoration: always shown. */

@@ -529,7 +529,14 @@ export default function GameBoard() {
         {/* The playing surface. Purely decorative, but it is what makes the
             middle of the screen read as a table with cards on it rather than as
             leftover felt between four seats. */}
-        <div className="gameboard__felt" aria-hidden="true" />
+        <div className="gameboard__felt" aria-hidden="true">
+          <div className="gameboard__felt-inner">
+            <span className="gameboard__corner gameboard__corner--tl" />
+            <span className="gameboard__corner gameboard__corner--tr" />
+            <span className="gameboard__corner gameboard__corner--bl" />
+            <span className="gameboard__corner gameboard__corner--br" />
+          </div>
+        </div>
 
         <div className="gameboard__seat gameboard__seat--top">
           <PlayerInfo

@@ -5,19 +5,22 @@
   z-index: 6;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  background: rgba(0,0,0,0.5);
-  border: 1px solid rgba(255,255,255,0.1);
+  gap: 2px;
+  background: linear-gradient(180deg, rgba(34, 19, 15, 0.92) 0%, rgba(18, 11, 9, 0.96) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 235, 190, 0.1);
   border-radius: 8px;
-  padding: 0.3rem 0.5rem;
-  min-width: 56px;
+  padding: 0.32rem 0.55rem;
+  min-width: 62px;
 }
 
 .trump-info__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .trump-info__label {
@@ -28,12 +31,13 @@
 }
 
 .trump-info__value {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 700;
+  color: var(--color-gold);
 }
 
 .trump-info__value--red {
-  color: var(--color-red);
+  color: #ff6b6b;
 }
 
 .trump-info__value--pending {

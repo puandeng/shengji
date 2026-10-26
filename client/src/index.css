@@ -5,9 +5,16 @@
 }
 
 :root {
-  --color-bg:         #1a2a1a;
-  --color-felt:       #2d5a27;
-  --color-felt-dark:  #1e3d1a;
+  --color-bg:         #111c15;
+  --color-felt:       #235538;
+  --color-felt-dark:  #143321;
+  --color-felt-light: #31734d;
+  --color-wood-dark:  #28100b;
+  --color-wood-mid:   #461d14;
+  --color-wood-light: #682e20;
+  --color-brass:      #d4af37;
+  --color-brass-line: rgba(212, 175, 55, 0.32);
+  --color-lacquer:    rgba(24, 15, 13, 0.9);
   --color-card-bg:    #fefefe;
   --color-card-border:#d0c8b8;
   --color-red:        #c0392b;
