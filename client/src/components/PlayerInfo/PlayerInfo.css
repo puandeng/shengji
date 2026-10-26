@@ -2,23 +2,30 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  background: rgba(0,0,0,0.4);
+  padding: 0.4rem 0.65rem;
+  background: linear-gradient(180deg, rgba(34, 19, 15, 0.9) 0%, rgba(18, 11, 9, 0.94) 100%);
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  transition: box-shadow 0.2s;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 235, 190, 0.09);
+  transition: box-shadow 0.2s, border-color 0.2s;
   min-width: 100px;
 }
 
 .player-info--active {
-  box-shadow: 0 0 0 2px var(--team-color, #4caf50);
+  border-color: var(--color-gold);
+  box-shadow:
+    0 0 0 2px rgba(240, 192, 64, 0.55),
+    0 0 18px rgba(240, 192, 64, 0.32),
+    0 4px 14px rgba(0, 0, 0, 0.5);
 }
 
 .player-info--vertical {
   flex-direction: column;
   text-align: center;
-  min-width: 64px;
-  padding: 0.4rem 0.4rem;
+  min-width: 66px;
+  padding: 0.42rem 0.45rem;
 }
 
 .player-info--empty {
@@ -39,6 +46,9 @@
   justify-content: center;
   font-weight: 700;
   font-size: 0.9rem;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 240, 200, 0.42),
+    0 2px 5px rgba(0, 0, 0, 0.45);
 }
 
 .player-info__crown {
@@ -48,7 +58,7 @@
   transform: translateX(-50%);
   font-size: 20px;
   color: var(--color-gold);
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.75));
   line-height: 1;
   pointer-events: none;
 }
@@ -56,7 +66,7 @@
 .player-info__details {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   overflow: hidden;
 }
 
@@ -85,32 +95,34 @@
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
   line-height: 1.2;
+  border: 1px solid rgba(255, 235, 190, 0.22);
 }
 
 .player-info__role--atk {
   color: #fff;
-  background: #e74c3c;
+  background: linear-gradient(180deg, #d14436 0%, #a82e22 100%);
 }
 
 .player-info__role--def {
   color: #fff;
-  background: #2980b9;
+  background: linear-gradient(180deg, #2d7db3 0%, #1e5b85 100%);
 }
 
 .player-info--attacking {
-  border-color: rgba(231, 76, 60, 0.5);
+  border-color: rgba(231, 76, 60, 0.48);
 }
 
 .player-info--defending {
-  border-color: rgba(41, 128, 185, 0.3);
+  border-color: rgba(74, 163, 224, 0.38);
 }
 
 .player-info__turn-indicator {
   color: var(--color-gold);
   font-size: var(--text-xs);
+  text-shadow: 0 0 6px rgba(240, 192, 64, 0.8);
   animation: pulse 1s ease-in-out infinite;
   margin-left: auto;
 }
@@ -124,11 +136,12 @@
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  background: rgba(255,215,0,0.15);
-  border: 1px solid rgba(255,215,0,0.3);
+  background: rgba(24, 14, 11, 0.88);
+  border: 1px solid rgba(240, 192, 64, 0.42);
   border-radius: 6px;
   padding: 2px 6px;
   margin-top: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   animation: bid-appear 0.3s ease-out;
 }
 
