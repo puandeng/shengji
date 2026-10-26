@@ -71,7 +71,7 @@ function applyScenario(room, socketId, opts = {}) {
         // the rank in play cannot be read off the declaring team yet. Use the
         // requesting player's level — that is the one the menu is setting.
         game.trumpRank = game.teamLevels[myTeam];
-        const dealt = game.deal();
+        const dealt = game.deal(opts.seed);
         if (dealt.error) return dealt;
         return { success: true, scenario, role, animateDeal: true, ...summarise(game, me) };
     }
@@ -89,7 +89,7 @@ function applyScenario(room, socketId, opts = {}) {
     // reached level K in its first hand.
     game.roundNumber = 2;
 
-    const dealt = game.deal();
+    const dealt = game.deal(opts.seed);
     if (dealt.error) return dealt;
 
     game.finishDealing();
@@ -201,6 +201,7 @@ function rigEndgameScore(game, role, wantWin) {
 function summarise(game, me) {
     return {
         phase:         game.phase,
+        seed:          game.dealSeed,
         trumpSuit:     game.trumpSuit,
         trumpRank:     game.trumpRank,
         threshold:     LEVEL_THRESHOLDS[game.trumpRank],
