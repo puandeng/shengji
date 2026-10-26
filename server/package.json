@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "jest"
+    "test": "jest",
+    "selfplay": "node game/SelfPlay.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

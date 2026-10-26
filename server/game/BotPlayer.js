@@ -62,6 +62,10 @@ function chooseLegalCards(hand, currentTrick, trumpSuit, trumpRank, ctx = {}) {
             if (single) return [...pair.map(c => c.id), single.id];
         }
     }
+    if (leadEntry.shape === 'tractor' && suitCards.length >= n) {
+        const tractorFollow = findTractorFollowInCards(suitCards, n, trumpSuit, trumpRank);
+        if (tractorFollow) return tractorFollow.map(c => c.id);
+    }
 
     const pointsOnBoard = trickPoints > 0;
 
@@ -195,6 +199,59 @@ function findPairInCards(cards) {
         seen[key] = c;
     }
     return null;
+}
+
+function findAllPairsInCards(cards) {
+    const groups = {};
+    for (const c of cards) {
+        const key = `${c.suit}_${c.rank}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(c);
+    }
+    const pairs = [];
+    for (const group of Object.values(groups)) {
+        if (group.length >= 2) pairs.push([group[0], group[1]]);
+    }
+    return pairs;
+}
+
+function findTractorFollowInCards(suitCards, n, trumpSuit, trumpRank) {
+    const pairs = findAllPairsInCards(suitCards);
+    if (pairs.length === 0) return null;
+
+    const neededPairs = Math.floor(n / 2);
+    const { tractorValue } = require('./GameState');
+
+    const byVal = new Map();
+    for (const pair of pairs) {
+        const tv = tractorValue(pair[0], trumpSuit, trumpRank);
+        if (!byVal.has(tv)) byVal.set(tv, pair);
+    }
+    const sortedUnique = [...byVal.entries()].sort((a, b) => a[0] - b[0]);
+
+    for (let start = 0; start + neededPairs <= sortedUnique.length; start++) {
+        let consecutive = true;
+        for (let offset = 1; offset < neededPairs; offset++) {
+            if (sortedUnique[start + offset][0] - sortedUnique[start + offset - 1][0] !== 1) {
+                consecutive = false;
+                break;
+            }
+        }
+        if (consecutive) {
+            return sortedUnique.slice(start, start + neededPairs).flatMap(([, pair]) => pair);
+        }
+    }
+
+    const chosen = pairs.slice(0, neededPairs).flat();
+    const chosenIds = new Set(chosen.map(c => c.id));
+    for (const c of suitCards) {
+        if (chosen.length >= n) break;
+        if (!chosenIds.has(c.id)) {
+            chosen.push(c);
+            chosenIds.add(c.id);
+        }
+    }
+    return chosen.slice(0, n);
 }
 
 /**
