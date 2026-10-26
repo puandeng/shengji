@@ -440,6 +440,7 @@ class GameState {
     this.dealWindowPasses = new Set();
     this.dealWindowIndex  = 0;
     this.dealPaused       = false;
+    this.dealSeed         = null;
     // Track ranks each team has visited (for mandatory stop rank logic)
     this.visitedRanks   = { 0: new Set([STARTING_LEVEL]), 1: new Set([STARTING_LEVEL]) };
   }
@@ -563,6 +564,7 @@ class GameState {
     this.dealPaused        = false;
     this.dealQueue         = null;
     this.dealIndex         = 0;
+    this.dealSeed          = null;
     return { success: true };
   }
 
@@ -570,11 +572,12 @@ class GameState {
   // Dealing
   // ─────────────────────────────────────────────
 
-  deal() {
+  deal(seed = null) {
     if (!this.isReady()) return { error: 'Not enough players' };
 
-    const deck = new Deck();
+    const deck = new Deck(seed);
     const { hands, kitty } = deck.deal(PLAYERS_PER_ROOM, CARDS_PER_PLAYER, KITTY_SIZE);
+    this.dealSeed = deck.seed;
 
     this.kitty = kitty;
     this.players.forEach((player, i) => {
@@ -620,6 +623,7 @@ class GameState {
         attackingTeam: this.attackingTeam,
       });
       this.logger.deal({
+        seed:  this.dealSeed,
         hands: this.players.map(p => ({
           seatIndex: p.seatIndex,
           cards:     this.hands[p.socketId].map(c => c.toJSON()),
@@ -628,7 +632,7 @@ class GameState {
       });
     }
 
-    return { success: true };
+    return { success: true, seed: this.dealSeed };
   }
 
   /**
