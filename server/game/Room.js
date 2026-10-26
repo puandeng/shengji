@@ -475,8 +475,7 @@ class Room {
     if (!result.trickComplete) {
       this.scheduleBotPlay();
     } else if (!result.roundOver && !result.gameOver) {
-      // Wait for trick display delay before starting next trick
-      const timer = setTimeout(() => this.scheduleBotPlay(), TRICK_DISPLAY_DELAY_MS + BOT_PLAY_DELAY_MS);
+      const timer = setTimeout(() => this.scheduleBotPlay(), TRICK_DISPLAY_DELAY_MS);
       this._botTimers.push(timer);
     }
   }
