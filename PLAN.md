@@ -40,8 +40,7 @@ placeholder. Division of labour:
   against `GameState` (no sockets, no delays) and emits transitions — state, legal
   action mask, action, reward. `GameState.playableCardIds()` already provides the
   mask; `_finishRound()` provides the reward via `levelBands()`.
-- [ ] **Reproducibility.** `Deck` shuffles without a seed today, so a run cannot be
-  replayed exactly. Thread a seed through `deal()` before generating training data.
+- [x] **Reproducibility.** `Deck` now shuffles with a deterministic Mulberry32 PRNG (accepting numeric or FNV-1a-hashed string seeds, or generating and recording a 32-bit seed when none is supplied). `seed` threads through `Deck.deal()`, `GameState.deal(seed)`, `Room.startGame(seed)`, `Room.startNewRound(seed)`, `DevScenario.applyScenario()`, and `GameLogger.deal()`; covered by `server/game/__tests__/Deck.test.js`.
 - [ ] **Then swap `BotPlayer` for the learned policy** behind the same interface
   (`chooseLegalCards`, `chooseTrumpCall`, `chooseKittyDiscard`), so dev mode and
   disconnect auto-play pick it up unchanged.

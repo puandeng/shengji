@@ -103,11 +103,11 @@ class Room {
     return { success: true };
   }
 
-  startGame() {
+  startGame(seed = null) {
     this.fillWithBots();
     if (!this.game.isReady()) return { error: 'Need at least 1 player to start' };
     if (this.game.phase !== GAME_PHASES.WAITING) return { error: 'Game already started' };
-    return this.game.deal();
+    return this.game.deal(seed);
   }
 
   /**
@@ -290,7 +290,7 @@ class Room {
     return result;
   }
 
-  startNewRound() {
+  startNewRound(seed = null) {
     if (this.game.phase !== GAME_PHASES.SCORING) return { error: 'Not in scoring phase' };
     this.game.roundNumber++;
 
@@ -322,7 +322,7 @@ class Room {
     // Pre-assign kitty picker — they will be trumpDeclarer after trump selection
     this.game.kittyPickerSeat = nextKittySeat;
 
-    const result = this.game.deal();
+    const result = this.game.deal(seed);
     if (result.error) return result;
 
     // Set pre-determined kitty picker as the trumpDeclarer

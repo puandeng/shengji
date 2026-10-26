@@ -116,8 +116,11 @@ class GameLogger {
         this.note(`levels T0=${teamLevels[0]} T1=${teamLevels[1]}   trump rank ${trumpRank}`);
     }
 
-    deal({ hands, kitty }) {
-        this.event('deal', { hands, kitty });
+    deal({ seed, hands, kitty }) {
+        this.event('deal', { seed, hands, kitty });
+        if (seed !== undefined && seed !== null) {
+            this.note(`seed   ${seed}`);
+        }
         this.note(`kitty  ${shortList(kitty)}`);
         hands.forEach(h => this.note(`hand ${h.seatIndex}  ${shortList(h.cards)}`));
     }

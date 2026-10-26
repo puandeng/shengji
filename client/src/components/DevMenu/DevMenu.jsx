@@ -32,6 +32,7 @@ export default function DevMenu({ variant = 'panel' }) {
     const [role, setRole]     = useState('attacking');
     const [myLevel, setMy]    = useState('2');
     const [oppLevel, setOpp]  = useState('2');
+    const [seed, setSeed]     = useState('');
     const [busy, setBusy]     = useState(null);
     const [status, setStatus] = useState(null);
 
@@ -39,7 +40,17 @@ export default function DevMenu({ variant = 'panel' }) {
         setBusy(scenario);
         setStatus(null);
         try {
-            const res = await setupScenario({ scenario, role, myLevel, opponentLevel: oppLevel });
+            const trimmedSeed = seed.trim();
+            const parsedSeed = trimmedSeed === ''
+                ? undefined
+                : (/^-?\d+$/.test(trimmedSeed) ? Number(trimmedSeed) : trimmedSeed);
+            const res = await setupScenario({
+                scenario,
+                role,
+                myLevel,
+                opponentLevel: oppLevel,
+                ...(parsedSeed !== undefined ? { seed: parsedSeed } : {}),
+            });
             setStatus({ ok: true, text: describe(res) });
             if (variant === 'floating') setOpen(false);
         } catch (err) {
@@ -97,6 +108,17 @@ export default function DevMenu({ variant = 'panel' }) {
                                     {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
                                 </select>
                             </label>
+                            <label>
+                                seed
+                                <input
+                                    type="text"
+                                    className="dev-menu__seed"
+                                    placeholder="random"
+                                    aria-label="Deal seed"
+                                    value={seed}
+                                    onChange={e => setSeed(e.target.value)}
+                                />
+                            </label>
                         </div>
                     </div>
 
@@ -135,10 +157,11 @@ export default function DevMenu({ variant = 'panel' }) {
 
 function describe(res) {
     if (!res) return 'Scenario set up.';
+    const seedPart = res.seed !== undefined && res.seed !== null ? ` · seed ${res.seed}` : '';
     if (res.scenario === 'fresh') {
-        return `Fresh deal · rank ${res.trumpRank} · levels you ${res.teamLevels[res.myTeam]} / them ${res.teamLevels[res.myTeam === 0 ? 1 : 0]}`;
+        return `Fresh deal · rank ${res.trumpRank} · levels you ${res.teamLevels[res.myTeam]} / them ${res.teamLevels[res.myTeam === 0 ? 1 : 0]}${seedPart}`;
     }
     const side = res.myTeam === res.attackingTeam ? 'attacking' : 'defending';
     return `${side} · trump ${suitSymbol(res.trumpSuit)}${res.trumpRank} · need ${res.threshold} · `
-        + `attackers ${res.attackerScore} · levels you ${res.teamLevels[res.myTeam]} / them ${res.teamLevels[res.myTeam === 0 ? 1 : 0]}`;
+        + `attackers ${res.attackerScore} · levels you ${res.teamLevels[res.myTeam]} / them ${res.teamLevels[res.myTeam === 0 ? 1 : 0]}${seedPart}`;
 }

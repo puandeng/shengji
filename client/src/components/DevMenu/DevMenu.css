@@ -145,7 +145,8 @@
     color: var(--color-text-muted);
 }
 
-.dev-menu__levels select {
+.dev-menu__levels select,
+.dev-menu__seed {
     min-height: 26px;
     padding: 0 0.3rem;
     border-radius: var(--radius-sm);
@@ -153,6 +154,10 @@
     background: rgba(0, 0, 0, 0.4);
     color: var(--color-text);
     font-size: var(--text-xs);
+}
+
+.dev-menu__seed {
+    width: 78px;
 }
 
 .dev-menu__scenarios {
