@@ -203,12 +203,12 @@ function countTractorPairs(cards, trumpSuit, trumpRank) {
       pairValues.push(tractorValue(c, trumpSuit, trumpRank));
     }
   });
-  pairValues.sort((a, b) => a - b);
+  const uniqueValues = [...new Set(pairValues)].sort((a, b) => a - b);
 
   let maxConsecutive = 0;
   let current = 1;
-  for (let i = 1; i < pairValues.length; i++) {
-    if (pairValues[i] - pairValues[i - 1] === 1) {
+  for (let i = 1; i < uniqueValues.length; i++) {
+    if (uniqueValues[i] - uniqueValues[i - 1] === 1) {
       current++;
       maxConsecutive = Math.max(maxConsecutive, current);
     } else {
@@ -1608,6 +1608,52 @@ class GameState {
     delete full.hands;
     return full;
   }
+
+  /**
+   * Advance from SCORING to the next round's DEALING phase, rotating the
+   * kitty picker / declarer seat and updating trumpRank and attackingTeam.
+   */
+  startNewRound(seed = null) {
+    if (this.phase !== GAME_PHASES.SCORING) return { error: 'Not in scoring phase' };
+    this.roundNumber++;
+
+    const prevAttacking = this.attackingTeam;
+    const prevKittySeat = this.kittyPickerSeat;
+    const threshold     = LEVEL_THRESHOLDS[this.trumpRank];
+    const attackingWon  = this.scores[prevAttacking] >= threshold;
+
+    // The kitty picker is the declarer, and declaring means defending.
+    // Team 0 = seats 0&2, Team 1 = seats 1&3, so an adjacent seat is the other
+    // team and (seat + 2) is the partner.
+    const nextKittySeat = attackingWon
+      ? (prevKittySeat + 1) % 4
+      : (prevKittySeat + 2) % 4;
+
+    // The rank being played belongs to the declaring team — they are defending
+    // their own level — and the other team attacks it.
+    const nextDeclaringTeam = nextKittySeat % 2;
+    this.trumpRank     = this.teamLevels[nextDeclaringTeam];
+    this.attackingTeam = nextDeclaringTeam === 0 ? 1 : 0;
+
+    // Pre-assign kitty picker — they will be trumpDeclarer after trump selection
+    this.kittyPickerSeat = nextKittySeat;
+
+    const result = this.deal(seed);
+    if (result.error) return result;
+
+    // Set pre-determined kitty picker as the trumpDeclarer.
+    // Trump calling can still change the suit, but this player picks up the kitty.
+    const kittyPlayer = this.players.find(p => p.seatIndex === nextKittySeat);
+    if (kittyPlayer) {
+      this.trumpDeclarer = kittyPlayer.socketId;
+      this.attackingTeam = kittyPlayer.teamIndex === 0 ? 1 : 0;
+    }
+
+    return result;
+  }
 }
+
+GameState.classifyPlay = classifyPlay;
+GameState.tractorValue = tractorValue;
 
 module.exports = GameState;
