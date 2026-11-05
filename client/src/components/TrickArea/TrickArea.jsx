@@ -57,7 +57,9 @@ export default function TrickArea({ trick = [], players = [], mySeat = 0, opposi
         <div className={slotClass(leftSeat, 'left')}>
           <TrickSlot cards={getCardsForSeat(leftSeat)} isWinner={isWinner(leftSeat)} scale={scale} />
         </div>
-        <div className="trick-area__centre" />
+        <div className="trick-area__centre" aria-hidden="true">
+          <span className="trick-area__medallion" />
+        </div>
         <div className={slotClass(rightSeat, 'right')}>
           <TrickSlot cards={getCardsForSeat(rightSeat)} isWinner={isWinner(rightSeat)} scale={scale} />
         </div>

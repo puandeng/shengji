@@ -7,7 +7,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background: var(--color-felt);
+  background: var(--color-bg);
 }
 
 .game-loading {

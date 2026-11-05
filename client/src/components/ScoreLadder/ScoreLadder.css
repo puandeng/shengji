@@ -15,10 +15,11 @@
   align-items: center;
   gap: 0.5rem;
   min-height: 30px;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 0.22rem 0.65rem;
+  border: 1px solid rgba(212, 175, 55, 0.26);
   border-radius: var(--radius-pill);
-  background: rgba(0, 0, 0, 0.34);
+  background: linear-gradient(180deg, rgba(30, 17, 14, 0.84) 0%, rgba(18, 11, 9, 0.9) 100%);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 235, 190, 0.08);
   color: var(--color-text);
   cursor: pointer;
   text-align: left;
@@ -26,8 +27,8 @@
 
 .ladder__strip:hover,
 .ladder--open .ladder__strip {
-  background: rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(40, 22, 18, 0.92) 0%, rgba(24, 14, 11, 0.96) 100%);
+  border-color: rgba(212, 175, 55, 0.45);
 }
 
 .ladder__role {
@@ -37,11 +38,12 @@
   letter-spacing: 0.5px;
   padding: 1px 6px;
   border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 235, 190, 0.22);
   color: #fff;
 }
 
-.ladder__role--attackers { background: #c0392b; }
-.ladder__role--defenders { background: #2471a3; }
+.ladder__role--attackers { background: linear-gradient(180deg, #d14436 0%, #a82e22 100%); }
+.ladder__role--defenders { background: linear-gradient(180deg, #2d7db3 0%, #1e5b85 100%); }
 
 .ladder__score {
   flex: 0 0 auto;
@@ -150,9 +152,9 @@
   right: 0;
   z-index: 50;
   padding: 0.6rem 0.7rem 0.7rem;
-  border: 1px solid rgba(240, 192, 64, 0.3);
+  border: 1px solid rgba(240, 192, 64, 0.38);
   border-radius: var(--radius);
-  background: rgba(14, 24, 14, 0.97);
+  background: linear-gradient(180deg, rgba(32, 18, 14, 0.97) 0%, rgba(18, 11, 9, 0.98) 100%);
   box-shadow: var(--shadow);
 }
 
