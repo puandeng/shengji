@@ -28,10 +28,11 @@ shengji/
 | `server/index.js` | Express + Socket.io bootstrap, `/health` endpoint |
 | `server/game/constants.js` | Suits, ranks, point values, phases, team assignments |
 | `server/game/Card.js` | Card model, jokers, `isTrump()`, `effectiveSuit()`, `trumpOrder()`, `beats()` |
-| `server/game/Deck.js` | Two-deck shuffle + deal into hands & kitty |
+| `server/game/Deck.js` | Two-deck shuffle (deterministic Mulberry32 PRNG, optional numeric/string seed) + deal into hands & kitty |
 | `server/game/GameState.js` | Core state machine: dealing → trump → kitty → playing → scoring; shape detection, follow-suit enforcement, level progression |
 | `server/game/GameLogger.js` | Per-room append-only game log — JSONL event stream + chess-style notation |
 | `server/game/BotPlayer.js` | Stub bot logic for `DEV_MODE` — trump calls, passes, legal card/combo selection |
+| `server/game/SelfPlay.js` | Headless, seeded in-process self-play runner against `GameState` — emits `(state, legalActionMask, action, reward)` transitions |
 | `server/game/DevScenario.js` | `DEV_MODE` only — rebuilds a room's game in a chosen situation (fresh / mid-game / endgame, either role, either team level) |
 | `server/game/__tests__/` | Jest suite for `Card` and `GameState` (`npm test --workspace=server`) |
 | `server/game/Room.js` | Room wrapper + `RoomRegistry` (in-memory store, code generator) |

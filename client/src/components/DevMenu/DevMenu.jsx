@@ -12,6 +12,16 @@ const SCENARIOS = [
     { id: 'endgame-lose', label: 'Endgame — lose', hint: 'Two cards each, your team short of the threshold.' },
 ];
 
+// Persist across <Lobby> → <Game> unmount/remount so the chosen knobs and the
+// generated deal seed remain visible in the in-game DEV menu after launching.
+const persistedDevMenu = {
+    role:     'attacking',
+    myLevel:  '2',
+    oppLevel: '2',
+    seed:     '',
+    status:   null,
+};
+
 /**
  * DEV_MODE scenario picker.
  *
@@ -29,17 +39,35 @@ const SCENARIOS = [
 export default function DevMenu({ variant = 'panel' }) {
     const { setupScenario, myPlayer } = useGame();
     const [open, setOpen]     = useState(false);
-    const [role, setRole]     = useState('attacking');
-    const [myLevel, setMy]    = useState('2');
-    const [oppLevel, setOpp]  = useState('2');
+    const [role, setRoleState] = useState(persistedDevMenu.role);
+    const [myLevel, setMyState] = useState(persistedDevMenu.myLevel);
+    const [oppLevel, setOppState] = useState(persistedDevMenu.oppLevel);
+    const [seed, setSeedState] = useState(persistedDevMenu.seed);
     const [busy, setBusy]     = useState(null);
-    const [status, setStatus] = useState(null);
+    const [status, setStatusState] = useState(persistedDevMenu.status);
+
+    const setRole   = (v) => { persistedDevMenu.role = v; setRoleState(v); };
+    const setMy     = (v) => { persistedDevMenu.myLevel = v; setMyState(v); };
+    const setOpp    = (v) => { persistedDevMenu.oppLevel = v; setOppState(v); };
+    const setSeed   = (v) => { persistedDevMenu.seed = v; setSeedState(v); };
+    const setStatus = (v) => { persistedDevMenu.status = v; setStatusState(v); };
 
     async function run(scenario) {
         setBusy(scenario);
         setStatus(null);
         try {
-            const res = await setupScenario({ scenario, role, myLevel, opponentLevel: oppLevel });
+            const trimmedSeed = seed.trim();
+            const asNum = Number(trimmedSeed);
+            const parsedSeed = trimmedSeed === ''
+                ? undefined
+                : (/^-?\d+$/.test(trimmedSeed) && Number.isSafeInteger(asNum) ? asNum : trimmedSeed);
+            const res = await setupScenario({
+                scenario,
+                role,
+                myLevel,
+                opponentLevel: oppLevel,
+                ...(parsedSeed !== undefined ? { seed: parsedSeed } : {}),
+            });
             setStatus({ ok: true, text: describe(res) });
             if (variant === 'floating') setOpen(false);
         } catch (err) {
@@ -57,7 +85,7 @@ export default function DevMenu({ variant = 'panel' }) {
                 onClick={() => setOpen(o => !o)}
                 aria-expanded={open}
                 aria-label="Dev scenarios"
-                title="Dev scenarios"
+                title={status?.ok ? status.text : 'Dev scenarios'}
             >
                 {variant === 'floating'
                     ? 'DEV'
@@ -97,6 +125,17 @@ export default function DevMenu({ variant = 'panel' }) {
                                     {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
                                 </select>
                             </label>
+                            <label>
+                                seed
+                                <input
+                                    type="text"
+                                    className="dev-menu__seed"
+                                    placeholder="random"
+                                    aria-label="Deal seed"
+                                    value={seed}
+                                    onChange={e => setSeed(e.target.value)}
+                                />
+                            </label>
                         </div>
                     </div>
 
@@ -135,10 +174,11 @@ export default function DevMenu({ variant = 'panel' }) {
 
 function describe(res) {
     if (!res) return 'Scenario set up.';
+    const seedPart = res.seed !== undefined && res.seed !== null ? ` · seed ${res.seed}` : '';
     if (res.scenario === 'fresh') {
-        return `Fresh deal · rank ${res.trumpRank} · levels you ${res.teamLevels[res.myTeam]} / them ${res.teamLevels[res.myTeam === 0 ? 1 : 0]}`;
+        return `Fresh deal · rank ${res.trumpRank} · levels you ${res.teamLevels[res.myTeam]} / them ${res.teamLevels[res.myTeam === 0 ? 1 : 0]}${seedPart}`;
     }
     const side = res.myTeam === res.attackingTeam ? 'attacking' : 'defending';
     return `${side} · trump ${suitSymbol(res.trumpSuit)}${res.trumpRank} · need ${res.threshold} · `
-        + `attackers ${res.attackerScore} · levels you ${res.teamLevels[res.myTeam]} / them ${res.teamLevels[res.myTeam === 0 ? 1 : 0]}`;
+        + `attackers ${res.attackerScore} · levels you ${res.teamLevels[res.myTeam]} / them ${res.teamLevels[res.myTeam === 0 ? 1 : 0]}${seedPart}`;
 }
