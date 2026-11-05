@@ -3,6 +3,7 @@ const Card = require('./Card');
 const {
   GAME_PHASES,
   SUIT_NAMES,
+  RANK_ORDER,
   TEAM_ASSIGNMENTS,
   PLAYERS_PER_ROOM,
   CARDS_PER_PLAYER,
@@ -138,7 +139,6 @@ function isTractor(cards, trumpSuit, trumpRank) {
  * For non-trump cards: normal rank value (used for non-trump suit tractors).
  */
 function tractorValue(card, trumpSuit, trumpRank) {
-  const RANK_ORDER = require('./constants').RANK_ORDER;
   const trumpRankVal = (trumpRank !== null) ? (RANK_ORDER[trumpRank] || 0) : 0;
 
   if (!card.isTrump(trumpSuit, trumpRank)) {
@@ -203,12 +203,12 @@ function countTractorPairs(cards, trumpSuit, trumpRank) {
       pairValues.push(tractorValue(c, trumpSuit, trumpRank));
     }
   });
-  pairValues.sort((a, b) => a - b);
+  const uniqueValues = [...new Set(pairValues)].sort((a, b) => a - b);
 
   let maxConsecutive = 0;
   let current = 1;
-  for (let i = 1; i < pairValues.length; i++) {
-    if (pairValues[i] - pairValues[i - 1] === 1) {
+  for (let i = 1; i < uniqueValues.length; i++) {
+    if (uniqueValues[i] - uniqueValues[i - 1] === 1) {
       current++;
       maxConsecutive = Math.max(maxConsecutive, current);
     } else {
@@ -1480,10 +1480,6 @@ class GameState {
           const hasJack = winnerPlay && winnerPlay.cards.some(c => c.rank === 'J');
           if (hasJack) {
             jackDemotion = true;
-            this.teamLevels[defendingTeam] = STARTING_LEVEL;
-            // A demotion that leaves the visited stops behind is nearly free —
-            // the team would re-skip 5/10/K on the way back up.
-            this.visitedRanks[defendingTeam] = new Set([STARTING_LEVEL]);
           }
         }
       }
@@ -1499,6 +1495,13 @@ class GameState {
     } else {
       this.teamLevels[advancingTeam] = newLevel;
       this.visitedRanks[advancingTeam].add(newLevel);
+    }
+
+    // Apply Jack demotion after advanceLevel so a defending team caught by a
+    // last-trick Jack always drops to '2' (even if attackers stayed below 80).
+    if (jackDemotion) {
+      this.teamLevels[defendingTeam] = STARTING_LEVEL;
+      this.visitedRanks[defendingTeam] = new Set([STARTING_LEVEL]);
     }
 
     // Accumulate round scores (legacy, for UI compat)
@@ -1608,6 +1611,52 @@ class GameState {
     delete full.hands;
     return full;
   }
+
+  /**
+   * Advance from SCORING to the next round's DEALING phase, rotating the
+   * kitty picker / declarer seat and updating trumpRank and attackingTeam.
+   */
+  startNewRound(seed = null) {
+    if (this.phase !== GAME_PHASES.SCORING) return { error: 'Not in scoring phase' };
+    this.roundNumber++;
+
+    const prevAttacking = this.attackingTeam;
+    const prevKittySeat = this.kittyPickerSeat;
+    const threshold     = LEVEL_THRESHOLDS[this.trumpRank];
+    const attackingWon  = this.scores[prevAttacking] >= threshold;
+
+    // The kitty picker is the declarer, and declaring means defending.
+    // Team 0 = seats 0&2, Team 1 = seats 1&3, so an adjacent seat is the other
+    // team and (seat + 2) is the partner.
+    const nextKittySeat = attackingWon
+      ? (prevKittySeat + 1) % 4
+      : (prevKittySeat + 2) % 4;
+
+    // The rank being played belongs to the declaring team — they are defending
+    // their own level — and the other team attacks it.
+    const nextDeclaringTeam = nextKittySeat % 2;
+    this.trumpRank     = this.teamLevels[nextDeclaringTeam];
+    this.attackingTeam = nextDeclaringTeam === 0 ? 1 : 0;
+
+    // Pre-assign kitty picker — they will be trumpDeclarer after trump selection
+    this.kittyPickerSeat = nextKittySeat;
+
+    const result = this.deal(seed);
+    if (result.error) return result;
+
+    // Set pre-determined kitty picker as the trumpDeclarer.
+    // Trump calling can still change the suit, but this player picks up the kitty.
+    const kittyPlayer = this.players.find(p => p.seatIndex === nextKittySeat);
+    if (kittyPlayer) {
+      this.trumpDeclarer = kittyPlayer.socketId;
+      this.attackingTeam = kittyPlayer.teamIndex === 0 ? 1 : 0;
+    }
+
+    return result;
+  }
 }
+
+GameState.classifyPlay = classifyPlay;
+GameState.tractorValue = tractorValue;
 
 module.exports = GameState;

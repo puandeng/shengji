@@ -36,10 +36,7 @@ placeholder. Division of labour:
   process speed rather than being gated on animation delays and bot timers, and
   reaches positions no logged game ever will.
 
-- [ ] **Headless self-play harness.** A seeded runner that plays N games in-process
-  against `GameState` (no sockets, no delays) and emits transitions — state, legal
-  action mask, action, reward. `GameState.playableCardIds()` already provides the
-  mask; `_finishRound()` provides the reward via `levelBands()`.
+- [x] **Headless self-play harness.** `server/game/SelfPlay.js` (`runSelfPlay`, `runGame`, `runRound`, CLI `npm run selfplay --workspace=server`) plays seeded rounds or full multi-round matches in-process against `GameState` (no sockets, no delays, no disk logs) and emits transitions (`state`, `legalActionMask` from `GameState.playableCardIds()`, `handMask`, `action`, `actionShape`, `trickOutcome`, `band`, and team-signed `reward` from `_finishRound()` / `levelBands()`). Supports pluggable global, per-team, or per-seat policies behind the `BotPlayer` interface; covered by `server/game/__tests__/SelfPlay.test.js`.
 - [x] **Reproducibility.** `Deck` now shuffles with a deterministic Mulberry32 PRNG (accepting numeric or FNV-1a-hashed string seeds, or generating and recording a 32-bit seed when none is supplied). `seed` threads through `Deck.deal()`, `GameState.deal(seed)`, `Room.startGame(seed)`, `Room.startNewRound(seed)`, `DevScenario.applyScenario()`, and `GameLogger.deal()`; covered by `server/game/__tests__/Deck.test.js`.
 - [ ] **Then swap `BotPlayer` for the learned policy** behind the same interface
   (`chooseLegalCards`, `chooseTrumpCall`, `chooseKittyDiscard`), so dev mode and
@@ -109,17 +106,6 @@ tests — before any training run is worth the compute.
 - [x] **Trump level announcement finishes before dealing.** Added a 2.5s `DEAL_START_DELAY_MS` server-side delay before the first card is dealt, giving the client's level announcement overlay time to display.
 - [x] **Compact trump info replaces level cards and top bar.** Removed the corner level cards and the full-width TrumpBanner. Replaced with a small top-left info box showing only the trump suit symbol and rank.
 - [x] **Trump declaration shown immediately during dealing.** Added `trumpCallerSeat` to the `UPDATE_GAME_STATE` dispatch in the `game:trumpCalled` handler during dealing, so the bid appears at the caller's seat in real time.
-
-### Lobby / Home
-- [ ] **Editable team names.** The first player to join each team can edit the team name. Other teammates see the name but cannot change it.
-- [ ] **Rules button on home screen.** Add a "Rules" button on the home page (before creating/joining a lobby) that opens a concise, accurate summary of the Sheng Ji rule set — card values, trump calling, trick-taking, scoring bands, level progression, and kitty capture.
-
-### Bot AI
-- [ ] **Smarter bot play.** Improve bot decision-making beyond the current stub logic:
-  - Lead with the largest cards of each side suit in the early phase of the game.
-  - When points are on the board, prioritize capturing (attacking) or protecting (defending) based on team role.
-  - Prefer playing combos (pairs, tractors) over singles when possible.
-  - When leading a trick with no strong non-trump cards (no pairs, aces, or kings in side suits), lead the lowest trump card instead.
 
 ### Lobby / Home
 - [x] **Editable team names.** Players on each team can click the team header in the lobby to rename it (max 20 chars). The first person to set it owns the name; teammates see it but cannot change it. Server: `room:setTeamName` event, `Room.setTeamName()`. Client: `TeamName` component in `Lobby.jsx` with inline editing.
